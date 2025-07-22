@@ -165,6 +165,14 @@ export const Mapping: React.FC = () => {
   }, [selectedSegment, selectedMarque, searchTerm, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq]);
 
   useEffect(() => {
+    setSegmentSearch(selectedSegment === 'all' ? '' : selectedSegment);
+  }, [selectedSegment]);
+
+  useEffect(() => {
+    setMarqueSearch(selectedMarque === 'all' ? '' : selectedMarque);
+  }, [selectedMarque]);
+
+  useEffect(() => {
     fetchData();
   }, [selectedSegment, selectedMarque, searchTerm, currentPage, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq]);
 
