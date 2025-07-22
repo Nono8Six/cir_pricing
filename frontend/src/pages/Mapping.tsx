@@ -380,7 +380,7 @@ export const Mapping: React.FC = () => {
               <div>
                 <p className="text-sm text-gray-600">Stratégiques</p>
                 <p className="text-xl font-bold text-gray-900">
-                  {loading ? '...' : mappings.filter(m => m.strategiq === 1).length}
+                  {mappings.filter(m => m.strategiq === 1).length}
                 </p>
               </div>
             </div>
@@ -551,78 +551,79 @@ export const Mapping: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-            {/* Recherche par CAT_FAB */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Rechercher par CAT_FAB..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-              />
-            </div>
-
-            {/* Items per page selector */}
-            <div>
-              <select
-                value={itemsPerPage}
-                onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-              >
-                <option value={10}>10 par page</option>
-                <option value={20}>20 par page</option>
-                <option value={50}>50 par page</option>
-                <option value={100}>100 par page</option>
-              </select>
-            </div>
-
-            {/* Filtre par segment */}
-            <select
-              value={selectedSegment}
-              onChange={(e) => setSelectedSegment(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-            >
-              <option value="all">Tous les segments</option>
-              {segments.map(segment => (
-                <option key={segment} value={segment}>
-                  Segment {segment}
-                </option>
-              ))}
-            </select>
-
-            {/* Filtre par marque */}
-            <select
-              value={selectedMarque}
-              onChange={(e) => setSelectedMarque(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-            >
-              <option value="all">Toutes les marques</option>
-              {marques.map(marque => (
-                <option key={marque} value={marque}>
-                  {marque}
-                </option>
-              ))}
-            </select>
-
-            {/* Reset filtres */}
-            <Button
-              variant="outline"
-              onClick={() => {
-                setSearchTerm('');
-                setSelectedSegment('all');
-                setSelectedMarque('all');
-              }}
-              className="flex items-center space-x-2"
-            >
-              <Filter className="w-4 h-4" />
-              <span>Reset</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Table des mappings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <FileSpreadsheet className="w-5 h-5" />
+            <span>Mappings Segments ({totalCount})</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {mappings.length === 0 ? (
+            <div className="text-center py-12">
+              <FileSpreadsheet className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 mb-2">
+                Aucun mapping trouvé
+              </p>
+              <p className="text-sm text-gray-400 mb-4">
+                Uploadez le fichier SEGMENTS TARIFAIRES.xlsx pour commencer
+              </p>
+              <div className="relative inline-block">
+                <input
+                  type="file"
+                  accept=".xlsx"
+                  onChange={handleFileUpload}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  disabled={uploadLoading}
+                />
+                <Button variant="outline" disabled={uploadLoading}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  {uploadLoading ? 'Upload...' : 'Upload Excel'}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Segment
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Marque
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      CAT_FAB
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Description
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Stratégique
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Classification CIR
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {mappings.map((mapping, index) => (
+                    <motion.tr
+                      key={mapping.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.02 }}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {mapping.segment}
+                      </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                         {mapping.marque}
                       </td>
