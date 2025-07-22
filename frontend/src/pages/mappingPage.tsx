@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { MappingModal } from '../components/mapping/mappingModal';
+import { MappingModal } from '../components/mapping/MappingModal';
 import { toast } from 'sonner';
 import { mappingApi } from '../lib/supabaseClient';
 import * as XLSX from 'xlsx';
