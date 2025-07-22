@@ -47,6 +47,20 @@ export const Mapping: React.FC = () => {
   const [segments, setSegments] = useState<string[]>([]);
   const [marques, setMarques] = useState<string[]>([]);
   
+  // Search states for autocomplete
+  const [segmentSearch, setSegmentSearch] = useState('');
+  const [marqueSearch, setMarqueSearch] = useState('');
+  const [fsmegaSearch, setFsmegaSearch] = useState('');
+  const [fsfamSearch, setFsfamSearch] = useState('');
+  const [fssfaSearch, setFssfaSearch] = useState('');
+  
+  // Dropdown open states
+  const [segmentDropdownOpen, setSegmentDropdownOpen] = useState(false);
+  const [marqueDropdownOpen, setMarqueDropdownOpen] = useState(false);
+  const [fsmegaDropdownOpen, setFsmegaDropdownOpen] = useState(false);
+  const [fsfamDropdownOpen, setFsfamDropdownOpen] = useState(false);
+  const [fssfaDropdownOpen, setFssfaDropdownOpen] = useState(false);
+  
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
@@ -59,6 +73,10 @@ export const Mapping: React.FC = () => {
   const [fsmegas, setFsmegas] = useState<number[]>([]);
   const [fsfams, setFsfams] = useState<number[]>([]);
   const [fssfas, setFssfas] = useState<number[]>([]);
+
+  // Total counts for dashboard (unfiltered)
+  const [totalSegments, setTotalSegments] = useState(0);
+  const [totalMarques, setTotalMarques] = useState(0);
 
   // Charger les données
   const fetchData = async () => {
@@ -90,6 +108,10 @@ export const Mapping: React.FC = () => {
       setFsmegas(fsmegasData);
       setFsfams(fsfamsData);
       setFssfas(fssfasData);
+      
+      // Set total counts for dashboard (unfiltered)
+      setTotalSegments(segmentsData.length);
+      setTotalMarques(marquesData.length);
     } catch (error) {
       console.error('Erreur chargement mappings:', error);
       toast.error('Erreur lors du chargement des mappings');
@@ -105,6 +127,42 @@ export const Mapping: React.FC = () => {
   useEffect(() => {
     fetchData();
   }, [selectedSegment, selectedMarque, searchTerm, currentPage, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq]);
+
+  // Filter functions for autocomplete
+  const getFilteredSegments = () => {
+    if (!segmentSearch) return segments;
+    return segments.filter(segment => 
+      segment.toLowerCase().startsWith(segmentSearch.toLowerCase())
+    );
+  };
+
+  const getFilteredMarques = () => {
+    if (!marqueSearch) return marques;
+    return marques.filter(marque => 
+      marque.toLowerCase().startsWith(marqueSearch.toLowerCase())
+    );
+  };
+
+  const getFilteredFsmegas = () => {
+    if (!fsmegaSearch) return fsmegas;
+    return fsmegas.filter(fsmega => 
+      fsmega.toString().startsWith(fsmegaSearch)
+    );
+  };
+
+  const getFilteredFsfams = () => {
+    if (!fsfamSearch) return fsfams;
+    return fsfams.filter(fsfam => 
+      fsfam.toString().startsWith(fsfamSearch)
+    );
+  };
+
+  const getFilteredFssfas = () => {
+    if (!fssfaSearch) return fssfas;
+    return fssfas.filter(fssfa => 
+      fssfa.toString().startsWith(fssfaSearch)
+    );
+  };
 
   // Calculate pagination info
   const totalPages = Math.ceil(totalCount / itemsPerPage);
@@ -351,7 +409,7 @@ export const Mapping: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Segments</p>
-                <p className="text-xl font-bold text-gray-900">{segments.length}</p>
+                <p className="text-xl font-bold text-gray-900">{totalSegments}</p>
               </div>
             </div>
           </CardContent>
@@ -365,7 +423,7 @@ export const Mapping: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Marques</p>
-                <p className="text-xl font-bold text-gray-900">{marques.length}</p>
+                <p className="text-xl font-bold text-gray-900">{totalMarques}</p>
               </div>
             </div>
           </CardContent>
@@ -424,32 +482,90 @@ export const Mapping: React.FC = () => {
             {/* Deuxième ligne : Filtres de base */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Filtre par segment */}
-              <select
-                value={selectedSegment}
-                onChange={(e) => setSelectedSegment(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-              >
-                <option value="all">Tous les segments</option>
-                {segments.map(segment => (
-                  <option key={segment} value={segment}>
-                    Segment {segment}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={segmentSearch}
+                  onChange={(e) => {
+                    setSegmentSearch(e.target.value);
+                    setSegmentDropdownOpen(true);
+                  }}
+                  onFocus={() => setSegmentDropdownOpen(true)}
+                  onBlur={() => setTimeout(() => setSegmentDropdownOpen(false), 200)}
+                  placeholder="Rechercher un segment..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                />
+                {segmentDropdownOpen && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    <div
+                      onClick={() => {
+                        setSelectedSegment('all');
+                        setSegmentSearch('');
+                        setSegmentDropdownOpen(false);
+                      }}
+                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b"
+                    >
+                      Tous les segments
+                    </div>
+                    {getFilteredSegments().map(segment => (
+                      <div
+                        key={segment}
+                        onClick={() => {
+                          setSelectedSegment(segment);
+                          setSegmentSearch(segment);
+                          setSegmentDropdownOpen(false);
+                        }}
+                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                      >
+                        {segment}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* Filtre par marque */}
-              <select
-                value={selectedMarque}
-                onChange={(e) => setSelectedMarque(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-              >
-                <option value="all">Toutes les marques</option>
-                {marques.map(marque => (
-                  <option key={marque} value={marque}>
-                    {marque}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={marqueSearch}
+                  onChange={(e) => {
+                    setMarqueSearch(e.target.value);
+                    setMarqueDropdownOpen(true);
+                  }}
+                  onFocus={() => setMarqueDropdownOpen(true)}
+                  onBlur={() => setTimeout(() => setMarqueDropdownOpen(false), 200)}
+                  placeholder="Rechercher une marque..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                />
+                {marqueDropdownOpen && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    <div
+                      onClick={() => {
+                        setSelectedMarque('all');
+                        setMarqueSearch('');
+                        setMarqueDropdownOpen(false);
+                      }}
+                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b"
+                    >
+                      Toutes les marques
+                    </div>
+                    {getFilteredMarques().map(marque => (
+                      <div
+                        key={marque}
+                        onClick={() => {
+                          setSelectedMarque(marque);
+                          setMarqueSearch(marque);
+                          setMarqueDropdownOpen(false);
+                        }}
+                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                      >
+                        {marque}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* Filtre stratégique */}
               <select
@@ -475,18 +591,47 @@ export const Mapping: React.FC = () => {
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Méga Famille (FSMEGA)
                   </label>
-                  <select
-                    value={selectedFsmega}
-                    onChange={(e) => setSelectedFsmega(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-                  >
-                    <option value="all">Toutes</option>
-                    {fsmegas.sort((a, b) => a - b).map(fsmega => (
-                      <option key={fsmega} value={fsmega}>
-                        {fsmega}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={fsmegaSearch}
+                      onChange={(e) => {
+                        setFsmegaSearch(e.target.value);
+                        setFsmegaDropdownOpen(true);
+                      }}
+                      onFocus={() => setFsmegaDropdownOpen(true)}
+                      onBlur={() => setTimeout(() => setFsmegaDropdownOpen(false), 200)}
+                      placeholder="Rechercher..."
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                    />
+                    {fsmegaDropdownOpen && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        <div
+                          onClick={() => {
+                            setSelectedFsmega('all');
+                            setFsmegaSearch('');
+                            setFsmegaDropdownOpen(false);
+                          }}
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b"
+                        >
+                          Toutes
+                        </div>
+                        {getFilteredFsmegas().sort((a, b) => a - b).map(fsmega => (
+                          <div
+                            key={fsmega}
+                            onClick={() => {
+                              setSelectedFsmega(fsmega.toString());
+                              setFsmegaSearch(fsmega.toString());
+                              setFsmegaDropdownOpen(false);
+                            }}
+                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                          >
+                            {fsmega}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Filtre FSFAM (Famille) */}
@@ -494,18 +639,47 @@ export const Mapping: React.FC = () => {
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Famille (FSFAM)
                   </label>
-                  <select
-                    value={selectedFsfam}
-                    onChange={(e) => setSelectedFsfam(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-                  >
-                    <option value="all">Toutes</option>
-                    {fsfams.sort((a, b) => a - b).map(fsfam => (
-                      <option key={fsfam} value={fsfam}>
-                        {fsfam}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={fsfamSearch}
+                      onChange={(e) => {
+                        setFsfamSearch(e.target.value);
+                        setFsfamDropdownOpen(true);
+                      }}
+                      onFocus={() => setFsfamDropdownOpen(true)}
+                      onBlur={() => setTimeout(() => setFsfamDropdownOpen(false), 200)}
+                      placeholder="Rechercher..."
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                    />
+                    {fsfamDropdownOpen && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        <div
+                          onClick={() => {
+                            setSelectedFsfam('all');
+                            setFsfamSearch('');
+                            setFsfamDropdownOpen(false);
+                          }}
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b"
+                        >
+                          Toutes
+                        </div>
+                        {getFilteredFsfams().sort((a, b) => a - b).map(fsfam => (
+                          <div
+                            key={fsfam}
+                            onClick={() => {
+                              setSelectedFsfam(fsfam.toString());
+                              setFsfamSearch(fsfam.toString());
+                              setFsfamDropdownOpen(false);
+                            }}
+                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                          >
+                            {fsfam}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Filtre FSSFA (Sous Famille) */}
@@ -513,18 +687,47 @@ export const Mapping: React.FC = () => {
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Sous Famille (FSSFA)
                   </label>
-                  <select
-                    value={selectedFssfa}
-                    onChange={(e) => setSelectedFssfa(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-                  >
-                    <option value="all">Toutes</option>
-                    {fssfas.sort((a, b) => a - b).map(fssfa => (
-                      <option key={fssfa} value={fssfa}>
-                        {fssfa}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={fssfaSearch}
+                      onChange={(e) => {
+                        setFssfaSearch(e.target.value);
+                        setFssfaDropdownOpen(true);
+                      }}
+                      onFocus={() => setFssfaDropdownOpen(true)}
+                      onBlur={() => setTimeout(() => setFssfaDropdownOpen(false), 200)}
+                      placeholder="Rechercher..."
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                    />
+                    {fssfaDropdownOpen && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        <div
+                          onClick={() => {
+                            setSelectedFssfa('all');
+                            setFssfaSearch('');
+                            setFssfaDropdownOpen(false);
+                          }}
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b"
+                        >
+                          Toutes
+                        </div>
+                        {getFilteredFssfas().sort((a, b) => a - b).map(fssfa => (
+                          <div
+                            key={fssfa}
+                            onClick={() => {
+                              setSelectedFssfa(fssfa.toString());
+                              setFssfaSearch(fssfa.toString());
+                              setFssfaDropdownOpen(false);
+                            }}
+                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                          >
+                            {fssfa}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Reset filtres */}
@@ -539,6 +742,11 @@ export const Mapping: React.FC = () => {
                       setSelectedFsfam('all');
                       setSelectedFssfa('all');
                       setSelectedStrategiq('all');
+                      setSegmentSearch('');
+                      setMarqueSearch('');
+                      setFsmegaSearch('');
+                      setFsfamSearch('');
+                      setFssfaSearch('');
                     }}
                     className="w-full flex items-center justify-center space-x-2"
                   >
