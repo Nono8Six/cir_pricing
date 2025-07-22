@@ -246,7 +246,6 @@ export const mappingApi = {
 
   // Get total count of unique segments (for statistics) - REAL DATABASE TOTALS
   async getTotalSegmentsCount() {
-    console.log('🔍 [getTotalSegmentsCount] Starting query...');
     
     // Query all segments and count unique values
     const { data, error } = await supabase
@@ -260,13 +259,11 @@ export const mappingApi = {
     }
     
     const uniqueCount = [...new Set(data.map(item => item.segment))].length;
-    console.log('✅ [getTotalSegmentsCount] Query result:', uniqueCount);
     return uniqueCount;
   },
 
   // Get total count of unique marques (for statistics) - REAL DATABASE TOTALS  
   async getTotalMarquesCount() {
-    console.log('🔍 [getTotalMarquesCount] Starting query...');
     
     // Query all marques and count unique values
     const { data, error } = await supabase
@@ -280,7 +277,6 @@ export const mappingApi = {
     }
     
     const uniqueCount = [...new Set(data.map(item => item.marque))].length;
-    console.log('✅ [getTotalMarquesCount] Query result:', uniqueCount);
     return uniqueCount;
   }
 };
