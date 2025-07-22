@@ -77,6 +77,7 @@ export const Mapping: React.FC = () => {
   // Total counts for dashboard (unfiltered)
   const [totalSegments, setTotalSegments] = useState(0);
   const [totalMarques, setTotalMarques] = useState(0);
+  const [totalStrategiques, setTotalStrategiques] = useState(0);
 
   // Charger les données
   const fetchData = async () => {
@@ -93,7 +94,7 @@ export const Mapping: React.FC = () => {
         ...(selectedStrategiq !== 'all' && { strategiq: parseInt(selectedStrategiq) })
       };
       
-      const [mappingsResult, allSegmentsData, allMarquesData, allFsmegasData, allFsfamsData, allFssfasData, totalSegmentsCount, totalMarquesCount] = await Promise.all([
+      const [mappingsResult, allSegmentsData, allMarquesData, allFsmegasData, allFsfamsData, allFssfasData, totalSegmentsCount, totalMarquesCount, totalStrategiquesCount] = await Promise.all([
         mappingApi.getMappings(filters, currentPage, itemsPerPage),
         mappingApi.getAllUniqueSegments(),
         mappingApi.getAllUniqueMarques(),
@@ -101,10 +102,10 @@ export const Mapping: React.FC = () => {
         mappingApi.getAllUniqueFsfams(),
         mappingApi.getAllUniqueFssfas(),
         mappingApi.getTotalSegmentsCount(),
-        mappingApi.getTotalMarquesCount()
+        mappingApi.getTotalMarquesCount(),
+        mappingApi.getTotalStrategiquesCount()
       ]);
-      
-      
+
       setMappings(mappingsResult.data);
       setTotalCount(mappingsResult.count);
       setSegments(allSegmentsData);
@@ -112,7 +113,7 @@ export const Mapping: React.FC = () => {
       setFsmegas(allFsmegasData);
       setFsfams(allFsfamsData);
       setFssfas(allFssfasData);
-      
+
       // Set total counts for dashboard (real database totals)
       setTotalSegments(totalSegmentsCount);
       setTotalMarques(totalMarquesCount);
@@ -130,42 +131,50 @@ export const Mapping: React.FC = () => {
   }, [selectedSegment, selectedMarque, searchTerm, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq]);
 
   useEffect(() => {
+    setSegmentSearch(selectedSegment === 'all' ? '' : selectedSegment);
+  }, [selectedSegment]);
+
+  useEffect(() => {
+    setMarqueSearch(selectedMarque === 'all' ? '' : selectedMarque);
+  }, [selectedMarque]);
+
+  useEffect(() => {
     fetchData();
   }, [selectedSegment, selectedMarque, searchTerm, currentPage, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq]);
 
   // Filter functions for autocomplete
   const getFilteredSegments = () => {
     if (!segmentSearch) return segments;
-    return segments.filter(segment => 
-      segment.toLowerCase().startsWith(segmentSearch.toLowerCase())
+    return segments.filter(segment =>
+      segment.toLowerCase().includes(segmentSearch.toLowerCase())
     );
   };
 
   const getFilteredMarques = () => {
     if (!marqueSearch) return marques;
-    return marques.filter(marque => 
-      marque.toLowerCase().startsWith(marqueSearch.toLowerCase())
+    return marques.filter(marque =>
+      marque.toLowerCase().includes(marqueSearch.toLowerCase())
     );
   };
 
   const getFilteredFsmegas = () => {
     if (!fsmegaSearch) return fsmegas;
-    return fsmegas.filter(fsmega => 
-      fsmega.toString().startsWith(fsmegaSearch)
+    return fsmegas.filter(fsmega =>
+      fsmega.toString().includes(fsmegaSearch)
     );
   };
 
   const getFilteredFsfams = () => {
     if (!fsfamSearch) return fsfams;
-    return fsfams.filter(fsfam => 
-      fsfam.toString().startsWith(fsfamSearch)
+    return fsfams.filter(fsfam =>
+      fsfam.toString().includes(fsfamSearch)
     );
   };
 
   const getFilteredFssfas = () => {
     if (!fssfaSearch) return fssfas;
-    return fssfas.filter(fssfa => 
-      fssfa.toString().startsWith(fssfaSearch)
+    return fssfas.filter(fssfa =>
+      fssfa.toString().includes(fssfaSearch)
     );
   };
 
@@ -442,9 +451,8 @@ export const Mapping: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Stratégiques</p>
-                <p className="text-xl font-bold text-gray-900">
-                  {mappings.filter(m => m.strategiq === 1).length}
-                </p>
+                  <p className="text-xl font-bold text-gray-900">{totalStrategiques}</p>
+
               </div>
             </div>
           </CardContent>

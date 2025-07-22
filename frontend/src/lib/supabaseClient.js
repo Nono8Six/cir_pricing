@@ -244,7 +244,7 @@ export const mappingApi = {
     return [...new Set(data.map(item => item.fssfa))].sort((a, b) => a - b);
   },
 
-  // Get total count of unique segments (for statistics) - REAL DATABASE TOTALS
+  // Get total count of unique segments using SQL function
   async getTotalSegmentsCount() {
     
     // Query all segments and count unique values
@@ -262,7 +262,7 @@ export const mappingApi = {
     return uniqueCount;
   },
 
-  // Get total count of unique marques (for statistics) - REAL DATABASE TOTALS  
+  // Get total count of unique marques using SQL function
   async getTotalMarquesCount() {
     
     // Query all marques and count unique values
@@ -278,5 +278,19 @@ export const mappingApi = {
     
     const uniqueCount = [...new Set(data.map(item => item.marque))].length;
     return uniqueCount;
+  },
+
+  // Get total count of strategic mappings via RPC
+  async getTotalStrategiquesCount() {
+    console.log('🔍 [getTotalStrategiquesCount] Starting query...');
+    const { data, error } = await supabase.rpc('get_total_strategiques_count');
+
+    if (error) {
+      console.error('❌ [getTotalStrategiquesCount] Query Error:', error);
+      throw error;
+    }
+
+    console.log('✅ [getTotalStrategiquesCount] Query result:', data);
+    return data;
   }
 };
