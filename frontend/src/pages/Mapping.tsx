@@ -92,13 +92,15 @@ export const Mapping: React.FC = () => {
         ...(selectedStrategiq !== 'all' && { strategiq: parseInt(selectedStrategiq) })
       };
       
-      const [mappingsResult, allSegmentsData, allMarquesData, allFsmegasData, allFsfamsData, allFssfasData] = await Promise.all([
+      const [mappingsResult, allSegmentsData, allMarquesData, allFsmegasData, allFsfamsData, allFssfasData, totalSegmentsCount, totalMarquesCount] = await Promise.all([
         mappingApi.getMappings(filters, currentPage, itemsPerPage),
         mappingApi.getAllUniqueSegments(),
         mappingApi.getAllUniqueMarques(),
         mappingApi.getAllUniqueFsmegas(),
         mappingApi.getAllUniqueFsfams(),
-        mappingApi.getAllUniqueFssfas()
+        mappingApi.getAllUniqueFssfas(),
+        mappingApi.getTotalSegmentsCount(),
+        mappingApi.getTotalMarquesCount()
       ]);
       
       setMappings(mappingsResult.data);
@@ -109,9 +111,9 @@ export const Mapping: React.FC = () => {
       setFsfams(allFsfamsData);
       setFssfas(allFssfasData);
       
-      // Set total counts for dashboard (unfiltered)
-      setTotalSegments(allSegmentsData.length);
-      setTotalMarques(allMarquesData.length);
+      // Set total counts for dashboard (real database totals)
+      setTotalSegments(totalSegmentsCount);
+      setTotalMarques(totalMarquesCount);
     } catch (error) {
       console.error('Erreur chargement mappings:', error);
       toast.error('Erreur lors du chargement des mappings');

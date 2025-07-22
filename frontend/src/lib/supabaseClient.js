@@ -189,6 +189,28 @@ export const mappingApi = {
     return [...new Set(data.map(item => item.fsmega))];
   },
 
+  // Get total count of unique segments (for statistics)
+  async getTotalSegmentsCount() {
+    const { data, error } = await supabase
+      .from('brand_category_mappings')
+      .select('segment')
+      .order('segment');
+    
+    if (error) throw error;
+    return [...new Set(data.map(item => item.segment))].length;
+  },
+
+  // Get total count of unique marques (for statistics)
+  async getTotalMarquesCount() {
+    const { data, error } = await supabase
+      .from('brand_category_mappings')
+      .select('marque')
+      .order('marque');
+    
+    if (error) throw error;
+    return [...new Set(data.map(item => item.marque))].length;
+  },
+
   // Get ALL unique FSMEGA values (no filters applied)
   async getAllUniqueFsmegas() {
     const { data, error } = await supabase
