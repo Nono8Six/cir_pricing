@@ -8,7 +8,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { CalculatorPage } from './pages/CalculatorPage';
 import { Clients } from './pages/Clients';
 import { GroupsPage } from './pages/GroupsPage';
-import { MappingPage } from './pages/mappingPage';
+import { Mapping } from './pages/Mapping';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 
 // Error Boundary pour capturer les erreurs React
@@ -78,7 +78,7 @@ function AppContent() {
           <Route path="/calculator" element={<CalculatorPage />} />
           <Route path="/clients" element={<Clients />} />
           <Route path="/groups" element={<GroupsPage />} />
-          <Route path="/mapping" element={<MappingPage />} />
+          <Route path="/mapping" element={<Mapping />} />
           <Route path="/prices" element={<PlaceholderPage />} />
           <Route path="/prices/new" element={<PlaceholderPage />} />
           <Route path="/analytics" element={<PlaceholderPage />} />
