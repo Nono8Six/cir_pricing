@@ -31,6 +31,18 @@ export const mappingApi = {
     if (filters.segment) {
       query = query.eq('segment', filters.segment);
     }
+    if (filters.fsmega) {
+      query = query.eq('fsmega', filters.fsmega);
+    }
+    if (filters.fsfam) {
+      query = query.eq('fsfam', filters.fsfam);
+    }
+    if (filters.fssfa) {
+      query = query.eq('fssfa', filters.fssfa);
+    }
+    if (filters.strategiq !== undefined) {
+      query = query.eq('strategiq', filters.strategiq);
+    }
 
     // Get total count for pagination
     let countQuery = supabase
@@ -45,6 +57,18 @@ export const mappingApi = {
     }
     if (filters.segment) {
       countQuery = countQuery.eq('segment', filters.segment);
+    }
+    if (filters.fsmega) {
+      countQuery = countQuery.eq('fsmega', filters.fsmega);
+    }
+    if (filters.fsfam) {
+      countQuery = countQuery.eq('fsfam', filters.fsfam);
+    }
+    if (filters.fssfa) {
+      countQuery = countQuery.eq('fssfa', filters.fssfa);
+    }
+    if (filters.strategiq !== undefined) {
+      countQuery = countQuery.eq('strategiq', filters.strategiq);
     }
 
     const [{ data, error }, { count, error: countError }] = await Promise.all([
@@ -130,5 +154,38 @@ export const mappingApi = {
     
     if (error) throw error;
     return [...new Set(data.map(item => item.marque))];
+  },
+
+  // Get unique FSMEGA values for filter
+  async getUniqueFsmegas() {
+    const { data, error } = await supabase
+      .from('brand_category_mappings')
+      .select('fsmega')
+      .order('fsmega');
+    
+    if (error) throw error;
+    return [...new Set(data.map(item => item.fsmega))];
+  },
+
+  // Get unique FSFAM values for filter
+  async getUniqueFsfams() {
+    const { data, error } = await supabase
+      .from('brand_category_mappings')
+      .select('fsfam')
+      .order('fsfam');
+    
+    if (error) throw error;
+    return [...new Set(data.map(item => item.fsfam))];
+  },
+
+  // Get unique FSSFA values for filter
+  async getUniqueFssfas() {
+    const { data, error } = await supabase
+      .from('brand_category_mappings')
+      .select('fssfa')
+      .order('fssfa');
+    
+    if (error) throw error;
+    return [...new Set(data.map(item => item.fssfa))];
   }
 };

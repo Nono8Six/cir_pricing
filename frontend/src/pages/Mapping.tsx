@@ -50,6 +50,15 @@ export const Mapping: React.FC = () => {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
+  
+  // Advanced CIR filters
+  const [selectedFsmega, setSelectedFsmega] = useState<string>('all');
+  const [selectedFsfam, setSelectedFsfam] = useState<string>('all');
+  const [selectedFssfa, setSelectedFssfa] = useState<string>('all');
+  const [selectedStrategiq, setSelectedStrategiq] = useState<string>('all');
+  const [fsmegas, setFsmegas] = useState<number[]>([]);
+  const [fsfams, setFsfams] = useState<number[]>([]);
+  const [fssfas, setFssfas] = useState<number[]>([]);
 
   // Charger les données
   const fetchData = async () => {
@@ -58,19 +67,29 @@ export const Mapping: React.FC = () => {
       const filters = {
         ...(selectedSegment !== 'all' && { segment: selectedSegment }),
         ...(selectedMarque !== 'all' && { marque: selectedMarque }),
-        ...(searchTerm && { cat_fab: searchTerm })
+        ...(searchTerm && { cat_fab: searchTerm }),
+        ...(selectedFsmega !== 'all' && { fsmega: parseInt(selectedFsmega) }),
+        ...(selectedFsfam !== 'all' && { fsfam: parseInt(selectedFsfam) }),
+        ...(selectedFssfa !== 'all' && { fssfa: parseInt(selectedFssfa) }),
+        ...(selectedStrategiq !== 'all' && { strategiq: parseInt(selectedStrategiq) })
       };
       
-      const [mappingsResult, segmentsData, marquesData] = await Promise.all([
+      const [mappingsResult, segmentsData, marquesData, fsmegasData, fsfamsData, fssfasData] = await Promise.all([
         mappingApi.getMappings(filters, currentPage, itemsPerPage),
         mappingApi.getUniqueSegments(),
-        mappingApi.getUniqueMarques()
+        mappingApi.getUniqueMarques(),
+        mappingApi.getUniqueFsmegas(),
+        mappingApi.getUniqueFsfams(),
+        mappingApi.getUniqueFssfas()
       ]);
       
       setMappings(mappingsResult.data);
       setTotalCount(mappingsResult.count);
       setSegments(segmentsData);
       setMarques(marquesData);
+      setFsmegas(fsmegasData);
+      setFsfams(fsfamsData);
+      setFssfas(fssfasData);
     } catch (error) {
       console.error('Erreur chargement mappings:', error);
       toast.error('Erreur lors du chargement des mappings');
@@ -81,11 +100,11 @@ export const Mapping: React.FC = () => {
 
   useEffect(() => {
     setCurrentPage(1); // Reset to first page when filters change
-  }, [selectedSegment, selectedMarque, searchTerm, itemsPerPage]);
+  }, [selectedSegment, selectedMarque, searchTerm, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq]);
 
   useEffect(() => {
     fetchData();
-  }, [selectedSegment, selectedMarque, searchTerm, currentPage, itemsPerPage]);
+  }, [selectedSegment, selectedMarque, searchTerm, currentPage, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq]);
 
   // Calculate pagination info
   const totalPages = Math.ceil(totalCount / itemsPerPage);
@@ -361,7 +380,7 @@ export const Mapping: React.FC = () => {
               <div>
                 <p className="text-sm text-gray-600">Stratégiques</p>
                 <p className="text-xl font-bold text-gray-900">
-                  {totalCount > 0 ? '...' : '0'}
+                  {loading ? '...' : mappings.filter(m => m.strategiq === 1).length}
                 </p>
               </div>
             </div>
@@ -372,7 +391,166 @@ export const Mapping: React.FC = () => {
       {/* Filtres et recherche */}
       <Card>
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
+          <div className="space-y-4">
+            {/* Première ligne : Recherche + Items per page */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Recherche par CAT_FAB */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Rechercher par CAT_FAB..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                />
+              </div>
+
+              {/* Items per page selector */}
+              <div>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                >
+                  <option value={10}>10 par page</option>
+                  <option value={20}>20 par page</option>
+                  <option value={50}>50 par page</option>
+                  <option value={100}>100 par page</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Deuxième ligne : Filtres de base */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Filtre par segment */}
+              <select
+                value={selectedSegment}
+                onChange={(e) => setSelectedSegment(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+              >
+                <option value="all">Tous les segments</option>
+                {segments.map(segment => (
+                  <option key={segment} value={segment}>
+                    Segment {segment}
+                  </option>
+                ))}
+              </select>
+
+              {/* Filtre par marque */}
+              <select
+                value={selectedMarque}
+                onChange={(e) => setSelectedMarque(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+              >
+                <option value="all">Toutes les marques</option>
+                {marques.map(marque => (
+                  <option key={marque} value={marque}>
+                    {marque}
+                  </option>
+                ))}
+              </select>
+
+              {/* Filtre stratégique */}
+              <select
+                value={selectedStrategiq}
+                onChange={(e) => setSelectedStrategiq(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+              >
+                <option value="all">Tous (stratégique)</option>
+                <option value="1">Stratégique uniquement</option>
+                <option value="0">Non stratégique uniquement</option>
+              </select>
+            </div>
+
+            {/* Troisième ligne : Filtres CIR avancés */}
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+                <Filter className="w-4 h-4 mr-2" />
+                Filtres Classification CIR
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                {/* Filtre FSMEGA (Méga Famille) */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Méga Famille (FSMEGA)
+                  </label>
+                  <select
+                    value={selectedFsmega}
+                    onChange={(e) => setSelectedFsmega(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                  >
+                    <option value="all">Toutes</option>
+                    {fsmegas.sort((a, b) => a - b).map(fsmega => (
+                      <option key={fsmega} value={fsmega}>
+                        {fsmega}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Filtre FSFAM (Famille) */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Famille (FSFAM)
+                  </label>
+                  <select
+                    value={selectedFsfam}
+                    onChange={(e) => setSelectedFsfam(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                  >
+                    <option value="all">Toutes</option>
+                    {fsfams.sort((a, b) => a - b).map(fsfam => (
+                      <option key={fsfam} value={fsfam}>
+                        {fsfam}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Filtre FSSFA (Sous Famille) */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Sous Famille (FSSFA)
+                  </label>
+                  <select
+                    value={selectedFssfa}
+                    onChange={(e) => setSelectedFssfa(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                  >
+                    <option value="all">Toutes</option>
+                    {fssfas.sort((a, b) => a - b).map(fssfa => (
+                      <option key={fssfa} value={fssfa}>
+                        {fssfa}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Reset filtres */}
+                <div className="flex items-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setSelectedSegment('all');
+                      setSelectedMarque('all');
+                      setSelectedFsmega('all');
+                      setSelectedFsfam('all');
+                      setSelectedFssfa('all');
+                      setSelectedStrategiq('all');
+                    }}
+                    className="w-full flex items-center justify-center space-x-2"
+                  >
+                    <Filter className="w-4 h-4" />
+                    <span>Reset</span>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
             {/* Recherche par CAT_FAB */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
