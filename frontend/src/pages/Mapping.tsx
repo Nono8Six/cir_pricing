@@ -171,36 +171,36 @@ export const Mapping: React.FC = () => {
   // Filter functions for autocomplete
   const getFilteredSegments = () => {
     if (!segmentSearch) return segments;
-    return segments.filter(segment => 
-      segment.toLowerCase().startsWith(segmentSearch.toLowerCase())
+    return segments.filter(segment =>
+      segment.toLowerCase().includes(segmentSearch.toLowerCase())
     );
   };
 
   const getFilteredMarques = () => {
     if (!marqueSearch) return marques;
-    return marques.filter(marque => 
-      marque.toLowerCase().startsWith(marqueSearch.toLowerCase())
+    return marques.filter(marque =>
+      marque.toLowerCase().includes(marqueSearch.toLowerCase())
     );
   };
 
   const getFilteredFsmegas = () => {
     if (!fsmegaSearch) return fsmegas;
-    return fsmegas.filter(fsmega => 
-      fsmega.toString().startsWith(fsmegaSearch)
+    return fsmegas.filter(fsmega =>
+      fsmega.toString().includes(fsmegaSearch)
     );
   };
 
   const getFilteredFsfams = () => {
     if (!fsfamSearch) return fsfams;
-    return fsfams.filter(fsfam => 
-      fsfam.toString().startsWith(fsfamSearch)
+    return fsfams.filter(fsfam =>
+      fsfam.toString().includes(fsfamSearch)
     );
   };
 
   const getFilteredFssfas = () => {
     if (!fssfaSearch) return fssfas;
-    return fssfas.filter(fssfa => 
-      fssfa.toString().startsWith(fssfaSearch)
+    return fssfas.filter(fssfa =>
+      fssfa.toString().includes(fssfaSearch)
     );
   };
 
