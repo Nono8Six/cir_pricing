@@ -82,6 +82,16 @@ export const Mapping: React.FC = () => {
   const fetchData = async () => {
     try {
       console.log('🚀 Starting fetchData...');
+      
+      // DEBUG: Test API functions individually
+      console.log('🧪 TEST getTotalSegmentsCount');
+      const testSegments = await mappingApi.getTotalSegmentsCount();
+      console.log('Result:', testSegments, '(should be 7556)');
+
+      console.log('🧪 TEST getTotalMarquesCount'); 
+      const testMarques = await mappingApi.getTotalMarquesCount();
+      console.log('Result:', testMarques, '(should be 141)');
+      
       setLoading(true);
       const filters = {
         ...(selectedSegment !== 'all' && { segment: selectedSegment }),
@@ -434,7 +444,7 @@ export const Mapping: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Segments</p>
-                <p className="text-xl font-bold text-gray-900">7556</p>
+                <p className="text-xl font-bold text-gray-900">{totalSegments}</p>
               </div>
             </div>
           </CardContent>
@@ -448,7 +458,7 @@ export const Mapping: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Marques</p>
-                <p className="text-xl font-bold text-gray-900">141</p>
+                <p className="text-xl font-bold text-gray-900">{totalMarques}</p>
               </div>
             </div>
           </CardContent>

@@ -246,35 +246,55 @@ export const mappingApi = {
 
   // Get total count of unique segments (for statistics) - REAL DATABASE TOTALS
   async getTotalSegmentsCount() {
-    console.log('🔍 Fetching total segments count...');
+    console.log('🔍 [getTotalSegmentsCount] Starting query...');
     const { data, error } = await supabase
       .from('brand_category_mappings')
-      .select('segment');
+      .select('segment')
+      .order('segment');
     
     if (error) {
-      console.error('❌ Error fetching segments:', error);
+      console.error('❌ [getTotalSegmentsCount] Error:', error);
       throw error;
     }
     
+    console.log('📊 [getTotalSegmentsCount] Raw data length:', data?.length || 0);
+    console.log('📊 [getTotalSegmentsCount] First 5 segments:', data?.slice(0, 5).map(item => item.segment));
+    
     const uniqueCount = [...new Set(data.map(item => item.segment))].length;
-    console.log('✅ Total unique segments in DB:', uniqueCount);
+    console.log('✅ [getTotalSegmentsCount] Unique segments calculated:', uniqueCount);
+    console.log('🎯 [getTotalSegmentsCount] Expected: 7556, Got:', uniqueCount);
+    
+    if (uniqueCount !== 7556) {
+      console.warn('⚠️ [getTotalSegmentsCount] MISMATCH! Expected 7556, got', uniqueCount);
+    }
+    
     return uniqueCount;
   },
 
   // Get total count of unique marques (for statistics) - REAL DATABASE TOTALS
   async getTotalMarquesCount() {
-    console.log('🔍 Fetching total marques count...');
+    console.log('🔍 [getTotalMarquesCount] Starting query...');
     const { data, error } = await supabase
       .from('brand_category_mappings')
-      .select('marque');
+      .select('marque')
+      .order('marque');
     
     if (error) {
-      console.error('❌ Error fetching marques:', error);
+      console.error('❌ [getTotalMarquesCount] Error:', error);
       throw error;
     }
     
+    console.log('📊 [getTotalMarquesCount] Raw data length:', data?.length || 0);
+    console.log('📊 [getTotalMarquesCount] First 5 marques:', data?.slice(0, 5).map(item => item.marque));
+    
     const uniqueCount = [...new Set(data.map(item => item.marque))].length;
-    console.log('✅ Total unique marques in DB:', uniqueCount);
+    console.log('✅ [getTotalMarquesCount] Unique marques calculated:', uniqueCount);
+    console.log('🎯 [getTotalMarquesCount] Expected: 141, Got:', uniqueCount);
+    
+    if (uniqueCount !== 141) {
+      console.warn('⚠️ [getTotalMarquesCount] MISMATCH! Expected 141, got', uniqueCount);
+    }
+    
     return uniqueCount;
   }
 };
