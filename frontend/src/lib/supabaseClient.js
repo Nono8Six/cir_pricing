@@ -189,28 +189,6 @@ export const mappingApi = {
     return [...new Set(data.map(item => item.fsmega))];
   },
 
-  // Get total count of unique segments (for statistics)
-  async getTotalSegmentsCount() {
-    const { data, error } = await supabase
-      .from('brand_category_mappings')
-      .select('segment')
-      .order('segment');
-    
-    if (error) throw error;
-    return [...new Set(data.map(item => item.segment))].length;
-  },
-
-  // Get total count of unique marques (for statistics)
-  async getTotalMarquesCount() {
-    const { data, error } = await supabase
-      .from('brand_category_mappings')
-      .select('marque')
-      .order('marque');
-    
-    if (error) throw error;
-    return [...new Set(data.map(item => item.marque))].length;
-  },
-
   // Get ALL unique FSMEGA values (no filters applied)
   async getAllUniqueFsmegas() {
     const { data, error } = await supabase
@@ -266,23 +244,37 @@ export const mappingApi = {
     return [...new Set(data.map(item => item.fssfa))].sort((a, b) => a - b);
   },
 
-  // Get total count of unique segments (for statistics)
+  // Get total count of unique segments (for statistics) - REAL DATABASE TOTALS
   async getTotalSegmentsCount() {
+    console.log('🔍 Fetching total segments count...');
     const { data, error } = await supabase
       .from('brand_category_mappings')
       .select('segment');
     
-    if (error) throw error;
-    return [...new Set(data.map(item => item.segment))].length;
+    if (error) {
+      console.error('❌ Error fetching segments:', error);
+      throw error;
+    }
+    
+    const uniqueCount = [...new Set(data.map(item => item.segment))].length;
+    console.log('✅ Total unique segments in DB:', uniqueCount);
+    return uniqueCount;
   },
 
-  // Get total count of unique marques (for statistics)
+  // Get total count of unique marques (for statistics) - REAL DATABASE TOTALS
   async getTotalMarquesCount() {
+    console.log('🔍 Fetching total marques count...');
     const { data, error } = await supabase
       .from('brand_category_mappings')
       .select('marque');
     
-    if (error) throw error;
-    return [...new Set(data.map(item => item.marque))].length;
+    if (error) {
+      console.error('❌ Error fetching marques:', error);
+      throw error;
+    }
+    
+    const uniqueCount = [...new Set(data.map(item => item.marque))].length;
+    console.log('✅ Total unique marques in DB:', uniqueCount);
+    return uniqueCount;
   }
 };

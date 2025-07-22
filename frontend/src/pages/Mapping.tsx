@@ -81,6 +81,7 @@ export const Mapping: React.FC = () => {
   // Charger les données
   const fetchData = async () => {
     try {
+      console.log('🚀 Starting fetchData...');
       setLoading(true);
       const filters = {
         ...(selectedSegment !== 'all' && { segment: selectedSegment }),
@@ -103,6 +104,14 @@ export const Mapping: React.FC = () => {
         mappingApi.getTotalMarquesCount()
       ]);
       
+      console.log('📊 API Results:');
+      console.log('- mappingsResult.data.length:', mappingsResult.data.length);
+      console.log('- mappingsResult.count:', mappingsResult.count);
+      console.log('- totalSegmentsCount:', totalSegmentsCount);
+      console.log('- totalMarquesCount:', totalMarquesCount);
+      console.log('- allSegmentsData.length:', allSegmentsData.length);
+      console.log('- allMarquesData.length:', allMarquesData.length);
+      
       setMappings(mappingsResult.data);
       setTotalCount(mappingsResult.count);
       setSegments(allSegmentsData);
@@ -114,7 +123,10 @@ export const Mapping: React.FC = () => {
       // Set total counts for dashboard (real database totals)
       setTotalSegments(totalSegmentsCount);
       setTotalMarques(totalMarquesCount);
+      
+      console.log('✅ State updated with totals:', { totalSegments: totalSegmentsCount, totalMarques: totalMarquesCount });
     } catch (error) {
+      console.error('❌ Error in fetchData:', error);
       console.error('Erreur chargement mappings:', error);
       toast.error('Erreur lors du chargement des mappings');
     } finally {
