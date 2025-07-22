@@ -158,6 +158,9 @@ export const MappingModal: React.FC<MappingModalProps> = ({
         cat_fab: formData.cat_fab.trim()
       };
 
+      // Supprimer classif_cir car c'est une colonne générée par la DB
+      delete mappingData.classif_cir;
+
       if (mapping?.id) {
         // Modification
         await mappingApi.updateMapping(mapping.id, mappingData);

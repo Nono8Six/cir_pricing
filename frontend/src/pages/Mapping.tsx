@@ -129,8 +129,7 @@ export const Mapping: React.FC = () => {
                 codif_fair: String(row[5] || '').trim() || null,
                 fsmega,
                 fsfam,
-                fssfa,
-                classif_cir: row[9] ? String(row[9]).trim() : calculateClassifCir(fsmega, fsfam, fssfa)
+                fssfa
               };
               
               // Validation des champs requis
