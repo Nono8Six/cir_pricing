@@ -282,5 +282,19 @@ export const mappingApi = {
     const uniqueCount = [...new Set(data.map(item => item.marque))].length;
     console.log('✅ [getTotalMarquesCount] Query result:', uniqueCount);
     return uniqueCount;
+  },
+
+  // Get total count of strategic mappings via RPC
+  async getTotalStrategiquesCount() {
+    console.log('🔍 [getTotalStrategiquesCount] Starting query...');
+    const { data, error } = await supabase.rpc('get_total_strategiques_count');
+
+    if (error) {
+      console.error('❌ [getTotalStrategiquesCount] Query Error:', error);
+      throw error;
+    }
+
+    console.log('✅ [getTotalStrategiquesCount] Query result:', data);
+    return data;
   }
 };
