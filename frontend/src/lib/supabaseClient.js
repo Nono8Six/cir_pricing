@@ -248,59 +248,39 @@ export const mappingApi = {
   async getTotalSegmentsCount() {
     console.log('🔍 [getTotalSegmentsCount] Starting query...');
     
-    // Use RPC function to get distinct count directly from database
+    // Query all segments and count unique values
     const { data, error } = await supabase
-      .rpc('get_distinct_segments_count');
+      .from('brand_category_mappings')
+      .select('segment')
+      .order('segment');
     
     if (error) {
-      console.error('❌ [getTotalSegmentsCount] RPC Error, falling back to manual count:', error);
-      // Fallback to manual count if RPC doesn't exist
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from('brand_category_mappings')
-        .select('segment')
-        .order('segment');
-      
-      if (fallbackError) {
-        console.error('❌ [getTotalSegmentsCount] Fallback Error:', fallbackError);
-        throw fallbackError;
-      }
-      
-      const uniqueCount = [...new Set(fallbackData.map(item => item.segment))].length;
-      console.log('✅ [getTotalSegmentsCount] Fallback result:', uniqueCount);
-      return uniqueCount;
+      console.error('❌ [getTotalSegmentsCount] Query Error:', error);
+      throw error;
     }
     
-    console.log('✅ [getTotalSegmentsCount] RPC result:', data);
-    return data || 0;
+    const uniqueCount = [...new Set(data.map(item => item.segment))].length;
+    console.log('✅ [getTotalSegmentsCount] Query result:', uniqueCount);
+    return uniqueCount;
   },
 
   // Get total count of unique marques (for statistics) - REAL DATABASE TOTALS  
   async getTotalMarquesCount() {
     console.log('🔍 [getTotalMarquesCount] Starting query...');
     
-    // Use RPC function to get distinct count directly from database
+    // Query all marques and count unique values
     const { data, error } = await supabase
-      .rpc('get_distinct_marques_count');
+      .from('brand_category_mappings')
+      .select('marque')
+      .order('marque');
     
     if (error) {
-      console.error('❌ [getTotalMarquesCount] RPC Error, falling back to manual count:', error);
-      // Fallback to manual count if RPC doesn't exist
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from('brand_category_mappings')
-        .select('marque')
-        .order('marque');
-      
-      if (fallbackError) {
-        console.error('❌ [getTotalMarquesCount] Fallback Error:', fallbackError);
-        throw fallbackError;
-      }
-      
-      const uniqueCount = [...new Set(fallbackData.map(item => item.marque))].length;
-      console.log('✅ [getTotalMarquesCount] Fallback result:', uniqueCount);
-      return uniqueCount;
+      console.error('❌ [getTotalMarquesCount] Query Error:', error);
+      throw error;
     }
     
-    console.log('✅ [getTotalMarquesCount] RPC result:', data);
-    return data || 0;
+    const uniqueCount = [...new Set(data.map(item => item.marque))].length;
+    console.log('✅ [getTotalMarquesCount] Query result:', uniqueCount);
+    return uniqueCount;
   }
 };
