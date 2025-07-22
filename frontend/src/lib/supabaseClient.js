@@ -246,14 +246,24 @@ export const mappingApi = {
 
   // Get total count of unique segments using SQL function
   async getTotalSegmentsCount() {
-    const { data, error } = await supabase.rpc('get_total_segments_count');
-    if (error) throw error;
-    return data;
+    
+    // Query all segments and count unique values
+    const { data, error } = await supabase
+      .from('brand_category_mappings')
+      .select('segment')
+      .order('segment');
+    
+    if (error) {
+      console.error('❌ [getTotalSegmentsCount] Query Error:', error);
+      throw error;
+    }
+    
+    const uniqueCount = [...new Set(data.map(item => item.segment))].length;
+    return uniqueCount;
   },
 
   // Get total count of unique marques using SQL function
   async getTotalMarquesCount() {
-    console.log('🔍 [getTotalMarquesCount] Starting query...');
     
     // Query all marques and count unique values
     const { data, error } = await supabase
@@ -267,7 +277,6 @@ export const mappingApi = {
     }
     
     const uniqueCount = [...new Set(data.map(item => item.marque))].length;
-    console.log('✅ [getTotalMarquesCount] Query result:', uniqueCount);
     return uniqueCount;
   },
 

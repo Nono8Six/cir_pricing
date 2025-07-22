@@ -82,16 +82,6 @@ export const Mapping: React.FC = () => {
   // Charger les données
   const fetchData = async () => {
     try {
-      console.log('🚀 Starting fetchData...');
-      
-      // DEBUG: Test API functions individually
-      console.log('🧪 TEST getTotalSegmentsCount');
-      const testSegments = await mappingApi.getTotalSegmentsCount();
-      console.log('Result:', testSegments, '(should be 7556)');
-
-      console.log('🧪 TEST getTotalMarquesCount'); 
-      const testMarques = await mappingApi.getTotalMarquesCount();
-      console.log('Result:', testMarques, '(should be 141)');
       
       setLoading(true);
       const filters = {
@@ -115,16 +105,7 @@ export const Mapping: React.FC = () => {
         mappingApi.getTotalMarquesCount(),
         mappingApi.getTotalStrategiquesCount()
       ]);
-      
-      console.log('📊 API Results:');
-      console.log('- mappingsResult.data.length:', mappingsResult.data.length);
-      console.log('- mappingsResult.count:', mappingsResult.count);
-      console.log('- totalSegmentsCount:', totalSegmentsCount);
-      console.log('- totalMarquesCount:', totalMarquesCount);
-      console.log('- totalStrategiquesCount:', totalStrategiquesCount);
-      console.log('- allSegmentsData.length:', allSegmentsData.length);
-      console.log('- allMarquesData.length:', allMarquesData.length);
-      
+
       setMappings(mappingsResult.data);
       setTotalCount(mappingsResult.count);
       setSegments(allSegmentsData);
@@ -136,21 +117,6 @@ export const Mapping: React.FC = () => {
       // Set total counts for dashboard (real database totals)
       setTotalSegments(totalSegmentsCount);
       setTotalMarques(totalMarquesCount);
-      setTotalStrategiques(totalStrategiquesCount);
-      
-      console.log('✅ State updated with totals:');
-      console.log('  - totalSegments (should be 7556):', totalSegmentsCount);
-      console.log('  - totalMarques (should be 141):', totalMarquesCount);
-      console.log('  - totalStrategiques:', totalStrategiquesCount);
-      console.log('  - Expected: segments=7556, marques=141');
-      
-      // Validation check
-      if (totalSegmentsCount !== 7556) {
-        console.warn('⚠️ WARNING: totalSegmentsCount is', totalSegmentsCount, 'but should be 7556');
-      }
-      if (totalMarquesCount !== 141) {
-        console.warn('⚠️ WARNING: totalMarquesCount is', totalMarquesCount, 'but should be 141');
-      }
     } catch (error) {
       console.error('❌ Error in fetchData:', error);
       console.error('Erreur chargement mappings:', error);
