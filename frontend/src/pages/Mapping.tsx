@@ -77,6 +77,7 @@ export const Mapping: React.FC = () => {
   // Total counts for dashboard (unfiltered)
   const [totalSegments, setTotalSegments] = useState(0);
   const [totalMarques, setTotalMarques] = useState(0);
+  const [totalStrategiques, setTotalStrategiques] = useState(0);
 
   // Charger les données
   const fetchData = async () => {
@@ -103,7 +104,7 @@ export const Mapping: React.FC = () => {
         ...(selectedStrategiq !== 'all' && { strategiq: parseInt(selectedStrategiq) })
       };
       
-      const [mappingsResult, allSegmentsData, allMarquesData, allFsmegasData, allFsfamsData, allFssfasData, totalSegmentsCount, totalMarquesCount] = await Promise.all([
+      const [mappingsResult, allSegmentsData, allMarquesData, allFsmegasData, allFsfamsData, allFssfasData, totalSegmentsCount, totalMarquesCount, totalStrategiquesCount] = await Promise.all([
         mappingApi.getMappings(filters, currentPage, itemsPerPage),
         mappingApi.getAllUniqueSegments(),
         mappingApi.getAllUniqueMarques(),
@@ -111,7 +112,8 @@ export const Mapping: React.FC = () => {
         mappingApi.getAllUniqueFsfams(),
         mappingApi.getAllUniqueFssfas(),
         mappingApi.getTotalSegmentsCount(),
-        mappingApi.getTotalMarquesCount()
+        mappingApi.getTotalMarquesCount(),
+        mappingApi.getTotalStrategiquesCount()
       ]);
       
       console.log('📊 API Results:');
@@ -119,6 +121,7 @@ export const Mapping: React.FC = () => {
       console.log('- mappingsResult.count:', mappingsResult.count);
       console.log('- totalSegmentsCount:', totalSegmentsCount);
       console.log('- totalMarquesCount:', totalMarquesCount);
+      console.log('- totalStrategiquesCount:', totalStrategiquesCount);
       console.log('- allSegmentsData.length:', allSegmentsData.length);
       console.log('- allMarquesData.length:', allMarquesData.length);
       
@@ -129,10 +132,11 @@ export const Mapping: React.FC = () => {
       setFsmegas(allFsmegasData);
       setFsfams(allFsfamsData);
       setFssfas(allFssfasData);
-      
+
       // Set total counts for dashboard (real database totals)
       setTotalSegments(totalSegmentsCount);
       setTotalMarques(totalMarquesCount);
+      setTotalStrategiques(totalStrategiquesCount);
       
       console.log('✅ State updated with totals:');
       console.log('  - totalSegments (should be 7556):', totalSegmentsCount);
@@ -472,9 +476,7 @@ export const Mapping: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Stratégiques</p>
-                <p className="text-xl font-bold text-gray-900">
-                  {mappings.filter(m => m.strategiq === 1).length}
-                </p>
+                <p className="text-xl font-bold text-gray-900">{totalStrategiques}</p>
               </div>
             </div>
           </CardContent>
