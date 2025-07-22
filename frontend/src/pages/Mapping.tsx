@@ -141,6 +141,7 @@ export const Mapping: React.FC = () => {
       console.log('✅ State updated with totals:');
       console.log('  - totalSegments (should be 7556):', totalSegmentsCount);
       console.log('  - totalMarques (should be 141):', totalMarquesCount);
+      console.log('  - totalStrategiques:', totalStrategiquesCount);
       console.log('  - Expected: segments=7556, marques=141');
       
       // Validation check
@@ -476,7 +477,8 @@ export const Mapping: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Stratégiques</p>
-                <p className="text-xl font-bold text-gray-900">{totalStrategiques}</p>
+                  <p className="text-xl font-bold text-gray-900">{totalStrategiques}</p>
+
               </div>
             </div>
           </CardContent>

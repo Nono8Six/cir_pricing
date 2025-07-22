@@ -253,15 +253,35 @@ export const mappingApi = {
 
   // Get total count of unique marques using SQL function
   async getTotalMarquesCount() {
-    const { data, error } = await supabase.rpc('get_total_marques_count');
-    if (error) throw error;
-    return data;
+    console.log('🔍 [getTotalMarquesCount] Starting query...');
+    
+    // Query all marques and count unique values
+    const { data, error } = await supabase
+      .from('brand_category_mappings')
+      .select('marque')
+      .order('marque');
+    
+    if (error) {
+      console.error('❌ [getTotalMarquesCount] Query Error:', error);
+      throw error;
+    }
+    
+    const uniqueCount = [...new Set(data.map(item => item.marque))].length;
+    console.log('✅ [getTotalMarquesCount] Query result:', uniqueCount);
+    return uniqueCount;
   },
 
-  // Get total count of strategiques using SQL function
+  // Get total count of strategic mappings via RPC
   async getTotalStrategiquesCount() {
+    console.log('🔍 [getTotalStrategiquesCount] Starting query...');
     const { data, error } = await supabase.rpc('get_total_strategiques_count');
-    if (error) throw error;
+
+    if (error) {
+      console.error('❌ [getTotalStrategiquesCount] Query Error:', error);
+      throw error;
+    }
+
+    console.log('✅ [getTotalStrategiquesCount] Query result:', data);
     return data;
   }
 };
