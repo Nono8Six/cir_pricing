@@ -145,6 +145,17 @@ export const mappingApi = {
     return [...new Set(data.map(item => item.segment))];
   },
 
+  // Get ALL unique segments (no filters applied)
+  async getAllUniqueSegments() {
+    const { data, error } = await supabase
+      .from('brand_category_mappings')
+      .select('segment')
+      .order('segment');
+    
+    if (error) throw error;
+    return [...new Set(data.map(item => item.segment))].sort();
+  },
+
   // Get unique marques for filter
   async getUniqueMarques() {
     const { data, error } = await supabase
@@ -154,6 +165,17 @@ export const mappingApi = {
     
     if (error) throw error;
     return [...new Set(data.map(item => item.marque))];
+  },
+
+  // Get ALL unique marques (no filters applied)
+  async getAllUniqueMarques() {
+    const { data, error } = await supabase
+      .from('brand_category_mappings')
+      .select('marque')
+      .order('marque');
+    
+    if (error) throw error;
+    return [...new Set(data.map(item => item.marque))].sort();
   },
 
   // Get unique FSMEGA values for filter
@@ -167,6 +189,17 @@ export const mappingApi = {
     return [...new Set(data.map(item => item.fsmega))];
   },
 
+  // Get ALL unique FSMEGA values (no filters applied)
+  async getAllUniqueFsmegas() {
+    const { data, error } = await supabase
+      .from('brand_category_mappings')
+      .select('fsmega')
+      .order('fsmega');
+    
+    if (error) throw error;
+    return [...new Set(data.map(item => item.fsmega))].sort((a, b) => a - b);
+  },
+
   // Get unique FSFAM values for filter
   async getUniqueFsfams() {
     const { data, error } = await supabase
@@ -178,6 +211,17 @@ export const mappingApi = {
     return [...new Set(data.map(item => item.fsfam))];
   },
 
+  // Get ALL unique FSFAM values (no filters applied)
+  async getAllUniqueFsfams() {
+    const { data, error } = await supabase
+      .from('brand_category_mappings')
+      .select('fsfam')
+      .order('fsfam');
+    
+    if (error) throw error;
+    return [...new Set(data.map(item => item.fsfam))].sort((a, b) => a - b);
+  },
+
   // Get unique FSSFA values for filter
   async getUniqueFssfas() {
     const { data, error } = await supabase
@@ -187,5 +231,16 @@ export const mappingApi = {
     
     if (error) throw error;
     return [...new Set(data.map(item => item.fssfa))];
+  },
+
+  // Get ALL unique FSSFA values (no filters applied)
+  async getAllUniqueFssfas() {
+    const { data, error } = await supabase
+      .from('brand_category_mappings')
+      .select('fssfa')
+      .order('fssfa');
+    
+    if (error) throw error;
+    return [...new Set(data.map(item => item.fssfa))].sort((a, b) => a - b);
   }
 };

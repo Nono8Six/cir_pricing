@@ -92,26 +92,26 @@ export const Mapping: React.FC = () => {
         ...(selectedStrategiq !== 'all' && { strategiq: parseInt(selectedStrategiq) })
       };
       
-      const [mappingsResult, segmentsData, marquesData, fsmegasData, fsfamsData, fssfasData] = await Promise.all([
+      const [mappingsResult, allSegmentsData, allMarquesData, allFsmegasData, allFsfamsData, allFssfasData] = await Promise.all([
         mappingApi.getMappings(filters, currentPage, itemsPerPage),
-        mappingApi.getUniqueSegments(),
-        mappingApi.getUniqueMarques(),
-        mappingApi.getUniqueFsmegas(),
-        mappingApi.getUniqueFsfams(),
-        mappingApi.getUniqueFssfas()
+        mappingApi.getAllUniqueSegments(),
+        mappingApi.getAllUniqueMarques(),
+        mappingApi.getAllUniqueFsmegas(),
+        mappingApi.getAllUniqueFsfams(),
+        mappingApi.getAllUniqueFssfas()
       ]);
       
       setMappings(mappingsResult.data);
       setTotalCount(mappingsResult.count);
-      setSegments(segmentsData);
-      setMarques(marquesData);
-      setFsmegas(fsmegasData);
-      setFsfams(fsfamsData);
-      setFssfas(fssfasData);
+      setSegments(allSegmentsData);
+      setMarques(allMarquesData);
+      setFsmegas(allFsmegasData);
+      setFsfams(allFsfamsData);
+      setFssfas(allFssfasData);
       
       // Set total counts for dashboard (unfiltered)
-      setTotalSegments(segmentsData.length);
-      setTotalMarques(marquesData.length);
+      setTotalSegments(allSegmentsData.length);
+      setTotalMarques(allMarquesData.length);
     } catch (error) {
       console.error('Erreur chargement mappings:', error);
       toast.error('Erreur lors du chargement des mappings');
