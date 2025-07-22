@@ -12,11 +12,15 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // API functions for brand category mappings
 export const mappingApi = {
   // Get all mappings with filters
-  async getMappings(filters = {}) {
+  async getMappings(filters = {}, page = 1, limit = 20) {
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+    
     let query = supabase
       .from('brand_category_mappings')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(from, to);
 
     if (filters.marque) {
       query = query.ilike('marque', `%${filters.marque}%`);
@@ -28,9 +32,33 @@ export const mappingApi = {
       query = query.eq('segment', filters.segment);
     }
 
-    const { data, error } = await query;
+    // Get total count for pagination
+    let countQuery = supabase
+      .from('brand_category_mappings')
+      .select('*', { count: 'exact', head: true });
+
+    if (filters.marque) {
+      countQuery = countQuery.ilike('marque', `%${filters.marque}%`);
+    }
+    if (filters.cat_fab) {
+      countQuery = countQuery.ilike('cat_fab', `%${filters.cat_fab}%`);
+    }
+    if (filters.segment) {
+      countQuery = countQuery.eq('segment', filters.segment);
+    }
+
+    const [{ data, error }, { count, error: countError }] = await Promise.all([
+      query,
+      countQuery
+    ]);
+    
     if (error) throw error;
-    return data;
+    if (countError) throw countError;
+    
+    return {
+      data: data || [],
+      count: count || 0
+    };
   },
 
   // Create new mapping

@@ -8,7 +8,8 @@ import {
   Trash2, 
   Upload,
   Filter,
-  Download
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -34,6 +35,7 @@ interface BrandMapping {
 
 export const Mapping: React.FC = () => {
   const [mappings, setMappings] = useState<BrandMapping[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -44,6 +46,10 @@ export const Mapping: React.FC = () => {
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [segments, setSegments] = useState<string[]>([]);
   const [marques, setMarques] = useState<string[]>([]);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
 
   // Charger les données
   const fetchData = async () => {
@@ -55,13 +61,14 @@ export const Mapping: React.FC = () => {
         ...(searchTerm && { cat_fab: searchTerm })
       };
       
-      const [mappingsData, segmentsData, marquesData] = await Promise.all([
-        mappingApi.getMappings(filters),
+      const [mappingsResult, segmentsData, marquesData] = await Promise.all([
+        mappingApi.getMappings(filters, currentPage, itemsPerPage),
         mappingApi.getUniqueSegments(),
         mappingApi.getUniqueMarques()
       ]);
       
-      setMappings(mappingsData);
+      setMappings(mappingsResult.data);
+      setTotalCount(mappingsResult.count);
       setSegments(segmentsData);
       setMarques(marquesData);
     } catch (error) {
@@ -73,8 +80,17 @@ export const Mapping: React.FC = () => {
   };
 
   useEffect(() => {
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [selectedSegment, selectedMarque, searchTerm, itemsPerPage]);
+
+  useEffect(() => {
     fetchData();
-  }, [selectedSegment, selectedMarque, searchTerm]);
+  }, [selectedSegment, selectedMarque, searchTerm, currentPage, itemsPerPage]);
+
+  // Calculate pagination info
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
+  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, totalCount);
 
   // Calculer CLASSIF_CIR automatiquement
   const calculateClassifCir = (fsmega: number, fsfam: number, fssfa: number): string => {
@@ -302,7 +318,7 @@ export const Mapping: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Total mappings</p>
-                <p className="text-xl font-bold text-gray-900">{mappings.length}</p>
+                <p className="text-xl font-bold text-gray-900">{totalCount}</p>
               </div>
             </div>
           </CardContent>
@@ -345,7 +361,7 @@ export const Mapping: React.FC = () => {
               <div>
                 <p className="text-sm text-gray-600">Stratégiques</p>
                 <p className="text-xl font-bold text-gray-900">
-                  {mappings.filter(m => m.strategiq === 1).length}
+                  {totalCount > 0 ? '...' : '0'}
                 </p>
               </div>
             </div>
@@ -356,7 +372,7 @@ export const Mapping: React.FC = () => {
       {/* Filtres et recherche */}
       <Card>
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
             {/* Recherche par CAT_FAB */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -367,6 +383,20 @@ export const Mapping: React.FC = () => {
                 placeholder="Rechercher par CAT_FAB..."
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
               />
+            </div>
+
+            {/* Items per page selector */}
+            <div>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+              >
+                <option value={10}>10 par page</option>
+                <option value={20}>20 par page</option>
+                <option value={50}>50 par page</option>
+                <option value={100}>100 par page</option>
+              </select>
             </div>
 
             {/* Filtre par segment */}
@@ -419,7 +449,7 @@ export const Mapping: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <FileSpreadsheet className="w-5 h-5" />
-            <span>Mappings Segments ({mappings.length})</span>
+            <span>Mappings Segments ({totalCount})</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -427,7 +457,7 @@ export const Mapping: React.FC = () => {
             <div className="text-center py-12">
               <FileSpreadsheet className="w-12 h-12 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500 mb-2">
-                Aucun mapping trouvé
+                {searchTerm || selectedSegment !== 'all' || selectedMarque !== 'all' ? 'Aucun mapping ne correspond aux critères' : 'Aucun mapping trouvé'}
               </p>
               <p className="text-sm text-gray-400 mb-4">
                 Uploadez le fichier SEGMENTS TARIFAIRES.xlsx pour commencer
@@ -539,6 +569,50 @@ export const Mapping: React.FC = () => {
             </div>
           )}
         </CardContent>
+        
+        {/* Pagination */}
+        {totalCount > 0 && (
+          <div className="px-6 py-4 border-t border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-700">
+                Affichage de <span className="font-medium">{startItem}</span> à{' '}
+                <span className="font-medium">{endItem}</span> sur{' '}
+                <span className="font-medium">{totalCount}</span> résultats
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="flex items-center space-x-1"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Précédent</span>
+                </Button>
+                
+                <div className="flex items-center space-x-1">
+                  <span className="text-sm text-gray-700">Page</span>
+                  <span className="font-medium text-sm">{currentPage}</span>
+                  <span className="text-sm text-gray-700">sur</span>
+                  <span className="font-medium text-sm">{totalPages}</span>
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="flex items-center space-x-1"
+                >
+                  <span>Suivant</span>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Modal de création/modification */}
