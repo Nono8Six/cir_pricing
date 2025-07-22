@@ -264,5 +264,25 @@ export const mappingApi = {
     
     if (error) throw error;
     return [...new Set(data.map(item => item.fssfa))].sort((a, b) => a - b);
+  },
+
+  // Get total count of unique segments (for statistics)
+  async getTotalSegmentsCount() {
+    const { data, error } = await supabase
+      .from('brand_category_mappings')
+      .select('segment');
+    
+    if (error) throw error;
+    return [...new Set(data.map(item => item.segment))].length;
+  },
+
+  // Get total count of unique marques (for statistics)
+  async getTotalMarquesCount() {
+    const { data, error } = await supabase
+      .from('brand_category_mappings')
+      .select('marque');
+    
+    if (error) throw error;
+    return [...new Set(data.map(item => item.marque))].length;
   }
 };
