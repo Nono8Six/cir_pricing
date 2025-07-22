@@ -247,7 +247,63 @@ export const mappingApi = {
   // Get total count of unique segments (for statistics) - REAL DATABASE TOTALS
   async getTotalSegmentsCount() {
     console.log('🔍 [getTotalSegmentsCount] Starting query...');
+    
+    // Use RPC function to get distinct count directly from database
     const { data, error } = await supabase
+      .rpc('get_distinct_segments_count');
+    
+    if (error) {
+      console.error('❌ [getTotalSegmentsCount] RPC Error, falling back to manual count:', error);
+      // Fallback to manual count if RPC doesn't exist
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('brand_category_mappings')
+        .select('segment')
+        .order('segment');
+      
+      if (fallbackError) {
+        console.error('❌ [getTotalSegmentsCount] Fallback Error:', fallbackError);
+        throw fallbackError;
+      }
+      
+      const uniqueCount = [...new Set(fallbackData.map(item => item.segment))].length;
+      console.log('✅ [getTotalSegmentsCount] Fallback result:', uniqueCount);
+      return uniqueCount;
+    }
+    
+    console.log('✅ [getTotalSegmentsCount] RPC result:', data);
+    return data || 0;
+  },
+
+  // Get total count of unique marques (for statistics) - REAL DATABASE TOTALS  
+  async getTotalMarquesCount() {
+    console.log('🔍 [getTotalMarquesCount] Starting query...');
+    
+    // Use RPC function to get distinct count directly from database
+    const { data, error } = await supabase
+      .rpc('get_distinct_marques_count');
+    
+    if (error) {
+      console.error('❌ [getTotalMarquesCount] RPC Error, falling back to manual count:', error);
+      // Fallback to manual count if RPC doesn't exist
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('brand_category_mappings')
+        .select('marque')
+        .order('marque');
+      
+      if (fallbackError) {
+        console.error('❌ [getTotalMarquesCount] Fallback Error:', fallbackError);
+        throw fallbackError;
+      }
+      
+      const uniqueCount = [...new Set(fallbackData.map(item => item.marque))].length;
+      console.log('✅ [getTotalMarquesCount] Fallback result:', uniqueCount);
+      return uniqueCount;
+    }
+    
+    console.log('✅ [getTotalMarquesCount] RPC result:', data);
+    return data || 0;
+  }
+};
       .from('brand_category_mappings')
       .select('segment')
       .order('segment');
