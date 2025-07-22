@@ -121,6 +121,7 @@ export const Mapping: React.FC = () => {
       console.log('- mappingsResult.count:', mappingsResult.count);
       console.log('- totalSegmentsCount:', totalSegmentsCount);
       console.log('- totalMarquesCount:', totalMarquesCount);
+      console.log('- totalStrategiquesCount:', totalStrategiquesCount);
       console.log('- allSegmentsData.length:', allSegmentsData.length);
       console.log('- allMarquesData.length:', allMarquesData.length);
       
@@ -477,6 +478,7 @@ export const Mapping: React.FC = () => {
               <div>
                 <p className="text-sm text-gray-600">Stratégiques</p>
                   <p className="text-xl font-bold text-gray-900">{totalStrategiques}</p>
+
               </div>
             </div>
           </CardContent>

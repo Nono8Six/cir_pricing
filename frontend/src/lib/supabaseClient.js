@@ -244,27 +244,14 @@ export const mappingApi = {
     return [...new Set(data.map(item => item.fssfa))].sort((a, b) => a - b);
   },
 
-  // Get total count of unique segments (for statistics) - REAL DATABASE TOTALS
+  // Get total count of unique segments using SQL function
   async getTotalSegmentsCount() {
-    console.log('🔍 [getTotalSegmentsCount] Starting query...');
-    
-    // Query all segments and count unique values
-    const { data, error } = await supabase
-      .from('brand_category_mappings')
-      .select('segment')
-      .order('segment');
-    
-    if (error) {
-      console.error('❌ [getTotalSegmentsCount] Query Error:', error);
-      throw error;
-    }
-    
-    const uniqueCount = [...new Set(data.map(item => item.segment))].length;
-    console.log('✅ [getTotalSegmentsCount] Query result:', uniqueCount);
-    return uniqueCount;
+    const { data, error } = await supabase.rpc('get_total_segments_count');
+    if (error) throw error;
+    return data;
   },
 
-  // Get total count of unique marques (for statistics) - REAL DATABASE TOTALS  
+  // Get total count of unique marques using SQL function
   async getTotalMarquesCount() {
     console.log('🔍 [getTotalMarquesCount] Starting query...');
     
