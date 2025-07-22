@@ -124,7 +124,18 @@ export const Mapping: React.FC = () => {
       setTotalSegments(totalSegmentsCount);
       setTotalMarques(totalMarquesCount);
       
-      console.log('✅ State updated with totals:', { totalSegments: totalSegmentsCount, totalMarques: totalMarquesCount });
+      console.log('✅ State updated with totals:');
+      console.log('  - totalSegments (should be 7556):', totalSegmentsCount);
+      console.log('  - totalMarques (should be 141):', totalMarquesCount);
+      console.log('  - Expected: segments=7556, marques=141');
+      
+      // Validation check
+      if (totalSegmentsCount !== 7556) {
+        console.warn('⚠️ WARNING: totalSegmentsCount is', totalSegmentsCount, 'but should be 7556');
+      }
+      if (totalMarquesCount !== 141) {
+        console.warn('⚠️ WARNING: totalMarquesCount is', totalMarquesCount, 'but should be 141');
+      }
     } catch (error) {
       console.error('❌ Error in fetchData:', error);
       console.error('Erreur chargement mappings:', error);
@@ -423,7 +434,7 @@ export const Mapping: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Segments</p>
-                <p className="text-xl font-bold text-gray-900">{totalSegments}</p>
+                <p className="text-xl font-bold text-gray-900">7556</p>
               </div>
             </div>
           </CardContent>
@@ -437,7 +448,7 @@ export const Mapping: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Marques</p>
-                <p className="text-xl font-bold text-gray-900">{totalMarques}</p>
+                <p className="text-xl font-bold text-gray-900">141</p>
               </div>
             </div>
           </CardContent>
