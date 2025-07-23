@@ -58,16 +58,34 @@ export const ImportHistoryDashboard: React.FC<ImportHistoryDashboardProps> = ({ 
     try {
       setLoading(true);
       
-      // Récupérer l'historique des imports avec les profils utilisateurs via join
+      // Récupérer l'historique des imports sans joindre la table profiles
       const { data: batchesData, error } = await supabase
         .from('import_batches')
-        .select('*, profiles(first_name, last_name, email)')
+        .select('*')
         .order('timestamp', { ascending: false })
         .limit(50);
 
       if (error) throw error;
 
-      setBatches(batchesData || []);
+      let enrichedBatches: ImportBatch[] = batchesData || [];
+
+      // Récupérer les informations des profils dans une requête séparée
+      if (batchesData && batchesData.length > 0) {
+        const userIds = [...new Set(batchesData.map(batch => batch.user_id))];
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, email')
+          .in('id', userIds);
+
+        if (!profilesError && profilesData) {
+          enrichedBatches = batchesData.map(batch => ({
+            ...batch,
+            profiles: profilesData.find(profile => profile.id === batch.user_id)
+          }));
+        }
+      }
+
+      setBatches(enrichedBatches);
 
       // Calculer les statistiques
       if (batchesData && batchesData.length > 0) {
