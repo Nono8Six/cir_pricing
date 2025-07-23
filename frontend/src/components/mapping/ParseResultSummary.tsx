@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import Fuse from 'fuse.js';
-import { BrandMappingSchema, ValidationError, ParseResult, DEFAULT_COLUMN_MAPPINGS, ColumnMapping } from './schemas';
+import { BrandMappingSchema, ValidationError, ParseResult, DEFAULT_COLUMN_MAPPINGS, ColumnMapping } from '../../lib/schemas';
 
 export interface ExcelParseOptions {
   sheetName?: string;
@@ -286,7 +286,7 @@ function parseDataRows(
         column: 'system',
         field: 'limit',
         value: maxErrors,
-        message: `Limite d'erreurs atteinte (${maxErrors}). Parsing arrêté.`,
+        message: `Limite d'erreurs atteinte (${maxErrors}). Parsing arrêté à la ligne ${lineNumber}. Fichier trop volumineux ou contenant trop d'erreurs.`,
         level: 'BLOCKING'
       });
       break;
