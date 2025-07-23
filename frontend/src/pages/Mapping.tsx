@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { mappingApi } from '../lib/supabaseClient';
 import { useDebounce } from '../hooks/useDebounce';
 import { ParseResult } from '../lib/schemas';
+import { useAuth } from '../context/AuthContext';
 
 interface BrandMapping {
   id: string;
@@ -37,6 +38,7 @@ interface BrandMapping {
 }
 
 export const Mapping: React.FC = () => {
+  const { user } = useAuth();
   const [mappings, setMappings] = useState<BrandMapping[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -237,7 +239,10 @@ export const Mapping: React.FC = () => {
       // Remove classif_cir from data since it's a generated column
       const dataWithoutGeneratedColumns = parseResult.data.map(mapping => {
         const { classif_cir, ...mappingWithoutClassifCir } = mapping;
-        return mappingWithoutClassifCir;
+        return {
+          ...mappingWithoutClassifCir,
+          created_by: user?.id
+        };
       });
       
       // Appliquer les modifications via batch upsert
