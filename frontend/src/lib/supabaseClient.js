@@ -236,13 +236,28 @@ export const mappingApi = {
 
   // Get all mappings without pagination for preview comparison
   async getAllBrandCategoryMappings() {
-    const { data, error } = await supabase
-      .from('brand_category_mappings')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data || [];
+    const batchSize = 1000;
+    let from = 0;
+    let allData = [];
+
+    while (true) {
+      const { data, error } = await supabase
+        .from('brand_category_mappings')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(from, from + batchSize - 1);
+
+      if (error) throw error;
+      if (data) {
+        allData = allData.concat(data);
+      }
+
+      if (!data || data.length < batchSize) break;
+
+      from += batchSize;
+    }
+
+    return allData;
   },
 
   // Get total count of unique segments via RPC
