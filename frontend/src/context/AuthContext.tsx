@@ -75,37 +75,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signUp = async (email: string, password: string, firstName?: string, lastName?: string) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    firstName?: string,
+    lastName?: string
+  ) => {
     setLoading(true);
-    
+
     try {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          first_name: firstName,
-          last_name: lastName
-        }
-      }
-    });
-
-    if (error) {
-      throw error;
-    }
-
-    if (data?.user) {
-      const { error: insertError } = await supabase.from('profiles').insert({
-        id: data.user.id,
-        email: data.user.email,
-        first_name: firstName,
-        last_name: lastName
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+          },
+        },
       });
 
-      if (insertError) {
-        throw insertError;
+      if (error) {
+        throw error;
       }
-    }
+
+      if (data?.user) {
+        if (data.session) {
+          const { error: insertError } = await supabase.from('profiles').insert({
+            id: data.user.id,
+            email: data.user.email,
+            first_name: firstName,
+            last_name: lastName,
+          });
+
+          if (insertError) {
+            throw insertError;
+          }
+        } else {
+          const { error: fnError } = await supabase.functions.invoke(
+            'create-profile',
+            {
+              body: {
+                id: data.user.id,
+                email: data.user.email,
+                first_name: firstName,
+                last_name: lastName,
+              },
+            }
+          );
+
+          if (fnError) {
+            throw fnError;
+          }
+        }
+      }
 
       // For sign up, we don't automatically set the user as they might need email confirmation
       setLoading(false);
