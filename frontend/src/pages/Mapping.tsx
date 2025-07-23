@@ -114,13 +114,14 @@ export const Mapping: React.FC = () => {
       setFsfams(allFsfamsData);
       setFssfas(allFssfasData);
 
-      // Set total counts for dashboard (real database totals)
-      setTotalSegments(totalSegmentsCount);
-      setTotalMarques(totalMarquesCount);
-    } catch (error) {
-      console.error('❌ Error in fetchData:', error);
-      console.error('Erreur chargement mappings:', error);
-      toast.error('Erreur lors du chargement des mappings');
+        // Set total counts for dashboard (real database totals)
+        setTotalSegments(totalSegmentsCount);
+        setTotalMarques(totalMarquesCount);
+        setTotalStrategiques(totalStrategiquesCount);
+      } catch (error) {
+        console.error('❌ Error in fetchData:', error);
+        console.error('Erreur chargement mappings:', error);
+        toast.error('Erreur lors du chargement des mappings');
     } finally {
       setLoading(false);
     }
