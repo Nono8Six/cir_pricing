@@ -275,7 +275,6 @@ export const mappingApi = {
 
   // Get total count of strategic mappings via RPC
   async getTotalStrategiquesCount() {
-    console.log('🔍 [getTotalStrategiquesCount] Starting query...');
     const { data, error } = await supabase.rpc('get_total_strategiques_count');
 
     if (error) {
@@ -283,7 +282,6 @@ export const mappingApi = {
       throw error;
     }
 
-    console.log('✅ [getTotalStrategiquesCount] Query result:', data);
     return data;
   }
 };
