@@ -8,7 +8,12 @@ import {
   Trash2, 
   Filter,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Upload,
+  History,
+  Settings,
+  BarChart3,
+  Database
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -16,7 +21,9 @@ import { MappingModal } from '../components/mapping/MappingModal';
 import { ExcelUploadZone } from '../components/mapping/ExcelUploadZone';
 import { ParseResultSummary } from '../components/mapping/ParseResultSummary';
 import { MappingPreviewTable } from '../components/mapping/MappingPreviewTable';
-import { ImportHistoryDashboard } from '../components/mapping/ImportHistoryDashboard';
+import { MappingHistoryTab } from '../components/mapping/MappingHistoryTab';
+import { MappingAnalyticsTab } from '../components/mapping/MappingAnalyticsTab';
+import { MappingSettingsTab } from '../components/mapping/MappingSettingsTab';
 import { toast } from 'sonner';
 import { mappingApi } from '../lib/supabaseClient';
 import { useDebounce } from '../hooks/useDebounce';
@@ -36,14 +43,22 @@ interface BrandMapping {
   fssfa: number;
   classif_cir?: string;
   created_at: string;
+  version: number;
+  batch_id?: string;
+  created_by: string;
+  source_type: string;
 }
+
+type TabType = 'mappings' | 'upload' | 'history' | 'analytics' | 'settings';
 
 export const Mapping: React.FC = () => {
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<TabType>('mappings');
+  
+  // États pour les mappings
   const [mappings, setMappings] = useState<BrandMapping[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [uploadLoading, setUploadLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [selectedSegment, setSelectedSegment] = useState<string>('all');
@@ -54,39 +69,26 @@ export const Mapping: React.FC = () => {
   const [segments, setSegments] = useState<string[]>([]);
   const [marques, setMarques] = useState<string[]>([]);
   
-  // Search states for autocomplete
-  const [segmentSearch, setSegmentSearch] = useState('');
-  const [marqueSearch, setMarqueSearch] = useState('');
-  const [fsmegaSearch, setFsmegaSearch] = useState('');
-  const [fsfamSearch, setFsfamSearch] = useState('');
-  const [fssfaSearch, setFssfaSearch] = useState('');
-  
-  // Dropdown open states
-  const [segmentDropdownOpen, setSegmentDropdownOpen] = useState(false);
-  const [marqueDropdownOpen, setMarqueDropdownOpen] = useState(false);
-  const [fsmegaDropdownOpen, setFsmegaDropdownOpen] = useState(false);
-  const [fsfamDropdownOpen, setFsfamDropdownOpen] = useState(false);
-  const [fssfaDropdownOpen, setFssfaDropdownOpen] = useState(false);
-  
-  // Pagination states
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(20);
-  
-  // Advanced CIR filters
+  // États pour les filtres avancés
   const [selectedFsmega, setSelectedFsmega] = useState<string>('all');
   const [selectedFsfam, setSelectedFsfam] = useState<string>('all');
   const [selectedFssfa, setSelectedFssfa] = useState<string>('all');
   const [selectedStrategiq, setSelectedStrategiq] = useState<string>('all');
+  const [selectedSourceType, setSelectedSourceType] = useState<string>('all');
   const [fsmegas, setFsmegas] = useState<number[]>([]);
   const [fsfams, setFsfams] = useState<number[]>([]);
   const [fssfas, setFssfas] = useState<number[]>([]);
-
-  // Total counts for dashboard (unfiltered)
+  
+  // États pour la pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  
+  // États pour les statistiques globales
   const [totalSegments, setTotalSegments] = useState(0);
   const [totalMarques, setTotalMarques] = useState(0);
   const [totalStrategiques, setTotalStrategiques] = useState(0);
 
-  // États pour le nouveau workflow d'upload
+  // États pour le workflow d'upload
   const [uploadPhase, setUploadPhase] = useState<'upload' | 'analyze' | 'preview' | 'apply'>('upload');
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -94,30 +96,32 @@ export const Mapping: React.FC = () => {
   const [applyLoading, setApplyLoading] = useState(false);
   const [finalDataToUpsert, setFinalDataToUpsert] = useState<BrandMapping[]>([]);
 
-  // État pour le dashboard d'historique
-  const [showHistory, setShowHistory] = useState(false);
+  // Définition des onglets
+  const tabs = [
+    { id: 'mappings' as TabType, label: 'Mappings', icon: Database, count: totalCount },
+    { id: 'upload' as TabType, label: 'Import Excel', icon: Upload },
+    { id: 'history' as TabType, label: 'Historique', icon: History },
+    { id: 'analytics' as TabType, label: 'Analyses', icon: BarChart3 },
+    { id: 'settings' as TabType, label: 'Paramètres', icon: Settings }
+  ];
 
-  // Helper function to process parsed data with auto-classification
+  // Helper function pour traiter les données avec auto-classification
   const processParsedData = (parsedData: BrandMapping[], existingMappings: BrandMapping[]) => {
     return parsedData.map(mapping => {
-      // Si FSMEGA, FSFAM, FSSFA sont vides ou invalides
       if (!mapping.fsmega || !mapping.fsfam || !mapping.fssfa || 
           mapping.fsmega === 0 || mapping.fsfam === 0 || mapping.fssfa === 0) {
         
-        // Chercher d'autres lignes avec la même marque dans les données existantes
         const sameMarqueMappings = existingMappings.filter(m => 
           m.marque.toLowerCase() === mapping.marque.toLowerCase() && 
           m.fsmega && m.fsmega > 0
         );
 
         if (sameMarqueMappings.length > 0) {
-          // Compter les occurrences de chaque FSMEGA
           const fsmegaCounts = sameMarqueMappings.reduce((acc, m) => {
             acc[m.fsmega] = (acc[m.fsmega] || 0) + 1;
             return acc;
           }, {} as Record<number, number>);
 
-          // Trouver le FSMEGA le plus fréquent
           const mostFrequentFsmega = Object.entries(fsmegaCounts)
             .sort(([,a], [,b]) => b - a)[0];
 
@@ -132,7 +136,6 @@ export const Mapping: React.FC = () => {
           }
         }
 
-        // Valeurs par défaut si aucune correspondance trouvée
         return {
           ...mapping,
           fsmega: mapping.fsmega || 1,
@@ -146,10 +149,9 @@ export const Mapping: React.FC = () => {
     });
   };
 
-  // Charger les données
+  // Charger les données des mappings
   const fetchData = async () => {
     try {
-      
       setLoading(true);
       const filters = {
         ...(selectedSegment !== 'all' && { segment: selectedSegment }),
@@ -158,10 +160,21 @@ export const Mapping: React.FC = () => {
         ...(selectedFsmega !== 'all' && { fsmega: parseInt(selectedFsmega) }),
         ...(selectedFsfam !== 'all' && { fsfam: parseInt(selectedFsfam) }),
         ...(selectedFssfa !== 'all' && { fssfa: parseInt(selectedFssfa) }),
-        ...(selectedStrategiq !== 'all' && { strategiq: parseInt(selectedStrategiq) })
+        ...(selectedStrategiq !== 'all' && { strategiq: parseInt(selectedStrategiq) }),
+        ...(selectedSourceType !== 'all' && { source_type: selectedSourceType })
       };
       
-      const [mappingsResult, allSegmentsData, allMarquesData, allFsmegasData, allFsfamsData, allFssfasData, totalSegmentsCount, totalMarquesCount, totalStrategiquesCount] = await Promise.all([
+      const [
+        mappingsResult, 
+        allSegmentsData, 
+        allMarquesData, 
+        allFsmegasData, 
+        allFsfamsData, 
+        allFssfasData,
+        totalSegmentsCount, 
+        totalMarquesCount, 
+        totalStrategiquesCount
+      ] = await Promise.all([
         mappingApi.getMappings(filters, currentPage, itemsPerPage),
         mappingApi.getAllUniqueSegments(),
         mappingApi.getAllUniqueMarques(),
@@ -180,78 +193,30 @@ export const Mapping: React.FC = () => {
       setFsmegas(allFsmegasData);
       setFsfams(allFsfamsData);
       setFssfas(allFssfasData);
-
-        // Set total counts for dashboard (real database totals)
-        setTotalSegments(totalSegmentsCount);
-        setTotalMarques(totalMarquesCount);
-        setTotalStrategiques(totalStrategiquesCount);
-      } catch (error) {
-        console.error('❌ Error in fetchData:', error);
-        console.error('Erreur chargement mappings:', error);
-        toast.error('Erreur lors du chargement des mappings');
+      setTotalSegments(totalSegmentsCount);
+      setTotalMarques(totalMarquesCount);
+      setTotalStrategiques(totalStrategiquesCount);
+      
+    } catch (error) {
+      console.error('Erreur chargement mappings:', error);
+      toast.error('Erreur lors du chargement des mappings');
     } finally {
       setLoading(false);
     }
   };
 
+  // Effects
   useEffect(() => {
-    setCurrentPage(1); // Reset to first page when filters change
-  }, [selectedSegment, selectedMarque, debouncedSearchTerm, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq]);
-
-  useEffect(() => {
-    setSegmentSearch(selectedSegment === 'all' ? '' : selectedSegment);
-  }, [selectedSegment]);
+    setCurrentPage(1);
+  }, [selectedSegment, selectedMarque, debouncedSearchTerm, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq, selectedSourceType]);
 
   useEffect(() => {
-    setMarqueSearch(selectedMarque === 'all' ? '' : selectedMarque);
-  }, [selectedMarque]);
+    if (activeTab === 'mappings') {
+      fetchData();
+    }
+  }, [activeTab, selectedSegment, selectedMarque, debouncedSearchTerm, currentPage, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq, selectedSourceType]);
 
-  useEffect(() => {
-    fetchData();
-  }, [selectedSegment, selectedMarque, debouncedSearchTerm, currentPage, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq]);
-
-  // Filter functions for autocomplete
-  const getFilteredSegments = () => {
-    if (!segmentSearch) return segments;
-    return segments.filter(segment =>
-      segment.toLowerCase().includes(segmentSearch.toLowerCase())
-    );
-  };
-
-  const getFilteredMarques = () => {
-    if (!marqueSearch) return marques;
-    return marques.filter(marque =>
-      marque.toLowerCase().includes(marqueSearch.toLowerCase())
-    );
-  };
-
-  const getFilteredFsmegas = () => {
-    if (!fsmegaSearch) return fsmegas;
-    return fsmegas.filter(fsmega =>
-      fsmega.toString().includes(fsmegaSearch)
-    );
-  };
-
-  const getFilteredFsfams = () => {
-    if (!fsfamSearch) return fsfams;
-    return fsfams.filter(fsfam =>
-      fsfam.toString().includes(fsfamSearch)
-    );
-  };
-
-  const getFilteredFssfas = () => {
-    if (!fssfaSearch) return fssfas;
-    return fssfas.filter(fssfa =>
-      fssfa.toString().includes(fssfaSearch)
-    );
-  };
-
-  // Calculate pagination info
-  const totalPages = Math.ceil(totalCount / itemsPerPage);
-  const startItem = (currentPage - 1) * itemsPerPage + 1;
-  const endItem = Math.min(currentPage * itemsPerPage, totalCount);
-
-  // Gestionnaires pour le nouveau workflow
+  // Gestionnaires pour le workflow d'upload
   const handleParseComplete = (result: ParseResult, file: File) => {
     setParseResult(result);
     setUploadedFile(file);
@@ -265,11 +230,9 @@ export const Mapping: React.FC = () => {
   const handleContinueToPreview = async () => {
     try {
       setLoading(true);
-      // Récupérer tous les mappings existants pour la comparaison
       const existingMappings = await mappingApi.getAllBrandCategoryMappings();
       setExistingMappingsForPreview(existingMappings);
       
-      // Traiter les données avec auto-classification
       if (parseResult?.data) {
         const processedData = processParsedData(parseResult.data, existingMappings);
         setFinalDataToUpsert(processedData);
@@ -298,29 +261,28 @@ export const Mapping: React.FC = () => {
     setApplyLoading(true);
 
     try {
-      // Remove generated columns and UI-specific properties
       const dataWithoutGeneratedColumns = finalDataToUpsert.map(mapping => {
         const { classif_cir, autoClassified, ...cleanMapping } = mapping;
         return {
           ...cleanMapping,
-          created_by: user?.id
+          created_by: user?.id,
+          source_type: 'excel_upload'
         };
       });
       
-      // Appliquer les modifications via batch upsert
       const result = await mappingApi.batchUpsertMappings(dataWithoutGeneratedColumns);
       
       toast.success(`${result.length} mappings traités avec succès`);
       
-      // Réinitialiser le workflow d'upload
+      // Réinitialiser le workflow
       setUploadPhase('upload');
       setParseResult(null);
       setUploadedFile(null);
       setExistingMappingsForPreview([]);
       setFinalDataToUpsert([]);
       
-      // Recharger les données de la table principale
-      fetchData();
+      // Retourner à l'onglet mappings et recharger
+      setActiveTab('mappings');
       
     } catch (error: any) {
       console.error('Erreur application des changements:', error);
@@ -330,19 +292,17 @@ export const Mapping: React.FC = () => {
     }
   };
 
-  // Ouvrir le modal pour créer un mapping
+  // Gestionnaires pour les mappings
   const handleCreateMapping = () => {
     setSelectedMapping(null);
     setIsModalOpen(true);
   };
 
-  // Ouvrir le modal pour modifier un mapping
   const handleEditMapping = (mapping: BrandMapping) => {
     setSelectedMapping(mapping);
     setIsModalOpen(true);
   };
 
-  // Supprimer un mapping
   const handleDeleteMapping = async (mapping: BrandMapping) => {
     toast(`Supprimer le mapping "${mapping.marque} - ${mapping.cat_fab}" ?`, {
       description: "Cette action est irréversible.",
@@ -369,7 +329,6 @@ export const Mapping: React.FC = () => {
     });
   };
 
-  // Fermer le modal
   const handleModalClose = () => {
     setIsModalOpen(false);
     setSelectedMapping(null);
@@ -379,86 +338,33 @@ export const Mapping: React.FC = () => {
     fetchData();
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cir-red"></div>
-      </div>
-    );
-  }
+  // Calculs pour la pagination
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
+  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, totalCount);
 
-  return (
+  // Rendu du contenu selon l'onglet actif
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'mappings':
+        return renderMappingsTab();
+      case 'upload':
+        return renderUploadTab();
+      case 'history':
+        return <MappingHistoryTab />;
+      case 'analytics':
+        return <MappingAnalyticsTab />;
+      case 'settings':
+        return <MappingSettingsTab />;
+      default:
+        return renderMappingsTab();
+    }
+  };
+
+  const renderMappingsTab = () => (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-            Mapping Segments CIR
-          </h1>
-          <p className="text-sm sm:text-base text-gray-600">
-            Gestion des mappings entre familles fabricant et classifications CIR
-          </p>
-        </div>
-        {uploadPhase === 'upload' && (
-          <div className="flex items-center space-x-3">
-            <Button
-              onClick={() => setShowHistory(!showHistory)}
-              variant="outline"
-              className="flex items-center space-x-2"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              <span>{showHistory ? 'Masquer historique' : 'Voir historique'}</span>
-            </Button>
-            <Button
-              onClick={handleCreateMapping}
-              variant="outline"
-              className="flex items-center space-x-2"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Nouveau mapping</span>
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* Dashboard d'historique */}
-      {showHistory && uploadPhase === 'upload' && (
-        <ImportHistoryDashboard onClose={() => setShowHistory(false)} />
-      )}
-
-      {/* Nouveau workflow d'upload en phases */}
-      {uploadPhase !== 'upload' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <FileSpreadsheet className="w-5 h-5" />
-              <span>Import Excel - Phase {uploadPhase === 'analyze' ? '1' : uploadPhase === 'preview' ? '2' : '3'} sur 3</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {uploadPhase === 'analyze' && parseResult && uploadedFile && (
-              <ParseResultSummary
-                result={parseResult}
-                filename={uploadedFile.name}
-                onContinue={handleContinueToPreview}
-                onRetry={handleRetryUpload}
-              />
-            )}
-            {uploadPhase === 'preview' && parseResult && (
-              <MappingPreviewTable
-                parsedData={finalDataToUpsert}
-                existingMappings={existingMappingsForPreview}
-                onApplyChanges={handleApplyChanges}
-                onRetry={handleRetryUpload}
-                applyLoading={applyLoading}
-              />
-            )}
-          </CardContent>
-        </Card>
-      )}
-
       {/* Statistiques */}
-      {uploadPhase === 'upload' && <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-3">
@@ -509,21 +415,19 @@ export const Mapping: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Stratégiques</p>
-                  <p className="text-xl font-bold text-gray-900">{totalStrategiques}</p>
-
+                <p className="text-xl font-bold text-gray-900">{totalStrategiques}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-      </div>}
+      </div>
 
-      {/* Filtres et recherche */}
-      {uploadPhase === 'upload' && <Card>
+      {/* Filtres */}
+      <Card>
         <CardContent className="p-4">
           <div className="space-y-4">
             {/* Première ligne : Recherche + Items per page */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Recherche par CAT_FAB */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -535,110 +439,46 @@ export const Mapping: React.FC = () => {
                 />
               </div>
 
-              {/* Items per page selector */}
-              <div>
-                <select
-                  value={itemsPerPage}
-                  onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-                >
-                  <option value={10}>10 par page</option>
-                  <option value={20}>20 par page</option>
-                  <option value={50}>50 par page</option>
-                  <option value={100}>100 par page</option>
-                </select>
-              </div>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+              >
+                <option value={10}>10 par page</option>
+                <option value={20}>20 par page</option>
+                <option value={50}>50 par page</option>
+                <option value={100}>100 par page</option>
+              </select>
             </div>
 
             {/* Deuxième ligne : Filtres de base */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Filtre par segment */}
-              <div className="relative">
-                <input
-                  type="text"
-                  value={segmentSearch}
-                  onChange={(e) => {
-                    setSegmentSearch(e.target.value);
-                    setSegmentDropdownOpen(true);
-                  }}
-                  onFocus={() => setSegmentDropdownOpen(true)}
-                  onBlur={() => setTimeout(() => setSegmentDropdownOpen(false), 200)}
-                  placeholder="Rechercher un segment..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-                />
-                {segmentDropdownOpen && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                    <div
-                      onClick={() => {
-                        setSelectedSegment('all');
-                        setSegmentSearch('');
-                        setSegmentDropdownOpen(false);
-                      }}
-                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b"
-                    >
-                      Tous les segments
-                    </div>
-                    {getFilteredSegments().map(segment => (
-                      <div
-                        key={segment}
-                        onClick={() => {
-                          setSelectedSegment(segment);
-                          setSegmentSearch(segment);
-                          setSegmentDropdownOpen(false);
-                        }}
-                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                      >
-                        {segment}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <select
+                value={selectedSegment}
+                onChange={(e) => setSelectedSegment(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+              >
+                <option value="all">Tous les segments</option>
+                {segments.map(segment => (
+                  <option key={segment} value={segment}>
+                    Segment {segment}
+                  </option>
+                ))}
+              </select>
 
-              {/* Filtre par marque */}
-              <div className="relative">
-                <input
-                  type="text"
-                  value={marqueSearch}
-                  onChange={(e) => {
-                    setMarqueSearch(e.target.value);
-                    setMarqueDropdownOpen(true);
-                  }}
-                  onFocus={() => setMarqueDropdownOpen(true)}
-                  onBlur={() => setTimeout(() => setMarqueDropdownOpen(false), 200)}
-                  placeholder="Rechercher une marque..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-                />
-                {marqueDropdownOpen && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                    <div
-                      onClick={() => {
-                        setSelectedMarque('all');
-                        setMarqueSearch('');
-                        setMarqueDropdownOpen(false);
-                      }}
-                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b"
-                    >
-                      Toutes les marques
-                    </div>
-                    {getFilteredMarques().map(marque => (
-                      <div
-                        key={marque}
-                        onClick={() => {
-                          setSelectedMarque(marque);
-                          setMarqueSearch(marque);
-                          setMarqueDropdownOpen(false);
-                        }}
-                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                      >
-                        {marque}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <select
+                value={selectedMarque}
+                onChange={(e) => setSelectedMarque(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+              >
+                <option value="all">Toutes les marques</option>
+                {marques.map(marque => (
+                  <option key={marque} value={marque}>
+                    {marque}
+                  </option>
+                ))}
+              </select>
 
-              {/* Filtre stratégique */}
               <select
                 value={selectedStrategiq}
                 onChange={(e) => setSelectedStrategiq(e.target.value)}
@@ -647,6 +487,18 @@ export const Mapping: React.FC = () => {
                 <option value="all">Tous (stratégique)</option>
                 <option value="1">Stratégique uniquement</option>
                 <option value="0">Non stratégique uniquement</option>
+              </select>
+
+              <select
+                value={selectedSourceType}
+                onChange={(e) => setSelectedSourceType(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+              >
+                <option value="all">Toutes les sources</option>
+                <option value="excel_upload">Import Excel</option>
+                <option value="manual_edit">Saisie manuelle</option>
+                <option value="api_import">Import API</option>
+                <option value="initial_load">Chargement initial</option>
               </select>
             </div>
 
@@ -657,151 +509,60 @@ export const Mapping: React.FC = () => {
                 Filtres Classification CIR
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                {/* Filtre FSMEGA (Méga Famille) */}
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Méga Famille (FSMEGA)
                   </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={fsmegaSearch}
-                      onChange={(e) => {
-                        setFsmegaSearch(e.target.value);
-                        setFsmegaDropdownOpen(true);
-                      }}
-                      onFocus={() => setFsmegaDropdownOpen(true)}
-                      onBlur={() => setTimeout(() => setFsmegaDropdownOpen(false), 200)}
-                      placeholder="Rechercher..."
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-                    />
-                    {fsmegaDropdownOpen && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        <div
-                          onClick={() => {
-                            setSelectedFsmega('all');
-                            setFsmegaSearch('');
-                            setFsmegaDropdownOpen(false);
-                          }}
-                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b"
-                        >
-                          Toutes
-                        </div>
-                        {getFilteredFsmegas().sort((a, b) => a - b).map(fsmega => (
-                          <div
-                            key={fsmega}
-                            onClick={() => {
-                              setSelectedFsmega(fsmega.toString());
-                              setFsmegaSearch(fsmega.toString());
-                              setFsmegaDropdownOpen(false);
-                            }}
-                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                          >
-                            {fsmega}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <select
+                    value={selectedFsmega}
+                    onChange={(e) => setSelectedFsmega(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                  >
+                    <option value="all">Toutes</option>
+                    {fsmegas.sort((a, b) => a - b).map(fsmega => (
+                      <option key={fsmega} value={fsmega.toString()}>
+                        {fsmega}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                {/* Filtre FSFAM (Famille) */}
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Famille (FSFAM)
                   </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={fsfamSearch}
-                      onChange={(e) => {
-                        setFsfamSearch(e.target.value);
-                        setFsfamDropdownOpen(true);
-                      }}
-                      onFocus={() => setFsfamDropdownOpen(true)}
-                      onBlur={() => setTimeout(() => setFsfamDropdownOpen(false), 200)}
-                      placeholder="Rechercher..."
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-                    />
-                    {fsfamDropdownOpen && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        <div
-                          onClick={() => {
-                            setSelectedFsfam('all');
-                            setFsfamSearch('');
-                            setFsfamDropdownOpen(false);
-                          }}
-                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b"
-                        >
-                          Toutes
-                        </div>
-                        {getFilteredFsfams().sort((a, b) => a - b).map(fsfam => (
-                          <div
-                            key={fsfam}
-                            onClick={() => {
-                              setSelectedFsfam(fsfam.toString());
-                              setFsfamSearch(fsfam.toString());
-                              setFsfamDropdownOpen(false);
-                            }}
-                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                          >
-                            {fsfam}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <select
+                    value={selectedFsfam}
+                    onChange={(e) => setSelectedFsfam(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                  >
+                    <option value="all">Toutes</option>
+                    {fsfams.sort((a, b) => a - b).map(fsfam => (
+                      <option key={fsfam} value={fsfam.toString()}>
+                        {fsfam}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                {/* Filtre FSSFA (Sous Famille) */}
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Sous Famille (FSSFA)
                   </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={fssfaSearch}
-                      onChange={(e) => {
-                        setFssfaSearch(e.target.value);
-                        setFssfaDropdownOpen(true);
-                      }}
-                      onFocus={() => setFssfaDropdownOpen(true)}
-                      onBlur={() => setTimeout(() => setFssfaDropdownOpen(false), 200)}
-                      placeholder="Rechercher..."
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-                    />
-                    {fssfaDropdownOpen && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        <div
-                          onClick={() => {
-                            setSelectedFssfa('all');
-                            setFssfaSearch('');
-                            setFssfaDropdownOpen(false);
-                          }}
-                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b"
-                        >
-                          Toutes
-                        </div>
-                        {getFilteredFssfas().sort((a, b) => a - b).map(fssfa => (
-                          <div
-                            key={fssfa}
-                            onClick={() => {
-                              setSelectedFssfa(fssfa.toString());
-                              setFssfaSearch(fssfa.toString());
-                              setFssfaDropdownOpen(false);
-                            }}
-                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                          >
-                            {fssfa}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <select
+                    value={selectedFssfa}
+                    onChange={(e) => setSelectedFssfa(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                  >
+                    <option value="all">Toutes</option>
+                    {fssfas.sort((a, b) => a - b).map(fssfa => (
+                      <option key={fssfa} value={fssfa.toString()}>
+                        {fssfa}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                {/* Reset filtres */}
                 <div className="flex items-end">
                   <Button
                     variant="outline"
@@ -813,11 +574,7 @@ export const Mapping: React.FC = () => {
                       setSelectedFsfam('all');
                       setSelectedFssfa('all');
                       setSelectedStrategiq('all');
-                      setSegmentSearch('');
-                      setMarqueSearch('');
-                      setFsmegaSearch('');
-                      setFsfamSearch('');
-                      setFssfaSearch('');
+                      setSelectedSourceType('all');
                     }}
                     className="w-full flex items-center justify-center space-x-2"
                   >
@@ -829,39 +586,39 @@ export const Mapping: React.FC = () => {
             </div>
           </div>
         </CardContent>
-      </Card>}
+      </Card>
 
       {/* Table des mappings */}
-      {uploadPhase === 'upload' && (
-        <>
-          {!showHistory && (
-            <>
-              {/* Zone d'upload */}
-              <ExcelUploadZone
-                onParseComplete={handleParseComplete}
-                onParseError={handleParseError}
-              />
-            </>
-          )}
-        </>
-      )}
-
-      {uploadPhase === 'upload' && !showHistory && <Card>
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <FileSpreadsheet className="w-5 h-5" />
-            <span>Mappings Segments ({totalCount})</span>
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center space-x-2">
+              <FileSpreadsheet className="w-5 h-5" />
+              <span>Mappings Segments ({totalCount})</span>
+            </CardTitle>
+            <Button
+              onClick={handleCreateMapping}
+              className="flex items-center space-x-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Nouveau mapping</span>
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
-          {mappings.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cir-red"></div>
+            </div>
+          ) : mappings.length === 0 ? (
             <div className="text-center py-12">
               <FileSpreadsheet className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 mb-2">
-                Aucun mapping trouvé
-              </p>
+              <p className="text-gray-500 mb-2">Aucun mapping trouvé</p>
               <p className="text-sm text-gray-400 mb-4">
-                Uploadez le fichier SEGMENTS TARIFAIRES.xlsx pour commencer
+                {searchTerm || selectedSegment !== 'all' || selectedMarque !== 'all' 
+                  ? 'Aucun résultat pour les filtres appliqués'
+                  : 'Utilisez l\'onglet Import Excel pour commencer'
+                }
               </p>
             </div>
           ) : (
@@ -886,6 +643,9 @@ export const Mapping: React.FC = () => {
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Classification CIR
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Source
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
@@ -926,6 +686,19 @@ export const Mapping: React.FC = () => {
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
                         {mapping.classif_cir}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          mapping.source_type === 'excel_upload' ? 'bg-blue-100 text-blue-800' :
+                          mapping.source_type === 'manual_edit' ? 'bg-green-100 text-green-800' :
+                          mapping.source_type === 'api_import' ? 'bg-purple-100 text-purple-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {mapping.source_type === 'excel_upload' ? 'Excel' :
+                           mapping.source_type === 'manual_edit' ? 'Manuel' :
+                           mapping.source_type === 'api_import' ? 'API' :
+                           'Initial'}
+                        </span>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end space-x-2">
@@ -1001,7 +774,116 @@ export const Mapping: React.FC = () => {
             </div>
           </div>
         )}
-      </Card>}
+      </Card>
+    </div>
+  );
+
+  const renderUploadTab = () => (
+    <div className="space-y-6">
+      {uploadPhase === 'upload' && (
+        <>
+          <div className="text-center mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              Import de fichier Excel
+            </h2>
+            <p className="text-gray-600">
+              Importez vos mappings depuis un fichier Excel SEGMENTS TARIFAIRES
+            </p>
+          </div>
+          <ExcelUploadZone
+            onParseComplete={handleParseComplete}
+            onParseError={handleParseError}
+          />
+        </>
+      )}
+
+      {uploadPhase === 'analyze' && parseResult && uploadedFile && (
+        <ParseResultSummary
+          result={parseResult}
+          filename={uploadedFile.name}
+          onContinue={handleContinueToPreview}
+          onRetry={handleRetryUpload}
+        />
+      )}
+
+      {uploadPhase === 'preview' && parseResult && (
+        <MappingPreviewTable
+          parsedData={finalDataToUpsert}
+          existingMappings={existingMappingsForPreview}
+          onApplyChanges={handleApplyChanges}
+          onRetry={handleRetryUpload}
+          applyLoading={applyLoading}
+        />
+      )}
+    </div>
+  );
+
+  if (loading && activeTab === 'mappings') {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cir-red"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+            Mapping Segments CIR
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600">
+            Gestion avancée des mappings entre familles fabricant et classifications CIR
+          </p>
+        </div>
+      </div>
+
+      {/* Navigation par onglets */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="border-b border-gray-200">
+            <nav className="flex space-x-8 px-6" aria-label="Tabs">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`${
+                      isActive
+                        ? 'border-cir-red text-cir-red'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 transition-colors`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span>{tab.label}</span>
+                    {tab.count !== undefined && (
+                      <span className={`${
+                        isActive ? 'bg-cir-red text-white' : 'bg-gray-100 text-gray-600'
+                      } inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium`}>
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Contenu de l'onglet actif */}
+      <motion.div
+        key={activeTab}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+      >
+        {renderTabContent()}
+      </motion.div>
 
       {/* Modal de création/modification */}
       <MappingModal
@@ -1010,15 +892,6 @@ export const Mapping: React.FC = () => {
         mapping={selectedMapping}
         onSuccess={handleModalSuccess}
       />
-
-      {/* 
-        Futur : Gemma IA pour parse tarifs fournisseurs (headers 'Tarif','Remise', dates, remises catégories).
-        Intégration prévue :
-        - Parse automatique des fichiers tarifs avec headers variables
-        - Classification automatique des références produits via ce mapping
-        - Gestion des milliers de fournisseurs avec formats hétérogènes
-        - Pricing adaptatif basé sur les classifications CIR
-      */}
     </div>
   );
 };
