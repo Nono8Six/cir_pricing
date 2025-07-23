@@ -63,7 +63,7 @@ export const ImportHistoryDashboard: React.FC<ImportHistoryDashboardProps> = ({ 
         .from('import_batches')
         .select(`
           *,
-          profiles:users!import_batches_user_id_fkey (
+          profiles:users!user_id (
             first_name,
             last_name,
             email
