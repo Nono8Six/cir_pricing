@@ -16,6 +16,7 @@ import { Button } from '../components/ui/Button';
 import { MappingModal } from '../components/mapping/MappingModal';
 import { toast } from 'sonner';
 import { mappingApi } from '../lib/supabaseClient';
+import { useDebounce } from '../hooks/useDebounce';
 import * as XLSX from 'xlsx';
 
 interface BrandMapping {
@@ -39,6 +40,7 @@ export const Mapping: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [selectedSegment, setSelectedSegment] = useState<string>('all');
   const [selectedMarque, setSelectedMarque] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -87,7 +89,7 @@ export const Mapping: React.FC = () => {
       const filters = {
         ...(selectedSegment !== 'all' && { segment: selectedSegment }),
         ...(selectedMarque !== 'all' && { marque: selectedMarque }),
-        ...(searchTerm && { cat_fab: searchTerm }),
+        ...(debouncedSearchTerm && { cat_fab: debouncedSearchTerm }),
         ...(selectedFsmega !== 'all' && { fsmega: parseInt(selectedFsmega) }),
         ...(selectedFsfam !== 'all' && { fsfam: parseInt(selectedFsfam) }),
         ...(selectedFssfa !== 'all' && { fssfa: parseInt(selectedFssfa) }),
@@ -129,7 +131,7 @@ export const Mapping: React.FC = () => {
 
   useEffect(() => {
     setCurrentPage(1); // Reset to first page when filters change
-  }, [selectedSegment, selectedMarque, searchTerm, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq]);
+  }, [selectedSegment, selectedMarque, debouncedSearchTerm, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq]);
 
   useEffect(() => {
     setSegmentSearch(selectedSegment === 'all' ? '' : selectedSegment);
@@ -141,7 +143,7 @@ export const Mapping: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, [selectedSegment, selectedMarque, searchTerm, currentPage, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq]);
+  }, [selectedSegment, selectedMarque, debouncedSearchTerm, currentPage, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq]);
 
   // Filter functions for autocomplete
   const getFilteredSegments = () => {
