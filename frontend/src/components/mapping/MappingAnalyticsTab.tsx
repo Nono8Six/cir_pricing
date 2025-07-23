@@ -223,11 +223,10 @@ export const MappingAnalyticsTab: React.FC = () => {
           
           <Button 
             onClick={handlePurgeAllData}
-            variant="outline" 
-            className="flex items-center space-x-2 text-red-600 border-red-300 hover:bg-red-50"
+            className="flex items-center space-x-2 bg-red-600 text-white hover:bg-red-700 border-red-600"
           >
             <Trash2 className="w-4 h-4" />
-            <span>Purger les données</span>
+            <span>🗑️ Purger toutes les données</span>
           </Button>
         </div>
       </div>
@@ -295,46 +294,8 @@ export const MappingAnalyticsTab: React.FC = () => {
       </div>
 
       {/* Graphiques principaux */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Distribution par segment */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <BarChart3 className="w-5 h-5" />
-              <span>Top 10 Segments</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {analytics.segmentDistribution.map((item, index) => (
-                <motion.div
-                  key={item.segment}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="flex items-center space-x-3"
-                >
-                  <div className="w-16 text-sm font-medium text-gray-600">
-                    {item.segment}
-                  </div>
-                  <div className="flex-1 bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-blue-500 h-2 rounded-full transition-all duration-500"
-                      style={{ 
-                        width: `${(item.count / analytics.segmentDistribution[0].count) * 100}%` 
-                      }}
-                    />
-                  </div>
-                  <div className="w-12 text-sm font-medium text-gray-900 text-right">
-                    {item.count}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Distribution par marque */}
+      <div className="grid grid-cols-1 gap-6">
+        {/* Distribution par marque - Pleine largeur */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
