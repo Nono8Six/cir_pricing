@@ -237,53 +237,24 @@ export const mappingApi = {
     return [...new Set(data.map(item => item.fssfa))].sort((a, b) => a - b);
   },
 
-  // Get total count of unique segments using SQL function
+  // Get total count of unique segments via RPC
   async getTotalSegmentsCount() {
-    
-    // Query all segments and count unique values
-    const { data, error } = await supabase
-      .from('brand_category_mappings')
-      .select('segment')
-      .order('segment');
-    
-    if (error) {
-      console.error('❌ [getTotalSegmentsCount] Query Error:', error);
-      throw error;
-    }
-    
-    const uniqueCount = [...new Set(data.map(item => item.segment))].length;
-    return uniqueCount;
+    const { data, error } = await supabase.rpc('get_total_segments_count');
+    if (error) throw error;
+    return data;
   },
 
-  // Get total count of unique marques using SQL function
+  // Get total count of unique marques via RPC
   async getTotalMarquesCount() {
-    
-    // Query all marques and count unique values
-    const { data, error } = await supabase
-      .from('brand_category_mappings')
-      .select('marque')
-      .order('marque');
-    
-    if (error) {
-      console.error('❌ [getTotalMarquesCount] Query Error:', error);
-      throw error;
-    }
-    
-    const uniqueCount = [...new Set(data.map(item => item.marque))].length;
-    return uniqueCount;
+    const { data, error } = await supabase.rpc('get_total_marques_count');
+    if (error) throw error;
+    return data;
   },
 
   // Get total count of strategic mappings via RPC
   async getTotalStrategiquesCount() {
-    console.log('🔍 [getTotalStrategiquesCount] Starting query...');
     const { data, error } = await supabase.rpc('get_total_strategiques_count');
-
-    if (error) {
-      console.error('❌ [getTotalStrategiquesCount] Query Error:', error);
-      throw error;
-    }
-
-    console.log('✅ [getTotalStrategiquesCount] Query result:', data);
+    if (error) throw error;
     return data;
   }
 };
