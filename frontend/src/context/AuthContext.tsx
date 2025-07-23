@@ -79,20 +79,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            first_name: firstName,
-            last_name: lastName
-          }
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          first_name: firstName,
+          last_name: lastName
         }
+      }
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    if (data?.user) {
+      const { error: insertError } = await supabase.from('profiles').insert({
+        id: data.user.id,
+        email: data.user.email,
+        first_name: firstName,
+        last_name: lastName
       });
 
-      if (error) {
-        throw error;
+      if (insertError) {
+        throw insertError;
       }
+    }
 
       // For sign up, we don't automatically set the user as they might need email confirmation
       setLoading(false);
