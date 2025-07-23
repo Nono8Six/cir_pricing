@@ -15,6 +15,7 @@ import { Button } from '../components/ui/Button';
 import { MappingModal } from '../components/mapping/MappingModal';
 import { ExcelUploadZone } from '../components/mapping/ExcelUploadZone';
 import { ParseResultSummary } from '../components/mapping/ParseResultSummary';
+import { MappingPreviewTable } from '../components/mapping/MappingPreviewTable';
 import { toast } from 'sonner';
 import { mappingApi } from '../lib/supabaseClient';
 import { useDebounce } from '../hooks/useDebounce';
@@ -86,6 +87,8 @@ export const Mapping: React.FC = () => {
   const [uploadPhase, setUploadPhase] = useState<'upload' | 'analyze' | 'preview' | 'apply'>('upload');
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [existingMappingsForPreview, setExistingMappingsForPreview] = useState<BrandMapping[]>([]);
+  const [applyLoading, setApplyLoading] = useState(false);
 
   // Charger les données
   const fetchData = async () => {
@@ -203,14 +206,54 @@ export const Mapping: React.FC = () => {
     toast.error(error);
   };
 
-  const handleContinueToPreview = () => {
-    setUploadPhase('preview');
+  const handleContinueToPreview = async () => {
+    try {
+      setLoading(true);
+      // Récupérer tous les mappings existants pour la comparaison
+      const existingMappings = await mappingApi.getAllBrandCategoryMappings();
+      setExistingMappingsForPreview(existingMappings);
+      setUploadPhase('preview');
+    } catch (error) {
+      console.error('Erreur chargement mappings existants:', error);
+      toast.error('Erreur lors du chargement des mappings existants');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleRetryUpload = () => {
     setUploadPhase('upload');
     setParseResult(null);
     setUploadedFile(null);
+    setExistingMappingsForPreview([]);
+  };
+
+  const handleApplyChanges = async () => {
+    if (!parseResult?.data) return;
+
+    setApplyLoading(true);
+
+    try {
+      // Appliquer les modifications via batch upsert
+      const result = await mappingApi.batchUpsertMappings(parseResult.data);
+      
+      toast.success(`${result.length} mappings traités avec succès`);
+      
+      // Réinitialiser le workflow d'upload
+      setUploadPhase('upload');
+      setParseResult(null);
+      setUploadedFile(null);
+      setExistingMappingsForPreview([]);
+      
+      // Recharger les données de la table principale
+      fetchData();
+      
+    } catch (error: any) {
+      console.error('Erreur application des changements:', error);
+      toast.error(error.message || 'Erreur lors de l\'application des modifications');
+    } finally {
+      setApplyLoading(false);
+    }
   };
 
   // Ouvrir le modal pour créer un mapping
@@ -282,16 +325,18 @@ export const Mapping: React.FC = () => {
             Gestion des mappings entre familles fabricant et classifications CIR
           </p>
         </div>
-        <div className="flex items-center space-x-3">
-          <Button
-            onClick={handleCreateMapping}
-            variant="outline"
-            className="flex items-center space-x-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Nouveau mapping</span>
-          </Button>
-        </div>
+        {uploadPhase === 'upload' && (
+          <div className="flex items-center space-x-3">
+            <Button
+              onClick={handleCreateMapping}
+              variant="outline"
+              className="flex items-center space-x-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Nouveau mapping</span>
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Nouveau workflow d'upload en phases */}
@@ -300,7 +345,7 @@ export const Mapping: React.FC = () => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <FileSpreadsheet className="w-5 h-5" />
-              <span>Import Excel - Phase {uploadPhase === 'analyze' ? '1' : uploadPhase === 'preview' ? '2' : '3'}</span>
+              <span>Import Excel - Phase {uploadPhase === 'analyze' ? '1' : uploadPhase === 'preview' ? '2' : '3'} sur 3</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -312,9 +357,30 @@ export const Mapping: React.FC = () => {
                 onRetry={handleRetryUpload}
               />
             )}
-            {uploadPhase === 'preview' && (
-              <div className="text-center py-8">
-                <p className="text-gray-500">Phase Preview - En cours de développement</p>
+            {uploadPhase === 'preview' && parseResult && (
+              <div className="space-y-6">
+                <MappingPreviewTable
+                  parsedData={parseResult.data}
+                  existingMappings={existingMappingsForPreview}
+                />
+                
+                {/* Actions pour la phase preview */}
+                <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+                  <Button
+                    variant="outline"
+                    onClick={handleRetryUpload}
+                    disabled={applyLoading}
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    onClick={handleApplyChanges}
+                    loading={applyLoading}
+                    className="min-w-[160px]"
+                  >
+                    Appliquer les modifications
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
@@ -322,7 +388,7 @@ export const Mapping: React.FC = () => {
       )}
 
       {/* Statistiques */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      {uploadPhase === 'upload' && <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-3">
@@ -379,10 +445,10 @@ export const Mapping: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </div>}
 
       {/* Filtres et recherche */}
-      <Card>
+      {uploadPhase === 'upload' && <Card>
         <CardContent className="p-4">
           <div className="space-y-4">
             {/* Première ligne : Recherche + Items per page */}
@@ -693,7 +759,7 @@ export const Mapping: React.FC = () => {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
       {/* Table des mappings */}
       {uploadPhase === 'upload' && (
@@ -707,7 +773,7 @@ export const Mapping: React.FC = () => {
         </>
       )}
 
-      <Card>
+      {uploadPhase === 'upload' && <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <FileSpreadsheet className="w-5 h-5" />
@@ -867,7 +933,7 @@ export const Mapping: React.FC = () => {
             </div>
           </div>
         )}
-      </Card>
+      </Card>}
 
       {/* Modal de création/modification */}
       <MappingModal

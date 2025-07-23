@@ -222,6 +222,17 @@ export const mappingApi = {
     return data || [];
   },
 
+  // Get all mappings without pagination for preview comparison
+  async getAllBrandCategoryMappings() {
+    const { data, error } = await supabase
+      .from('brand_category_mappings')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data || [];
+  },
+
   // Get total count of unique segments via RPC
   async getTotalSegmentsCount() {
     const { data, error } = await supabase.rpc('get_total_segments_count');
