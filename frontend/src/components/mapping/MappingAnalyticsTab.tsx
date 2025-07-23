@@ -15,7 +15,6 @@ import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { mappingApi } from '../../lib/supabaseClient';
 import { supabase } from '../../lib/supabaseClient';
-import { toast } from 'sonner';
 
 interface AnalyticsData {
   totalMappings: number;
@@ -111,39 +110,6 @@ export const MappingAnalyticsTab: React.FC = () => {
     }
   };
 
-  const handlePurgeAllData = async () => {
-    toast('⚠️ ATTENTION : Supprimer TOUTES les données de mapping ?', {
-      description: "Cette action supprimera définitivement tous les mappings, l'historique et les imports. Cette action est IRRÉVERSIBLE.",
-      action: {
-        label: "CONFIRMER LA SUPPRESSION",
-        onClick: async () => {
-          try {
-            setLoading(true);
-            
-            // Supprimer dans l'ordre pour respecter les contraintes de clés étrangères
-            await supabase.from('brand_mapping_history').delete().neq('history_id', '');
-            await supabase.from('brand_category_mappings').delete().neq('id', '');
-            await supabase.from('import_batches').delete().neq('id', '');
-            
-            toast.success('🗑️ Toutes les données ont été supprimées');
-            
-            // Recharger les analytics
-            fetchAnalytics();
-          } catch (error) {
-            console.error('Erreur suppression données:', error);
-            toast.error('Erreur lors de la suppression des données');
-          } finally {
-            setLoading(false);
-          }
-        },
-      },
-      cancel: {
-        label: "Annuler",
-        onClick: () => {},
-      },
-    });
-  };
-
   const getSourceTypeLabel = (sourceType: string) => {
     switch (sourceType) {
       case 'excel_upload':
@@ -219,14 +185,6 @@ export const MappingAnalyticsTab: React.FC = () => {
           <Button variant="outline" className="flex items-center space-x-2">
             <Download className="w-4 h-4" />
             <span>Exporter</span>
-          </Button>
-          
-          <Button 
-            onClick={handlePurgeAllData}
-            className="flex items-center space-x-2 bg-red-600 text-white hover:bg-red-700 border-red-600"
-          >
-            <Trash2 className="w-4 h-4" />
-            <span>🗑️ Purger toutes les données</span>
           </Button>
         </div>
       </div>
