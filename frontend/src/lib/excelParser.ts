@@ -72,7 +72,7 @@ export async function parseExcelFile(
   const {
     sheetName,
     skipEmptyRows = true,
-    maxErrors = 1000
+    maxErrors = 10000
   } = options;
 
   return new Promise((resolve, reject) => {
