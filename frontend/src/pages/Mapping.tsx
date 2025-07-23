@@ -767,8 +767,7 @@ export const Mapping: React.FC = () => {
           {/* Zone d'upload */}
           <ExcelUploadZone
             onParseComplete={handleParseComplete}
-            onError={handleParseError}
-            loading={loading}
+            onParseError={handleParseError}
           />
         </>
       )}

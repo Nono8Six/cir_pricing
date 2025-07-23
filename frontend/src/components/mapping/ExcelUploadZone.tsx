@@ -4,19 +4,16 @@ import { parseExcelFile } from '../../lib/excelParser';
 import { ParseResult } from '../../lib/schemas';
 
 interface ExcelUploadZoneProps {
-  onFileSelect: (file: File) => void;
-  onParseComplete: (result: ParseResult) => void;
+  onParseComplete: (result: ParseResult, file: File) => void;
   onParseError: (error: string) => void;
-  isLoading?: boolean;
 }
 
 export function ExcelUploadZone({ 
-  onFileSelect, 
   onParseComplete, 
-  onParseError, 
-  isLoading = false 
+  onParseError
 }: ExcelUploadZoneProps) {
   const [dragActive, setDragActive] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -58,16 +55,18 @@ export function ExcelUploadZone({
       return;
     }
 
-    onFileSelect(file);
+    setIsLoading(true);
 
     try {
       const result = await parseExcelFile(file, {
         skipEmptyRows: true,
         maxErrors: 10000
       });
-      onParseComplete(result);
+      onParseComplete(result, file);
     } catch (error) {
       onParseError(error instanceof Error ? error.message : 'Erreur lors du parsing du fichier');
+    } finally {
+      setIsLoading(false);
     }
   };
 
