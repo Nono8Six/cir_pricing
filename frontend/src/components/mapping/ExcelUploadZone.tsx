@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import Fuse from 'fuse.js';
-import { BrandMappingSchema, ValidationError, ParseResult, DEFAULT_COLUMN_MAPPINGS, ColumnMapping } from './schemas';
+import { BrandMappingSchema, ValidationError, ParseResult, DEFAULT_COLUMN_MAPPINGS, ColumnMapping } from '../../lib/schemas';
 
 export interface ExcelParseOptions {
   sheetName?: string;
