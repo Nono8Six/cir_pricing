@@ -127,11 +127,44 @@ export const MappingSettingsTab: React.FC = () => {
 
             if (error) throw error;
 
-            toast.success('Historique nettoyé avec succès');
+            toast.success('Historique ancien nettoyé avec succès');
             fetchDatabaseStats();
           } catch (error) {
             console.error('Erreur nettoyage historique:', error);
-            toast.error('Erreur lors du nettoyage');
+            toast.error('Erreur lors du nettoyage de l\'historique');
+          } finally {
+            setLoading(false);
+          }
+        },
+      },
+      cancel: {
+        label: "Annuler",
+        onClick: () => {},
+      },
+    });
+  };
+
+  const handlePurgeHistory = async () => {
+    toast('⚠️ Supprimer TOUT l\'historique des modifications ?', {
+      description: "Cette action supprimera définitivement TOUS les enregistrements d'historique. Cette action est IRRÉVERSIBLE.",
+      action: {
+        label: "CONFIRMER LA SUPPRESSION",
+        onClick: async () => {
+          try {
+            setLoading(true);
+            
+            const { error } = await supabase
+              .from('brand_mapping_history')
+              .delete()
+              .neq('history_id', '00000000-0000-0000-0000-000000000000');
+
+            if (error) throw error;
+
+            toast.success('🗑️ Tout l\'historique a été supprimé');
+            fetchDatabaseStats();
+          } catch (error) {
+            console.error('Erreur suppression historique:', error);
+            toast.error('Erreur lors de la suppression de l\'historique');
           } finally {
             setLoading(false);
           }
@@ -188,35 +221,6 @@ export const MappingSettingsTab: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleReindexDatabase = async () => {
-    toast('Réindexer la base de données ?', {
-      description: "Cette opération peut prendre plusieurs minutes.",
-      action: {
-        label: "Confirmer",
-        onClick: async () => {
-          try {
-            setLoading(true);
-            
-            // Simuler la réindexation (en production, appeler une fonction SQL)
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            
-            toast.success('Base de données réindexée avec succès');
-            fetchDatabaseStats();
-          } catch (error) {
-            console.error('Erreur réindexation:', error);
-            toast.error('Erreur lors de la réindexation');
-          } finally {
-            setLoading(false);
-          }
-        },
-      },
-      cancel: {
-        label: "Annuler",
-        onClick: () => {},
-      },
-    });
   };
 
   const handlePurgeAllData = async () => {
@@ -488,27 +492,28 @@ export const MappingSettingsTab: React.FC = () => {
               </Button>
 
               <Button
-                onClick={handleReindexDatabase}
+                onClick={handleCleanupHistory}
                 loading={loading}
                 variant="outline"
-                className="w-full flex items-center justify-center space-x-2"
+                className="w-full flex items-center justify-center space-x-2 text-yellow-600 border-yellow-300 hover:bg-yellow-50"
               >
-                <RefreshCw className="w-4 h-4" />
-                <span>Réindexer la base de données</span>
+                <Trash2 className="w-4 h-4" />
+                <span>Nettoyer l'historique ancien ({settings.auditRetentionDays}j+)</span>
               </Button>
 
               <Button
-                onClick={handleCleanupHistory}
+                onClick={handlePurgeHistory}
                 loading={loading}
                 variant="outline"
                 className="w-full flex items-center justify-center space-x-2 text-orange-600 border-orange-300 hover:bg-orange-50"
               >
                 <Trash2 className="w-4 h-4" />
-                <span>Nettoyer l'historique ancien</span>
+                <span>🗑️ Purger TOUT l'historique</span>
               </Button>
               
               <Button 
                 onClick={handlePurgeAllData}
+                loading={loading}
                 className="w-full flex items-center justify-center space-x-2 bg-red-600 text-white hover:bg-red-700"
               >
                 <Trash2 className="w-4 h-4" />
@@ -530,6 +535,10 @@ export const MappingSettingsTab: React.FC = () => {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Statut RLS:</span>
                   <span className="font-medium text-green-600">Activé</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Rétention audit:</span>
+                  <span className="font-medium">{settings.auditRetentionDays} jours</span>
                 </div>
               </div>
             </div>
