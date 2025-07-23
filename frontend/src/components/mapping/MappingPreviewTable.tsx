@@ -9,9 +9,12 @@ import {
   ArrowRight,
   TrendingUp,
   Database,
-  Zap
+  Zap,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
+import { Button } from '../ui/Button';
 
 interface BrandMapping {
   id?: string;
@@ -38,12 +41,22 @@ interface MappingChange {
 interface MappingPreviewTableProps {
   parsedData: BrandMapping[];
   existingMappings: BrandMapping[];
+  onApplyChanges: () => void;
+  onRetry: () => void;
+  applyLoading: boolean;
 }
 
 export const MappingPreviewTable: React.FC<MappingPreviewTableProps> = ({
   parsedData,
-  existingMappings
+  existingMappings,
+  onApplyChanges,
+  onRetry,
+  applyLoading
 }) => {
+  // États de pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+
   // Auto-classification CIR intelligente
   const processedData = useMemo(() => {
     return parsedData.map(mapping => {
@@ -160,6 +173,20 @@ export const MappingPreviewTable: React.FC<MappingPreviewTableProps> = ({
   const updateCount = changes.filter(c => c.type === 'update').length;
   const autoClassifiedCount = changes.filter(c => c.autoClassified).length;
 
+  // Pagination des changements
+  const totalPages = Math.ceil(changes.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedChanges = changes.slice(startIndex, endIndex);
+  const startItem = startIndex + 1;
+  const endItem = Math.min(endIndex, changes.length);
+
+  // Reset page when items per page changes
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
+
   const getChangeIcon = (type: 'new' | 'update') => {
     return type === 'new' ? Plus : Edit;
   };
@@ -262,6 +289,35 @@ export const MappingPreviewTable: React.FC<MappingPreviewTableProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Actions en haut */}
+      <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg">
+        <div className="flex items-center space-x-4">
+          <div className="text-sm text-gray-600">
+            <span className="font-medium">{changes.length}</span> modifications détectées
+          </div>
+          <div className="text-sm text-gray-500">
+            ({newCount} nouveaux, {updateCount} mises à jour)
+          </div>
+        </div>
+        
+        <div className="flex items-center space-x-3">
+          <Button
+            variant="outline"
+            onClick={onRetry}
+            disabled={applyLoading}
+          >
+            Annuler
+          </Button>
+          <Button
+            onClick={onApplyChanges}
+            loading={applyLoading}
+            className="min-w-[160px]"
+          >
+            Appliquer les modifications
+          </Button>
+        </div>
+      </div>
+
       {/* Header avec statistiques améliorées */}
       <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
         <div className="flex items-center justify-between mb-4">
@@ -360,10 +416,59 @@ export const MappingPreviewTable: React.FC<MappingPreviewTableProps> = ({
       {/* Table des changements améliorée */}
       <Card className="shadow-lg border-gray-200">
         <CardHeader className="bg-gray-50 border-b">
-          <CardTitle className="flex items-center space-x-2">
-            <AlertTriangle className="w-5 h-5 text-orange-500" />
-            <span>Détail des modifications ({changes.length})</span>
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center space-x-2">
+              <AlertTriangle className="w-5 h-5 text-orange-500" />
+              <span>Détail des modifications ({changes.length})</span>
+            </CardTitle>
+            
+            {/* Contrôles de pagination en haut */}
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <label className="text-sm text-gray-600">Lignes par page:</label>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                  className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+              
+              <div className="text-sm text-gray-600">
+                {startItem}-{endItem} sur {changes.length}
+              </div>
+              
+              <div className="flex items-center space-x-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="p-1"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                
+                <span className="text-sm text-gray-600 px-2">
+                  {currentPage} / {totalPages}
+                </span>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="p-1"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -394,11 +499,11 @@ export const MappingPreviewTable: React.FC<MappingPreviewTableProps> = ({
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {changes.map((change, index) => {
+                {paginatedChanges.map((change, index) => {
                   const Icon = getChangeIcon(change.type);
                   return (
                     <motion.tr
-                      key={`${change.data.marque}-${change.data.cat_fab}-${index}`}
+                      key={`${change.data.marque}-${change.data.cat_fab}-${startIndex + index}`}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.02 }}
@@ -464,6 +569,50 @@ export const MappingPreviewTable: React.FC<MappingPreviewTableProps> = ({
             </table>
           </div>
         </CardContent>
+        
+        {/* Pagination en bas */}
+        {totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-700">
+                Affichage de <span className="font-medium">{startItem}</span> à{' '}
+                <span className="font-medium">{endItem}</span> sur{' '}
+                <span className="font-medium">{changes.length}</span> modifications
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="flex items-center space-x-1"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Précédent</span>
+                </Button>
+                
+                <div className="flex items-center space-x-1">
+                  <span className="text-sm text-gray-700">Page</span>
+                  <span className="font-medium text-sm">{currentPage}</span>
+                  <span className="text-sm text-gray-700">sur</span>
+                  <span className="font-medium text-sm">{totalPages}</span>
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="flex items-center space-x-1"
+                >
+                  <span>Suivant</span>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );

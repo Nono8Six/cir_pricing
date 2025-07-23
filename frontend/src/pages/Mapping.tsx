@@ -364,30 +364,13 @@ export const Mapping: React.FC = () => {
               />
             )}
             {uploadPhase === 'preview' && parseResult && (
-              <div className="space-y-6">
-                <MappingPreviewTable
-                  parsedData={parseResult.data}
-                  existingMappings={existingMappingsForPreview}
-                />
-                
-                {/* Actions pour la phase preview */}
-                <div className="flex items-center justify-between pt-6 border-t border-gray-200">
-                  <Button
-                    variant="outline"
-                    onClick={handleRetryUpload}
-                    disabled={applyLoading}
-                  >
-                    Annuler
-                  </Button>
-                  <Button
-                    onClick={handleApplyChanges}
-                    loading={applyLoading}
-                    className="min-w-[160px]"
-                  >
-                    Appliquer les modifications
-                  </Button>
-                </div>
-              </div>
+              <MappingPreviewTable
+                parsedData={parseResult.data}
+                existingMappings={existingMappingsForPreview}
+                onApplyChanges={handleApplyChanges}
+                onRetry={handleRetryUpload}
+                applyLoading={applyLoading}
+              />
             )}
           </CardContent>
         </Card>
