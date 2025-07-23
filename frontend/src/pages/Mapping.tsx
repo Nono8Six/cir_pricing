@@ -91,6 +91,56 @@ export const Mapping: React.FC = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [existingMappingsForPreview, setExistingMappingsForPreview] = useState<BrandMapping[]>([]);
   const [applyLoading, setApplyLoading] = useState(false);
+  const [finalDataToUpsert, setFinalDataToUpsert] = useState<BrandMapping[]>([]);
+
+  // Helper function to process parsed data with auto-classification
+  const processParsedData = (parsedData: BrandMapping[], existingMappings: BrandMapping[]) => {
+    return parsedData.map(mapping => {
+      // Si FSMEGA, FSFAM, FSSFA sont vides ou invalides
+      if (!mapping.fsmega || !mapping.fsfam || !mapping.fssfa || 
+          mapping.fsmega === 0 || mapping.fsfam === 0 || mapping.fssfa === 0) {
+        
+        // Chercher d'autres lignes avec la même marque dans les données existantes
+        const sameMarqueMappings = existingMappings.filter(m => 
+          m.marque.toLowerCase() === mapping.marque.toLowerCase() && 
+          m.fsmega && m.fsmega > 0
+        );
+
+        if (sameMarqueMappings.length > 0) {
+          // Compter les occurrences de chaque FSMEGA
+          const fsmegaCounts = sameMarqueMappings.reduce((acc, m) => {
+            acc[m.fsmega] = (acc[m.fsmega] || 0) + 1;
+            return acc;
+          }, {} as Record<number, number>);
+
+          // Trouver le FSMEGA le plus fréquent
+          const mostFrequentFsmega = Object.entries(fsmegaCounts)
+            .sort(([,a], [,b]) => b - a)[0];
+
+          if (mostFrequentFsmega) {
+            return {
+              ...mapping,
+              fsmega: parseInt(mostFrequentFsmega[0]),
+              fsfam: 99,
+              fssfa: 99,
+              autoClassified: true
+            };
+          }
+        }
+
+        // Valeurs par défaut si aucune correspondance trouvée
+        return {
+          ...mapping,
+          fsmega: mapping.fsmega || 1,
+          fsfam: mapping.fsfam || 99,
+          fssfa: mapping.fssfa || 99,
+          autoClassified: !mapping.fsmega || !mapping.fsfam || !mapping.fssfa
+        };
+      }
+
+      return mapping;
+    });
+  };
 
   // Charger les données
   const fetchData = async () => {
@@ -214,6 +264,13 @@ export const Mapping: React.FC = () => {
       // Récupérer tous les mappings existants pour la comparaison
       const existingMappings = await mappingApi.getAllBrandCategoryMappings();
       setExistingMappingsForPreview(existingMappings);
+      
+      // Traiter les données avec auto-classification
+      if (parseResult?.data) {
+        const processedData = processParsedData(parseResult.data, existingMappings);
+        setFinalDataToUpsert(processedData);
+      }
+      
       setUploadPhase('preview');
     } catch (error) {
       console.error('Erreur chargement mappings existants:', error);
@@ -228,19 +285,20 @@ export const Mapping: React.FC = () => {
     setParseResult(null);
     setUploadedFile(null);
     setExistingMappingsForPreview([]);
+    setFinalDataToUpsert([]);
   };
 
   const handleApplyChanges = async () => {
-    if (!parseResult?.data) return;
+    if (!finalDataToUpsert.length) return;
 
     setApplyLoading(true);
 
     try {
-      // Remove classif_cir from data since it's a generated column
-      const dataWithoutGeneratedColumns = parseResult.data.map(mapping => {
-        const { classif_cir, ...mappingWithoutClassifCir } = mapping;
+      // Remove generated columns and UI-specific properties
+      const dataWithoutGeneratedColumns = finalDataToUpsert.map(mapping => {
+        const { classif_cir, autoClassified, ...cleanMapping } = mapping;
         return {
-          ...mappingWithoutClassifCir,
+          ...cleanMapping,
           created_by: user?.id
         };
       });
@@ -255,6 +313,7 @@ export const Mapping: React.FC = () => {
       setParseResult(null);
       setUploadedFile(null);
       setExistingMappingsForPreview([]);
+      setFinalDataToUpsert([]);
       
       // Recharger les données de la table principale
       fetchData();
@@ -370,7 +429,7 @@ export const Mapping: React.FC = () => {
             )}
             {uploadPhase === 'preview' && parseResult && (
               <MappingPreviewTable
-                parsedData={parseResult.data}
+                parsedData={finalDataToUpsert}
                 existingMappings={existingMappingsForPreview}
                 onApplyChanges={handleApplyChanges}
                 onRetry={handleRetryUpload}
