@@ -241,7 +241,6 @@ export const mappingApi = {
     const { data, error } = await supabase.rpc('get_total_strategiques_count');
 
     if (error) {
-      console.error('❌ [getTotalStrategiquesCount] Query Error:', error);
       throw error;
     }
     return data;
