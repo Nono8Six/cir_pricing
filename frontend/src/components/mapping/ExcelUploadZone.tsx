@@ -86,21 +86,22 @@ export function ExcelUploadZone({
           ? 'border-blue-400 bg-blue-50'
           : 'border-gray-300 hover:border-gray-400'
       }`}
+      style={{ maxWidth: '600px', margin: '0 auto' }}
       onDragEnter={handleDrag}
       onDragLeave={handleDrag}
       onDragOver={handleDrag}
       onDrop={handleDrop}
     >
       <div className="flex flex-col items-center space-y-4">
-        <div className="p-3 bg-blue-100 rounded-full">
-          <Upload className="h-8 w-8 text-blue-600" />
+        <div className="p-2 bg-blue-100 rounded-full">
+          <Upload className="h-6 w-6 text-blue-600" />
         </div>
         
         <div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <h3 className="text-base font-medium text-gray-900 mb-2">
             Importer un fichier Excel
           </h3>
-          <p className="text-gray-600 mb-4">
+          <p className="text-sm text-gray-600 mb-4">
             Glissez-déposez votre fichier ou cliquez pour sélectionner
           </p>
         </div>
@@ -115,23 +116,22 @@ export function ExcelUploadZone({
         
         <label
           htmlFor="excel-upload"
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 cursor-pointer transition-colors"
+          className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 cursor-pointer transition-colors"
         >
           <FileSpreadsheet className="h-4 w-4 mr-2" />
           Sélectionner un fichier
         </label>
 
-        <div className="text-xs text-gray-500 space-y-1">
+        <div className="text-xs text-gray-500 space-y-1 text-center">
           <p>Formats supportés: .xlsx, .xls</p>
           <p>Taille maximum: 100MB</p>
-          <p>Jusqu'à 100k lignes</p>
         </div>
 
-        <div className="flex items-start space-x-2 text-xs text-amber-600 bg-amber-50 p-3 rounded-md">
+        <div className="flex items-start space-x-2 text-xs text-amber-600 bg-amber-50 p-2 rounded-md max-w-full">
           <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
           <div>
             <p className="font-medium">Format attendu:</p>
-            <p>Le fichier doit contenir les colonnes: Segment, Marque, Cat_fab, etc.</p>
+            <p>Le fichier doit contenir les colonnes: <strong>SEGMENT</strong>, <strong>MARQUE</strong>, <strong>CAT_FAB</strong>, <strong>CAT_FAB_L</strong>, <strong>STRATEGIQ</strong>, <strong>CODIF_FAIR</strong>, <strong>FSMEGA</strong>, <strong>FSFAM</strong>, <strong>FSSFA</strong></p>
           </div>
         </div>
       </div>

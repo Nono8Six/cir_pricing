@@ -16,6 +16,7 @@ import { MappingModal } from '../components/mapping/MappingModal';
 import { ExcelUploadZone } from '../components/mapping/ExcelUploadZone';
 import { ParseResultSummary } from '../components/mapping/ParseResultSummary';
 import { MappingPreviewTable } from '../components/mapping/MappingPreviewTable';
+import { ImportHistoryDashboard } from '../components/mapping/ImportHistoryDashboard';
 import { toast } from 'sonner';
 import { mappingApi } from '../lib/supabaseClient';
 import { useDebounce } from '../hooks/useDebounce';
@@ -92,6 +93,9 @@ export const Mapping: React.FC = () => {
   const [existingMappingsForPreview, setExistingMappingsForPreview] = useState<BrandMapping[]>([]);
   const [applyLoading, setApplyLoading] = useState(false);
   const [finalDataToUpsert, setFinalDataToUpsert] = useState<BrandMapping[]>([]);
+
+  // État pour le dashboard d'historique
+  const [showHistory, setShowHistory] = useState(false);
 
   // Helper function to process parsed data with auto-classification
   const processParsedData = (parsedData: BrandMapping[], existingMappings: BrandMapping[]) => {
@@ -398,6 +402,14 @@ export const Mapping: React.FC = () => {
         {uploadPhase === 'upload' && (
           <div className="flex items-center space-x-3">
             <Button
+              onClick={() => setShowHistory(!showHistory)}
+              variant="outline"
+              className="flex items-center space-x-2"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>{showHistory ? 'Masquer historique' : 'Voir historique'}</span>
+            </Button>
+            <Button
               onClick={handleCreateMapping}
               variant="outline"
               className="flex items-center space-x-2"
@@ -408,6 +420,11 @@ export const Mapping: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Dashboard d'historique */}
+      {showHistory && uploadPhase === 'upload' && (
+        <ImportHistoryDashboard onClose={() => setShowHistory(false)} />
+      )}
 
       {/* Nouveau workflow d'upload en phases */}
       {uploadPhase !== 'upload' && (
@@ -817,15 +834,19 @@ export const Mapping: React.FC = () => {
       {/* Table des mappings */}
       {uploadPhase === 'upload' && (
         <>
-          {/* Zone d'upload */}
-          <ExcelUploadZone
-            onParseComplete={handleParseComplete}
-            onParseError={handleParseError}
-          />
+          {!showHistory && (
+            <>
+              {/* Zone d'upload */}
+              <ExcelUploadZone
+                onParseComplete={handleParseComplete}
+                onParseError={handleParseError}
+              />
+            </>
+          )}
         </>
       )}
 
-      {uploadPhase === 'upload' && <Card>
+      {uploadPhase === 'upload' && !showHistory && <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <FileSpreadsheet className="w-5 h-5" />
@@ -842,11 +863,6 @@ export const Mapping: React.FC = () => {
               <p className="text-sm text-gray-400 mb-4">
                 Uploadez le fichier SEGMENTS TARIFAIRES.xlsx pour commencer
               </p>
-              <ExcelUploadZone
-                onParseComplete={handleParseComplete}
-                onError={handleParseError}
-                loading={loading}
-              />
             </div>
           ) : (
             <div className="overflow-x-auto">
