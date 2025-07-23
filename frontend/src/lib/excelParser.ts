@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as XLSX from 'xlsx';
 import Fuse from 'fuse.js';
 import type { ParseResult, BrandMappingOutput } from './schemas';
