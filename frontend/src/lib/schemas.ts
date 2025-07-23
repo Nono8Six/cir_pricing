@@ -58,24 +58,9 @@ export type BrandMappingInput = z.input<typeof BrandMappingSchema>;
 export type BrandMappingOutput = z.output<typeof BrandMappingSchema>;
 
 // Types pour la gestion des erreurs
-export type ValidationErrorLevel = 'BLOCKING' | 'WARNING' | 'INFO';
-
-export interface ValidationError {
-  line: number;
-  column: string;
-  field: string;
-  value: any;
-  expected?: string;
-  message: string;
-  level: ValidationErrorLevel;
-  suggestion?: string;
-}
-
 export interface ParseResult {
   data: BrandMappingOutput[];
-  errors: ValidationError[];
-  warnings: ValidationError[];
-  info: ValidationError[];
+  info: string[];
   totalLines: number;
   validLines: number;
   skippedLines: number;

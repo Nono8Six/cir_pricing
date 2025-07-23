@@ -1,6 +1,5 @@
 import * as XLSX from 'xlsx';
 import Fuse from 'fuse.js';
-import { BrandMappingSchema, ValidationError, ParseResult, DEFAULT_COLUMN_MAPPINGS, ColumnMapping } from './schemas';
 
 export interface ExcelParseOptions {
   sheetName?: string;
@@ -9,22 +8,42 @@ export interface ExcelParseOptions {
 }
 
 export interface HeaderDetectionResult {
-  mapping: ColumnMapping;
+  mapping: Record<string, string>;
   unmappedHeaders: string[];
   confidence: number;
 }
+
+export interface ParseResult {
+  data: any[];
+  totalLines: number;
+  validLines: number;
+  skippedLines: number;
+  info: string[];
+}
+
+// Mapping des colonnes par défaut
+const DEFAULT_COLUMN_MAPPINGS: Record<string, string[]> = {
+  segment: ['SEGMENT', 'Segment', 'segment', 'SEG'],
+  marque: ['MARQUE', 'Marque', 'marque', 'BRAND', 'Brand', 'brand'],
+  cat_fab: ['CAT_FAB', 'Cat_Fab', 'cat_fab', 'CATEGORY', 'Category'],
+  cat_fab_l: ['CAT_FAB_L', 'Cat_Fab_L', 'cat_fab_l', 'DESCRIPTION', 'Description'],
+  strategiq: ['STRATEGIQ', 'Strategiq', 'strategiq', 'STRATEGIC', 'Strategic'],
+  codif_fair: ['CODIF_FAIR', 'Codif_Fair', 'codif_fair', 'CODE_FAIR', 'Code_Fair'],
+  fsmega: ['FSMEGA', 'Fsmega', 'fsmega', 'FS_MEGA', 'Fs_Mega'],
+  fsfam: ['FSFAM', 'Fsfam', 'fsfam', 'FS_FAM', 'Fs_Fam'],
+  fssfa: ['FSSFA', 'Fssfa', 'fssfa', 'FS_SFA', 'Fs_Sfa']
+};
 
 /**
  * Détecte automatiquement les colonnes en utilisant fuzzy matching
  */
 export function detectColumnMapping(headers: string[]): HeaderDetectionResult {
-  const mapping: ColumnMapping = {};
+  const mapping: Record<string, string> = {};
   const unmappedHeaders: string[] = [];
   let totalMatches = 0;
 
-  // Configuration Fuse.js pour le fuzzy matching
   const fuseOptions = {
-    threshold: 0.3, // Plus strict = correspondance plus exacte
+    threshold: 0.3,
     distance: 100,
     includeScore: true
   };
@@ -32,20 +51,19 @@ export function detectColumnMapping(headers: string[]): HeaderDetectionResult {
   for (const header of headers) {
     let bestMatch: { field: string; score: number } | null = null;
 
-    // Chercher la meilleure correspondance pour chaque champ
     for (const [field, variations] of Object.entries(DEFAULT_COLUMN_MAPPINGS)) {
       const fuse = new Fuse(variations, fuseOptions);
       const results = fuse.search(header);
 
       if (results.length > 0 && results[0].score !== undefined) {
-        const score = 1 - results[0].score; // Inverser le score (plus haut = meilleur)
+        const score = 1 - results[0].score;
         if (!bestMatch || score > bestMatch.score) {
           bestMatch = { field, score };
         }
       }
     }
 
-    if (bestMatch && bestMatch.score > 0.7) { // Seuil de confiance
+    if (bestMatch && bestMatch.score > 0.7) {
       mapping[header] = bestMatch.field;
       totalMatches++;
     } else {
@@ -63,7 +81,7 @@ export function detectColumnMapping(headers: string[]): HeaderDetectionResult {
 }
 
 /**
- * Parse un fichier Excel avec détection automatique des colonnes
+ * Parse un fichier Excel sans validation stricte
  */
 export async function parseExcelFile(
   file: File, 
@@ -71,8 +89,7 @@ export async function parseExcelFile(
 ): Promise<ParseResult> {
   const {
     sheetName,
-    skipEmptyRows = true,
-    maxErrors = 10000
+    skipEmptyRows = true
   } = options;
 
   return new Promise((resolve, reject) => {
@@ -86,7 +103,6 @@ export async function parseExcelFile(
         // Déterminer quelle feuille utiliser
         let targetSheetName = sheetName;
         if (!targetSheetName) {
-          // Chercher 'RequeteAs400' en priorité, sinon prendre la première feuille
           targetSheetName = workbook.SheetNames.find(name => 
             name.toLowerCase().includes('requeteas400') || 
             name.toLowerCase().includes('requete')
@@ -114,20 +130,19 @@ export async function parseExcelFile(
         const headers = jsonData[0] as string[];
         const headerDetection = detectColumnMapping(headers);
 
-        if (headerDetection.confidence < 0.5) {
+        if (headerDetection.confidence < 0.3) {
           reject(new Error(
-            `Confiance de détection des colonnes trop faible (${Math.round(headerDetection.confidence * 100)}%). ` +
+            `Impossible de détecter les colonnes. ` +
             `Colonnes non mappées: ${headerDetection.unmappedHeaders.join(', ')}`
           ));
           return;
         }
 
-        // Parser les données ligne par ligne
-        const result = parseDataRows(
-          jsonData.slice(1), // Ignorer la ligne d'en-têtes
+        // Parser les données sans validation stricte
+        const result = parseDataRowsSimple(
+          jsonData.slice(1),
           headers,
-          headerDetection.mapping,
-          maxErrors
+          headerDetection.mapping
         );
 
         resolve(result);
@@ -143,24 +158,21 @@ export async function parseExcelFile(
 }
 
 /**
- * Parse les lignes de données avec validation Zod
+ * Parse les lignes de données sans validation stricte
  */
-function parseDataRows(
+function parseDataRowsSimple(
   rows: any[][],
   headers: string[],
-  columnMapping: ColumnMapping,
-  maxErrors: number
+  columnMapping: Record<string, string>
 ): ParseResult {
   const data: any[] = [];
-  const errors: ValidationError[] = [];
-  const warnings: ValidationError[] = [];
-  const info: ValidationError[] = [];
+  const info: string[] = [];
   let validLines = 0;
   let skippedLines = 0;
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-    const lineNumber = i + 2; // +2 car on a ignoré la ligne d'en-têtes et les index commencent à 0
+    const lineNumber = i + 2;
 
     // Ignorer les lignes complètement vides
     if (!row || row.every(cell => cell === null || cell === undefined || cell === '')) {
@@ -179,17 +191,36 @@ function parseDataRows(
         if (fieldName) {
           let value = row[j];
           
-          // Nettoyage et conversion des valeurs
+          // Nettoyage basique des valeurs
           if (typeof value === 'string') {
             value = value.trim();
             if (value === '') value = null;
           }
           
-          // Conversion des nombres pour les champs numériques
+          // Conversion automatique des nombres
           if (['strategiq', 'fsmega', 'fsfam', 'fssfa'].includes(fieldName) && value !== null) {
             const numValue = Number(value);
             if (!isNaN(numValue)) {
-              value = Math.floor(numValue); // Convertir en entier
+              value = Math.floor(numValue);
+            }
+          }
+          
+          // Valeurs par défaut simples
+          if (value === null || value === undefined) {
+            switch (fieldName) {
+              case 'strategiq':
+                value = 0;
+                break;
+              case 'fsmega':
+                value = 1;
+                break;
+              case 'fsfam':
+              case 'fssfa':
+                value = 99;
+                break;
+              case 'country':
+                value = 'France';
+                break;
             }
           }
           
@@ -197,207 +228,31 @@ function parseDataRows(
         }
       }
 
-      // Validation avec Zod
-      const validationResult = BrandMappingSchema.safeParse(rowData);
-
-      if (validationResult.success) {
-        data.push(validationResult.data);
-        validLines++;
-        
-        // Ajouter des infos pour les valeurs par défaut utilisées
-        const originalData = rowData;
-        const processedData = validationResult.data;
-        
-        Object.keys(processedData).forEach(key => {
-          if (originalData[key] === null || originalData[key] === undefined) {
-            if (processedData[key] !== null && processedData[key] !== undefined) {
-              info.push({
-                line: lineNumber,
-                column: key,
-                field: key,
-                value: originalData[key],
-                expected: String(processedData[key]),
-                message: `Valeur par défaut appliquée: ${processedData[key]}`,
-                level: 'INFO'
-              });
-            }
-          }
-        });
-
-      } else {
-        // Traiter les erreurs de validation
-        validationResult.error.errors.forEach(error => {
-          const field = error.path.join('.');
-          const isRequired = error.code === 'invalid_type' && error.message.includes('Required');
-          
-          errors.push({
-            line: lineNumber,
-            column: getColumnNameFromField(field, headers, columnMapping),
-            field: field,
-            value: rowData[field],
-            expected: getExpectedValue(field, error),
-            message: error.message,
-            level: isRequired ? 'BLOCKING' : 'WARNING',
-            suggestion: getSuggestion(field, rowData[field], error)
-          });
-        });
-
-        if (errors.filter(e => e.level === 'BLOCKING').length === 0) {
-          // Si pas d'erreurs bloquantes, essayer d'appliquer les corrections automatiques
-          const correctedData = applyCorrections(rowData);
-          const retryResult = BrandMappingSchema.safeParse(correctedData);
-          
-          if (retryResult.success) {
-            data.push(retryResult.data);
-            validLines++;
-            
-            warnings.push({
-              line: lineNumber,
-              column: 'auto-correction',
-              field: 'multiple',
-              value: 'données corrigées',
-              message: 'Ligne corrigée automatiquement',
-              level: 'WARNING'
-            });
-          } else {
-            skippedLines++;
-          }
-        } else {
-          skippedLines++;
+      // Vérifier seulement les champs absolument obligatoires
+      if (rowData.segment && rowData.marque && rowData.cat_fab) {
+        // Calculer classif_cir automatiquement
+        if (rowData.fsmega && rowData.fsfam && rowData.fssfa) {
+          rowData.classif_cir = `${rowData.fsmega} ${rowData.fsfam} ${rowData.fssfa}`;
         }
+        
+        data.push(rowData);
+        validLines++;
+      } else {
+        skippedLines++;
+        info.push(`Ligne ${lineNumber}: Champs obligatoires manquants (segment, marque, cat_fab)`);
       }
 
     } catch (error) {
-      errors.push({
-        line: lineNumber,
-        column: 'parsing',
-        field: 'row',
-        value: row,
-        message: `Erreur de parsing: ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
-        level: 'BLOCKING'
-      });
       skippedLines++;
-    }
-
-    // Arrêter si trop d'erreurs
-    if (errors.length >= maxErrors) {
-      errors.push({
-        line: lineNumber,
-        column: 'system',
-        field: 'limit',
-        value: maxErrors,
-        message: `Limite d'erreurs atteinte (${maxErrors}). Parsing arrêté à la ligne ${lineNumber}. Fichier trop volumineux ou contenant trop d'erreurs.`,
-        level: 'BLOCKING'
-      });
-      break;
+      info.push(`Ligne ${lineNumber}: Erreur de parsing - ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
     }
   }
 
   return {
     data,
-    errors,
-    warnings,
-    info,
     totalLines: rows.length,
     validLines,
-    skippedLines
+    skippedLines,
+    info
   };
-}
-
-/**
- * Obtient la valeur attendue pour un champ en erreur
- */
-function getExpectedValue(field: string, error: any): string {
-  switch (field) {
-    case 'strategiq':
-      return '0 ou 1';
-    case 'fsmega':
-    case 'fsfam':
-    case 'fssfa':
-      return 'nombre entier entre 1 et 999';
-    default:
-      return error.expected || 'valeur valide';
-  }
-}
-
-/**
- * Génère une suggestion de correction
- */
-function getSuggestion(field: string, value: any, error: any): string | undefined {
-  if (value === null || value === undefined || value === '') {
-    return 'Remplir ce champ obligatoire';
-  }
-
-  switch (field) {
-    case 'strategiq':
-      if (typeof value === 'string') {
-        const lower = value.toLowerCase();
-        if (lower.includes('oui') || lower.includes('yes') || lower.includes('true')) {
-          return 'Remplacer par 1';
-        }
-        if (lower.includes('non') || lower.includes('no') || lower.includes('false')) {
-          return 'Remplacer par 0';
-        }
-      }
-      return 'Utiliser 0 (non stratégique) ou 1 (stratégique)';
-    
-    case 'fsmega':
-    case 'fsfam':
-    case 'fssfa':
-      if (typeof value === 'string' && !isNaN(Number(value))) {
-        return `Convertir "${value}" en nombre`;
-      }
-      if (typeof value === 'number' && value <= 0) {
-        return 'Utiliser une valeur supérieure à 0';
-      }
-      return 'Utiliser un nombre entier entre 1 et 999';
-    
-    default:
-      return undefined;
-  }
-}
-
-/**
- * Applique des corrections automatiques simples
- */
-function applyCorrections(data: any): any {
-  const corrected = { ...data };
-
-  // Corrections pour strategiq
-  if (corrected.strategiq !== null && corrected.strategiq !== undefined) {
-    if (typeof corrected.strategiq === 'string') {
-      const lower = corrected.strategiq.toLowerCase();
-      if (lower.includes('oui') || lower.includes('yes') || lower.includes('true')) {
-        corrected.strategiq = 1;
-      } else if (lower.includes('non') || lower.includes('no') || lower.includes('false')) {
-        corrected.strategiq = 0;
-      }
-    }
-  }
-
-  // Corrections pour les champs numériques
-  ['fsmega', 'fsfam', 'fssfa'].forEach(field => {
-    if (corrected[field] !== null && corrected[field] !== undefined) {
-      if (typeof corrected[field] === 'string' && !isNaN(Number(corrected[field]))) {
-        corrected[field] = Math.floor(Number(corrected[field]));
-      }
-      if (typeof corrected[field] === 'number' && corrected[field] <= 0) {
-        corrected[field] = field === 'fsmega' ? 1 : 99; // Valeurs par défaut
-      }
-    }
-  });
-
-  return corrected;
-}
-/**
- * Obtient le nom de la colonne Excel à partir du nom du champ
- */
-function getColumnNameFromField(field: string, headers: string[], columnMapping: ColumnMapping): string {
-  // Trouver la colonne Excel qui correspond à ce champ
-  for (const [header, mappedField] of Object.entries(columnMapping)) {
-    if (mappedField === field) {
-      return header;
-    }
-  }
-  return field; // Fallback au nom du champ si pas trouvé
 }
