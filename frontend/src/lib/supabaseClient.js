@@ -140,13 +140,10 @@ export const mappingApi = {
 
   // Get ALL unique segments (no filters applied)
   async getAllUniqueSegments() {
-    const { data, error } = await supabase
-      .from('brand_category_mappings')
-      .select('segment')
-      .order('segment');
-    
+    const { data, error } = await supabase.rpc('get_all_unique_segments');
+
     if (error) throw error;
-    return [...new Set(data.map(item => item.segment))].sort();
+    return data || [];
   },
 
   // Get unique marques for filter
@@ -162,13 +159,10 @@ export const mappingApi = {
 
   // Get ALL unique marques (no filters applied)
   async getAllUniqueMarques() {
-    const { data, error } = await supabase
-      .from('brand_category_mappings')
-      .select('marque')
-      .order('marque');
-    
+    const { data, error } = await supabase.rpc('get_all_unique_marques');
+
     if (error) throw error;
-    return [...new Set(data.map(item => item.marque))].sort();
+    return data || [];
   },
 
   // Get unique FSMEGA values for filter
@@ -184,13 +178,10 @@ export const mappingApi = {
 
   // Get ALL unique FSMEGA values (no filters applied)
   async getAllUniqueFsmegas() {
-    const { data, error } = await supabase
-      .from('brand_category_mappings')
-      .select('fsmega')
-      .order('fsmega');
-    
+    const { data, error } = await supabase.rpc('get_all_unique_fsmegas');
+
     if (error) throw error;
-    return [...new Set(data.map(item => item.fsmega))].sort((a, b) => a - b);
+    return data || [];
   },
 
   // Get unique FSFAM values for filter
@@ -206,13 +197,10 @@ export const mappingApi = {
 
   // Get ALL unique FSFAM values (no filters applied)
   async getAllUniqueFsfams() {
-    const { data, error } = await supabase
-      .from('brand_category_mappings')
-      .select('fsfam')
-      .order('fsfam');
-    
+    const { data, error } = await supabase.rpc('get_all_unique_fsfams');
+
     if (error) throw error;
-    return [...new Set(data.map(item => item.fsfam))].sort((a, b) => a - b);
+    return data || [];
   },
 
   // Get unique FSSFA values for filter
@@ -228,13 +216,10 @@ export const mappingApi = {
 
   // Get ALL unique FSSFA values (no filters applied)
   async getAllUniqueFssfas() {
-    const { data, error } = await supabase
-      .from('brand_category_mappings')
-      .select('fssfa')
-      .order('fssfa');
-    
+    const { data, error } = await supabase.rpc('get_all_unique_fssfas');
+
     if (error) throw error;
-    return [...new Set(data.map(item => item.fssfa))].sort((a, b) => a - b);
+    return data || [];
   },
 
   // Get total count of unique segments via RPC
