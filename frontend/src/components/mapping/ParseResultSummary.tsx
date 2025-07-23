@@ -195,15 +195,53 @@ export const ParseResultSummary: React.FC<ParseResultSummaryProps> = ({
                   <div className="flex items-start space-x-2">
                     {getStatusIcon(error.level)}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2 text-sm">
-                        <span className="font-medium">Ligne {error.line}</span>
+                      <div className="flex items-center space-x-2 text-sm mb-2">
+                        <span className="font-bold text-gray-900">Ligne {error.line}</span>
                         <span className="text-gray-500">•</span>
-                        <span className="font-medium">{error.field}</span>
+                        <span className="font-bold text-blue-700">{error.field}</span>
+                        <span className="text-gray-500">•</span>
+                        <span className="text-xs bg-gray-100 px-2 py-1 rounded font-mono">
+                          {error.level}
+                        </span>
                       </div>
-                      <p className="text-sm mt-1">{error.message}</p>
+                      
+                      {/* Valeur actuelle vs attendue */}
+                      <div className="bg-gray-50 p-2 rounded text-xs mb-2 font-mono">
+                        <div className="grid grid-cols-1 gap-1">
+                          <div>
+                            <span className="text-red-600 font-semibold">Valeur trouvée:</span>{' '}
+                            <span className="bg-red-100 px-1 rounded">
+                              {error.value === null || error.value === undefined || error.value === '' 
+                                ? '(vide)' 
+                                : JSON.stringify(error.value)
+                              }
+                            </span>
+                          </div>
+                          {error.expected && (
+                            <div>
+                              <span className="text-green-600 font-semibold">Valeur attendue:</span>{' '}
+                              <span className="bg-green-100 px-1 rounded">{error.expected}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Message d'erreur */}
+                      <p className="text-sm text-gray-700 mb-2 font-medium">{error.message}</p>
+                      
+                      {/* Suggestion d'amélioration */}
                       {error.suggestion && (
-                        <p className="text-xs mt-1 font-medium">
-                          💡 {error.suggestion}
+                        <div className="bg-blue-50 border-l-4 border-blue-400 p-2 mt-2">
+                          <p className="text-xs font-medium text-blue-800">
+                            💡 <strong>Suggestion:</strong> {error.suggestion}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {/* Contexte de la colonne si disponible */}
+                      {error.column && error.column !== error.field && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          <strong>Colonne Excel:</strong> {error.column}
                         </p>
                       )}
                     </div>
@@ -242,12 +280,17 @@ export const ParseResultSummary: React.FC<ParseResultSummaryProps> = ({
                   <div className="flex items-start space-x-2">
                     {getStatusIcon(warning.level)}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2 text-sm">
-                        <span className="font-medium">Ligne {warning.line}</span>
+                      <div className="flex items-center space-x-2 text-sm mb-1">
+                        <span className="font-bold text-gray-900">Ligne {warning.line}</span>
                         <span className="text-gray-500">•</span>
-                        <span className="font-medium">{warning.field}</span>
+                        <span className="font-bold text-orange-700">{warning.field}</span>
                       </div>
-                      <p className="text-sm mt-1">{warning.message}</p>
+                      <p className="text-sm text-gray-700">{warning.message}</p>
+                      {warning.value !== undefined && (
+                        <p className="text-xs text-gray-500 mt-1 font-mono">
+                          <strong>Valeur:</strong> {warning.value === null || warning.value === '' ? '(vide)' : String(warning.value)}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </motion.div>
@@ -284,12 +327,17 @@ export const ParseResultSummary: React.FC<ParseResultSummaryProps> = ({
                   <div className="flex items-start space-x-2">
                     {getStatusIcon(infoItem.level)}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2 text-sm">
-                        <span className="font-medium">Ligne {infoItem.line}</span>
+                      <div className="flex items-center space-x-2 text-sm mb-1">
+                        <span className="font-bold text-gray-900">Ligne {infoItem.line}</span>
                         <span className="text-gray-500">•</span>
-                        <span className="font-medium">{infoItem.field}</span>
+                        <span className="font-bold text-blue-700">{infoItem.field}</span>
                       </div>
-                      <p className="text-sm mt-1">{infoItem.message}</p>
+                      <p className="text-sm text-gray-700">{infoItem.message}</p>
+                      {infoItem.expected && (
+                        <p className="text-xs text-blue-600 mt-1 font-mono">
+                          <strong>Valeur appliquée:</strong> {infoItem.expected}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </motion.div>

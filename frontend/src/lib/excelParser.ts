@@ -232,7 +232,7 @@ function parseDataRows(
           
           errors.push({
             line: lineNumber,
-            column: field,
+            column: getColumnNameFromField(field, headers, columnMapping),
             field: field,
             value: rowData[field],
             expected: getExpectedValue(field, error),
@@ -388,4 +388,16 @@ function applyCorrections(data: any): any {
   });
 
   return corrected;
+}
+/**
+ * Obtient le nom de la colonne Excel à partir du nom du champ
+ */
+function getColumnNameFromField(field: string, headers: string[], columnMapping: ColumnMapping): string {
+  // Trouver la colonne Excel qui correspond à ce champ
+  for (const [header, mappedField] of Object.entries(columnMapping)) {
+    if (mappedField === field) {
+      return header;
+    }
+  }
+  return field; // Fallback au nom du champ si pas trouvé
 }
