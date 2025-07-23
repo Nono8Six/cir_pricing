@@ -24,16 +24,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
+         console.warn('Session error:', error);
+         setUser(null);
           setLoading(false);
           return;
         }
 
         if (session?.user) {
           setUser(session.user);
+       } else {
+         setUser(null);
         }
         
         setLoading(false);
       } catch (error) {
+       console.warn('Failed to get initial session:', error);
+       setUser(null);
         setLoading(false);
       }
     };
