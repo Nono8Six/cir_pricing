@@ -286,7 +286,7 @@ function parseDataRows(
         column: 'system',
         field: 'limit',
         value: maxErrors,
-        message: `Limite d'erreurs atteinte (${maxErrors}). Parsing arrêté.`,
+        message: `Limite d'erreurs atteinte (${maxErrors}). Parsing arrêté à la ligne ${lineNumber}. Fichier trop volumineux ou contenant trop d'erreurs.`,
         level: 'BLOCKING'
       });
       break;
