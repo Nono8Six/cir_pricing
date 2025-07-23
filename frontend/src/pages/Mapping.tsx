@@ -6,7 +6,6 @@ import {
   Search, 
   Edit, 
   Trash2, 
-  Upload,
   Filter,
   ChevronLeft,
   ChevronRight
@@ -14,10 +13,12 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { MappingModal } from '../components/mapping/MappingModal';
+import { ExcelUploadZone } from '../components/mapping/ExcelUploadZone';
+import { ParseResultSummary } from '../components/mapping/ParseResultSummary';
 import { toast } from 'sonner';
 import { mappingApi } from '../lib/supabaseClient';
 import { useDebounce } from '../hooks/useDebounce';
-import * as XLSX from 'xlsx';
+import { ParseResult } from '../lib/schemas';
 
 interface BrandMapping {
   id: string;
@@ -80,6 +81,11 @@ export const Mapping: React.FC = () => {
   const [totalSegments, setTotalSegments] = useState(0);
   const [totalMarques, setTotalMarques] = useState(0);
   const [totalStrategiques, setTotalStrategiques] = useState(0);
+
+  // États pour le nouveau workflow d'upload
+  const [uploadPhase, setUploadPhase] = useState<'upload' | 'analyze' | 'preview' | 'apply'>('upload');
+  const [parseResult, setParseResult] = useState<ParseResult | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   // Charger les données
   const fetchData = async () => {
@@ -186,123 +192,25 @@ export const Mapping: React.FC = () => {
   const startItem = (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalCount);
 
-  // Calculer CLASSIF_CIR automatiquement
-  const calculateClassifCir = (fsmega: number, fsfam: number, fssfa: number): string => {
-    return `${fsmega} ${fsfam} ${fssfa}`;
+  // Gestionnaires pour le nouveau workflow
+  const handleParseComplete = (result: ParseResult, file: File) => {
+    setParseResult(result);
+    setUploadedFile(file);
+    setUploadPhase('analyze');
   };
 
-  // Parser le fichier Excel
-  const parseExcelFile = (file: File): Promise<BrandMapping[]> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      
-      reader.onload = (e) => {
-        try {
-          const data = new Uint8Array(e.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: 'array' });
-          
-          // Chercher la sheet 'RequeteAs400'
-          const sheetName = 'RequeteAs400';
-          if (!workbook.SheetNames.includes(sheetName)) {
-            reject(new Error(`Sheet '${sheetName}' non trouvée dans le fichier Excel`));
-            return;
-          }
-          
-          const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-          
-          // Vérifier qu'il y a des données
-          if (jsonData.length < 2) {
-            reject(new Error('Le fichier Excel ne contient pas assez de données'));
-            return;
-          }
-          
-          // Mapper les colonnes (row 0 = headers, row 1+ = data)
-          const headers = jsonData[0] as string[];
-          const mappedData: BrandMapping[] = [];
-          
-          for (let i = 1; i < jsonData.length; i++) {
-            const row = jsonData[i] as any[];
-            if (!row || row.length === 0) continue;
-            
-            try {
-              const fsmega = parseInt(row[6]) || 0;
-              const fsfam = parseInt(row[7]) || 0;
-              const fssfa = parseInt(row[8]) || 0;
-              
-              const mapping: Partial<BrandMapping> = {
-                segment: String(row[0] || '').trim(),
-                marque: String(row[1] || '').trim(),
-                cat_fab: String(row[2] || '').trim(),
-                cat_fab_l: String(row[3] || '').trim() || null,
-                strategiq: parseInt(row[4]) || 0,
-                codif_fair: String(row[5] || '').trim() || null,
-                fsmega,
-                fsfam,
-                fssfa
-              };
-              
-              // Validation des champs requis
-              if (!mapping.segment || !mapping.marque || !mapping.cat_fab) {
-                console.warn(`Ligne ${i + 1} ignorée: champs requis manquants`);
-                continue;
-              }
-              
-              mappedData.push(mapping as BrandMapping);
-            } catch (error) {
-              console.warn(`Erreur ligne ${i + 1}:`, error);
-            }
-          }
-          
-          resolve(mappedData);
-        } catch (error) {
-          reject(error);
-        }
-      };
-      
-      reader.onerror = () => reject(new Error('Erreur lecture fichier'));
-      reader.readAsArrayBuffer(file);
-    });
+  const handleParseError = (error: string) => {
+    toast.error(error);
   };
 
-  // Upload et traitement du fichier Excel
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    
-    if (!file.name.endsWith('.xlsx')) {
-      toast.error('Veuillez sélectionner un fichier Excel (.xlsx)');
-      return;
-    }
-    
-    setUploadLoading(true);
-    
-    try {
-      // Parser le fichier
-      const mappingsData = await parseExcelFile(file);
-      
-      if (mappingsData.length === 0) {
-        toast.error('Aucune donnée valide trouvée dans le fichier');
-        return;
-      }
-      
-      // Batch upsert dans Supabase
-      const result = await mappingApi.batchUpsertMappings(mappingsData);
-      
-      toast.success(`${result.length} mappings traités avec succès`);
-      
-      // Recharger les données
-      fetchData();
-      
-      // Reset input
-      event.target.value = '';
-      
-    } catch (error: any) {
-      console.error('Erreur upload:', error);
-      toast.error(error.message || 'Erreur lors du traitement du fichier');
-    } finally {
-      setUploadLoading(false);
-    }
+  const handleContinueToPreview = () => {
+    setUploadPhase('preview');
+  };
+
+  const handleRetryUpload = () => {
+    setUploadPhase('upload');
+    setParseResult(null);
+    setUploadedFile(null);
   };
 
   // Ouvrir le modal pour créer un mapping
@@ -375,22 +283,6 @@ export const Mapping: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center space-x-3">
-          <div className="relative">
-            <input
-              type="file"
-              accept=".xlsx"
-              onChange={handleFileUpload}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              disabled={uploadLoading}
-            />
-            <Button
-              disabled={uploadLoading}
-              className="flex items-center space-x-2"
-            >
-              <Upload className="w-4 h-4" />
-              <span>{uploadLoading ? 'Upload...' : 'Upload Excel'}</span>
-            </Button>
-          </div>
           <Button
             onClick={handleCreateMapping}
             variant="outline"
@@ -401,6 +293,33 @@ export const Mapping: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {/* Nouveau workflow d'upload en phases */}
+      {uploadPhase !== 'upload' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <FileSpreadsheet className="w-5 h-5" />
+              <span>Import Excel - Phase {uploadPhase === 'analyze' ? '1' : uploadPhase === 'preview' ? '2' : '3'}</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {uploadPhase === 'analyze' && parseResult && uploadedFile && (
+              <ParseResultSummary
+                result={parseResult}
+                filename={uploadedFile.name}
+                onContinue={handleContinueToPreview}
+                onRetry={handleRetryUpload}
+              />
+            )}
+            {uploadPhase === 'preview' && (
+              <div className="text-center py-8">
+                <p className="text-gray-500">Phase Preview - En cours de développement</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Statistiques */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
@@ -777,6 +696,17 @@ export const Mapping: React.FC = () => {
       </Card>
 
       {/* Table des mappings */}
+      {uploadPhase === 'upload' && (
+        <>
+          {/* Zone d'upload */}
+          <ExcelUploadZone
+            onParseComplete={handleParseComplete}
+            onError={handleParseError}
+            loading={loading}
+          />
+        </>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
@@ -794,19 +724,11 @@ export const Mapping: React.FC = () => {
               <p className="text-sm text-gray-400 mb-4">
                 Uploadez le fichier SEGMENTS TARIFAIRES.xlsx pour commencer
               </p>
-              <div className="relative inline-block">
-                <input
-                  type="file"
-                  accept=".xlsx"
-                  onChange={handleFileUpload}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  disabled={uploadLoading}
-                />
-                <Button variant="outline" disabled={uploadLoading}>
-                  <Upload className="w-4 h-4 mr-2" />
-                  {uploadLoading ? 'Upload...' : 'Upload Excel'}
-                </Button>
-              </div>
+              <ExcelUploadZone
+                onParseComplete={handleParseComplete}
+                onError={handleParseError}
+                loading={loading}
+              />
             </div>
           ) : (
             <div className="overflow-x-auto">
