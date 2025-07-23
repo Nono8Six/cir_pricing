@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import Fuse from 'fuse.js';
+import type { ParseResult, BrandMappingOutput } from './schemas';
 
 export interface ExcelParseOptions {
   sheetName?: string;
@@ -13,13 +14,6 @@ export interface HeaderDetectionResult {
   confidence: number;
 }
 
-export interface ParseResult {
-  data: any[];
-  totalLines: number;
-  validLines: number;
-  skippedLines: number;
-  info: string[];
-}
 
 // Mapping des colonnes par défaut
 const DEFAULT_COLUMN_MAPPINGS: Record<string, string[]> = {
@@ -142,7 +136,8 @@ export async function parseExcelFile(
         const result = parseDataRowsSimple(
           jsonData.slice(1),
           headers,
-          headerDetection.mapping
+          headerDetection.mapping,
+          options
         );
 
         resolve(result);
@@ -163,12 +158,15 @@ export async function parseExcelFile(
 function parseDataRowsSimple(
   rows: any[][],
   headers: string[],
-  columnMapping: Record<string, string>
+  columnMapping: Record<string, string>,
+  options: ExcelParseOptions = {}
 ): ParseResult {
-  const data: any[] = [];
+  const data: BrandMappingOutput[] = [];
   const info: string[] = [];
   let validLines = 0;
   let skippedLines = 0;
+  let errorCount = 0;
+  const { maxErrors = Infinity } = options;
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -182,7 +180,7 @@ function parseDataRowsSimple(
 
     try {
       // Construire l'objet à partir du mapping des colonnes
-      const rowData: any = {};
+      const rowData: Partial<BrandMappingOutput> = {};
       
       for (let j = 0; j < headers.length; j++) {
         const header = headers[j];
@@ -235,16 +233,23 @@ function parseDataRowsSimple(
           rowData.classif_cir = `${rowData.fsmega} ${rowData.fsfam} ${rowData.fssfa}`;
         }
         
-        data.push(rowData);
+        data.push(rowData as BrandMappingOutput);
         validLines++;
       } else {
         skippedLines++;
         info.push(`Ligne ${lineNumber}: Champs obligatoires manquants (segment, marque, cat_fab)`);
+        errorCount++;
       }
 
     } catch (error) {
       skippedLines++;
       info.push(`Ligne ${lineNumber}: Erreur de parsing - ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+      errorCount++;
+    }
+
+    if (errorCount >= maxErrors) {
+      info.push(`Nombre maximum d'erreurs (${maxErrors}) atteint. Traitement interrompu.`);
+      break;
     }
   }
 
