@@ -92,7 +92,7 @@ export const MappingHistoryTab: React.FC = () => {
       
       let query = supabase
         .from('import_batches')
-        .select('*, profiles(first_name, last_name, email)')
+        .select('*')
         .order('timestamp', { ascending: false });
 
       // Appliquer les filtres
@@ -114,6 +114,24 @@ export const MappingHistoryTab: React.FC = () => {
       if (error) throw error;
 
       setBatches(batchesData || []);
+
+      // Récupérer les informations des profils séparément
+      if (batchesData && batchesData.length > 0) {
+        const userIds = [...new Set(batchesData.map(batch => batch.user_id))];
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, email')
+          .in('id', userIds);
+
+        if (!profilesError && profilesData) {
+          // Enrichir les batches avec les informations des profils
+          const enrichedBatches = batchesData.map(batch => ({
+            ...batch,
+            profiles: profilesData.find(profile => profile.id === batch.user_id)
+          }));
+          setBatches(enrichedBatches);
+        }
+      }
 
       // Calculer les statistiques pour les batches
       const { data: allBatches, error: statsError } = await supabase
@@ -153,7 +171,7 @@ export const MappingHistoryTab: React.FC = () => {
       
       let query = supabase
         .from('brand_mapping_history')
-        .select('*, profiles(first_name, last_name, email)')
+        .select('*')
         .order('changed_at', { ascending: false });
 
       // Appliquer les filtres
@@ -175,6 +193,24 @@ export const MappingHistoryTab: React.FC = () => {
       if (error) throw error;
 
       setChanges(changesData || []);
+
+      // Récupérer les informations des profils séparément
+      if (changesData && changesData.length > 0) {
+        const userIds = [...new Set(changesData.map(change => change.changed_by))];
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, email')
+          .in('id', userIds);
+
+        if (!profilesError && profilesData) {
+          // Enrichir les changements avec les informations des profils
+          const enrichedChanges = changesData.map(change => ({
+            ...change,
+            profiles: profilesData.find(profile => profile.id === change.changed_by)
+          }));
+          setChanges(enrichedChanges);
+        }
+      }
 
       // Calculer les statistiques pour les changements
       const { data: allChanges, error: statsError } = await supabase
