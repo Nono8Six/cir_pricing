@@ -61,31 +61,50 @@ export const ImportHistoryDashboard: React.FC<ImportHistoryDashboardProps> = ({ 
       // Récupérer l'historique des imports avec les profils utilisateurs
       const { data: batchesData, error } = await supabase
         .from('import_batches')
-        .select(`
-          *,
-          profiles:users!user_id (
-            first_name,
-            last_name,
-            email
-          )
-        `)
+        .select('*')
         .order('timestamp', { ascending: false })
         .limit(50);
 
       if (error) throw error;
 
-      setBatches(batchesData || []);
+      // Récupérer les informations utilisateurs séparément depuis auth.users
+      const userIds = [...new Set(batchesData?.map(b => b.user_id).filter(Boolean))];
+      const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers();
+      
+      if (usersError) {
+        console.warn('Could not fetch user details:', usersError);
+      }
+
+      // Créer un map des utilisateurs
+      const usersMap = new Map();
+      if (usersData?.users) {
+        usersData.users.forEach(user => {
+          usersMap.set(user.id, {
+            email: user.email,
+            first_name: user.user_metadata?.first_name,
+            last_name: user.user_metadata?.last_name
+          });
+        });
+      }
+
+      // Enrichir les données avec les infos utilisateurs
+      const enrichedBatches = batchesData?.map(batch => ({
+        ...batch,
+        profiles: usersMap.get(batch.user_id) || { email: 'Utilisateur inconnu' }
+      }));
+
+      setBatches(enrichedBatches || []);
 
       // Calculer les statistiques
-      if (batchesData && batchesData.length > 0) {
-        const totalImports = batchesData.length;
-        const successfulImports = batchesData.filter(b => b.status === 'completed').length;
-        const totalLinesProcessed = batchesData.reduce((sum, b) => sum + (b.processed_lines || 0), 0);
-        const averageSuccessRate = batchesData.length > 0 
-          ? batchesData.reduce((sum, b) => {
+      if (enrichedBatches && enrichedBatches.length > 0) {
+        const totalImports = enrichedBatches.length;
+        const successfulImports = enrichedBatches.filter(b => b.status === 'completed').length;
+        const totalLinesProcessed = enrichedBatches.reduce((sum, b) => sum + (b.processed_lines || 0), 0);
+        const averageSuccessRate = enrichedBatches.length > 0 
+          ? enrichedBatches.reduce((sum, b) => {
               const rate = b.total_lines > 0 ? (b.processed_lines / b.total_lines) * 100 : 0;
               return sum + rate;
-            }, 0) / batchesData.length
+            }, 0) / enrichedBatches.length
           : 0;
 
         setStats({
