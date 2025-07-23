@@ -205,21 +205,20 @@ function parseDataRowsSimple(
             }
           }
           
-          // Valeurs par défaut simples
+          // Valeurs par défaut simples (sauf pour fsmega, fsfam, fssfa qui seront traités par l'auto-classification)
           if (value === null || value === undefined) {
             switch (fieldName) {
               case 'strategiq':
                 value = 0;
                 break;
-              case 'fsmega':
-                value = 1;
-                break;
-              case 'fsfam':
-              case 'fssfa':
-                value = 99;
-                break;
               case 'country':
                 value = 'France';
+                break;
+              // Pour fsmega, fsfam, fssfa : laisser null pour déclencher l'auto-classification
+              case 'fsmega':
+              case 'fsfam':
+              case 'fssfa':
+                value = null;
                 break;
             }
           }
@@ -230,8 +229,9 @@ function parseDataRowsSimple(
 
       // Vérifier seulement les champs absolument obligatoires
       if (rowData.segment && rowData.marque && rowData.cat_fab) {
-        // Calculer classif_cir automatiquement
-        if (rowData.fsmega && rowData.fsfam && rowData.fssfa) {
+        // Calculer classif_cir automatiquement (sera fait après auto-classification)
+        if (rowData.fsmega && rowData.fsfam && rowData.fssfa && 
+            rowData.fsmega > 0 && rowData.fsfam > 0 && rowData.fssfa > 0) {
           rowData.classif_cir = `${rowData.fsmega} ${rowData.fsfam} ${rowData.fssfa}`;
         }
         

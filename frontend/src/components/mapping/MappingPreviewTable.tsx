@@ -6,7 +6,10 @@ import {
   FileSpreadsheet, 
   AlertTriangle,
   CheckCircle,
-  ArrowRight
+  ArrowRight,
+  TrendingUp,
+  Database,
+  Zap
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 
@@ -29,6 +32,7 @@ interface MappingChange {
   data: BrandMapping;
   existing?: BrandMapping;
   changes?: string[];
+  autoClassified?: boolean;
 }
 
 interface MappingPreviewTableProps {
@@ -40,7 +44,56 @@ export const MappingPreviewTable: React.FC<MappingPreviewTableProps> = ({
   parsedData,
   existingMappings
 }) => {
-  // Analyser les changements
+  // Auto-classification CIR intelligente
+  const processedData = useMemo(() => {
+    return parsedData.map(mapping => {
+      // Si FSMEGA, FSFAM, FSSFA sont vides ou invalides
+      if (!mapping.fsmega || !mapping.fsfam || !mapping.fssfa || 
+          mapping.fsmega === 0 || mapping.fsfam === 0 || mapping.fssfa === 0) {
+        
+        // Chercher d'autres lignes avec la même marque dans les données existantes
+        const sameMarqueMappings = existingMappings.filter(m => 
+          m.marque.toLowerCase() === mapping.marque.toLowerCase() && 
+          m.fsmega && m.fsmega > 0
+        );
+
+        if (sameMarqueMappings.length > 0) {
+          // Compter les occurrences de chaque FSMEGA
+          const fsmegaCounts = sameMarqueMappings.reduce((acc, m) => {
+            acc[m.fsmega] = (acc[m.fsmega] || 0) + 1;
+            return acc;
+          }, {} as Record<number, number>);
+
+          // Trouver le FSMEGA le plus fréquent
+          const mostFrequentFsmega = Object.entries(fsmegaCounts)
+            .sort(([,a], [,b]) => b - a)[0];
+
+          if (mostFrequentFsmega) {
+            return {
+              ...mapping,
+              fsmega: parseInt(mostFrequentFsmega[0]),
+              fsfam: 99,
+              fssfa: 99,
+              autoClassified: true
+            };
+          }
+        }
+
+        // Valeurs par défaut si aucune correspondance trouvée
+        return {
+          ...mapping,
+          fsmega: mapping.fsmega || 1,
+          fsfam: mapping.fsfam || 99,
+          fssfa: mapping.fssfa || 99,
+          autoClassified: !mapping.fsmega || !mapping.fsfam || !mapping.fssfa
+        };
+      }
+
+      return mapping;
+    });
+  }, [parsedData, existingMappings]);
+
+  // Analyser les changements avec les données traitées
   const changes = useMemo(() => {
     const result: MappingChange[] = [];
     
@@ -51,8 +104,8 @@ export const MappingPreviewTable: React.FC<MappingPreviewTableProps> = ({
       existingIndex.set(key, mapping);
     });
 
-    // Analyser chaque ligne parsée
-    parsedData.forEach(parsedMapping => {
+    // Analyser chaque ligne traitée
+    processedData.forEach(parsedMapping => {
       const key = `${parsedMapping.marque}|${parsedMapping.cat_fab}`;
       const existing = existingIndex.get(key);
 
@@ -60,7 +113,8 @@ export const MappingPreviewTable: React.FC<MappingPreviewTableProps> = ({
         // Nouveau mapping
         result.push({
           type: 'new',
-          data: parsedMapping
+          data: parsedMapping,
+          autoClassified: parsedMapping.autoClassified
         });
       } else {
         // Vérifier les changements
@@ -92,17 +146,19 @@ export const MappingPreviewTable: React.FC<MappingPreviewTableProps> = ({
             type: 'update',
             data: parsedMapping,
             existing,
-            changes: changedFields
+            changes: changedFields,
+            autoClassified: parsedMapping.autoClassified
           });
         }
       }
     });
 
     return result;
-  }, [parsedData, existingMappings]);
+  }, [processedData, existingMappings]);
 
   const newCount = changes.filter(c => c.type === 'new').length;
   const updateCount = changes.filter(c => c.type === 'update').length;
+  const autoClassifiedCount = changes.filter(c => c.autoClassified).length;
 
   const getChangeIcon = (type: 'new' | 'update') => {
     return type === 'new' ? Plus : Edit;
@@ -125,16 +181,28 @@ export const MappingPreviewTable: React.FC<MappingPreviewTableProps> = ({
 
   const renderFieldComparison = (field: string, change: MappingChange) => {
     if (change.type === 'new') {
+      const value = change.data[field as keyof BrandMapping];
+      const isAutoClassified = change.autoClassified && ['fsmega', 'fsfam', 'fssfa'].includes(field);
+      
       return (
-        <span className="text-gray-900">
-          {formatValue(change.data[field as keyof BrandMapping])}
-        </span>
+        <div className="flex items-center space-x-2">
+          <span className={`${isAutoClassified ? 'text-purple-600 font-medium' : 'text-gray-900'}`}>
+            {formatValue(value)}
+          </span>
+          {isAutoClassified && (
+            <div className="flex items-center space-x-1">
+              <Zap className="w-3 h-3 text-purple-500" />
+              <span className="text-xs text-purple-600 font-medium">Auto</span>
+            </div>
+          )}
+        </div>
       );
     }
 
     const isChanged = change.changes?.includes(field);
     const oldValue = change.existing?.[field as keyof BrandMapping];
     const newValue = change.data[field as keyof BrandMapping];
+    const isAutoClassified = change.autoClassified && ['fsmega', 'fsfam', 'fssfa'].includes(field);
 
     if (!isChanged) {
       return (
@@ -147,13 +215,25 @@ export const MappingPreviewTable: React.FC<MappingPreviewTableProps> = ({
     return (
       <div className="space-y-1">
         <div className="flex items-center space-x-2 text-sm">
-          <span className="text-red-600 line-through">
+          <span className="text-red-600 line-through bg-red-50 px-2 py-1 rounded">
             {formatValue(oldValue)}
           </span>
           <ArrowRight className="w-3 h-3 text-gray-400" />
-          <span className="text-green-600 font-medium">
-            {formatValue(newValue)}
-          </span>
+          <div className="flex items-center space-x-2">
+            <span className={`font-medium px-2 py-1 rounded ${
+              isAutoClassified 
+                ? 'text-purple-600 bg-purple-50' 
+                : 'text-green-600 bg-green-50'
+            }`}>
+              {formatValue(newValue)}
+            </span>
+            {isAutoClassified && (
+              <div className="flex items-center space-x-1">
+                <Zap className="w-3 h-3 text-purple-500" />
+                <span className="text-xs text-purple-600 font-medium">Auto</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -161,15 +241,20 @@ export const MappingPreviewTable: React.FC<MappingPreviewTableProps> = ({
 
   if (changes.length === 0) {
     return (
-      <Card>
+      <Card className="border-green-200 bg-green-50">
         <CardContent className="p-8 text-center">
-          <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Aucune modification détectée
+          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-green-800 mb-2">
+            ✨ Aucune modification détectée
           </h3>
-          <p className="text-gray-600">
+          <p className="text-green-700">
             Toutes les données du fichier correspondent exactement aux mappings existants.
           </p>
+          <div className="mt-4 p-3 bg-green-100 rounded-lg">
+            <p className="text-sm text-green-600">
+              Votre base de données est déjà à jour ! 🎉
+            </p>
+          </div>
         </CardContent>
       </Card>
     );
@@ -177,71 +262,133 @@ export const MappingPreviewTable: React.FC<MappingPreviewTableProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Résumé des changements */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center mb-2">
-              <FileSpreadsheet className="w-5 h-5 text-gray-600" />
+      {/* Header avec statistiques améliorées */}
+      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <div className="p-3 bg-blue-500 rounded-xl shadow-lg">
+              <Database className="w-6 h-6 text-white" />
             </div>
-            <p className="text-2xl font-bold text-gray-900">{changes.length}</p>
-            <p className="text-xs text-gray-600">Total changements</p>
-          </CardContent>
-        </Card>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">
+                Aperçu des modifications
+              </h2>
+              <p className="text-sm text-gray-600">
+                Comparaison avec la base de données existante
+              </p>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-bold text-blue-600">{changes.length}</div>
+            <div className="text-sm text-gray-600">changements détectés</div>
+          </div>
+        </div>
 
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center mb-2">
-              <Plus className="w-5 h-5 text-green-600" />
+        {/* Statistiques détaillées */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Plus className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <div className="text-xl font-bold text-green-600">{newCount}</div>
+                <div className="text-xs text-gray-600">Nouveaux mappings</div>
+              </div>
             </div>
-            <p className="text-2xl font-bold text-green-600">{newCount}</p>
-            <p className="text-xs text-gray-600">Nouveaux mappings</p>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center mb-2">
-              <Edit className="w-5 h-5 text-blue-600" />
+          <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Edit className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <div className="text-xl font-bold text-blue-600">{updateCount}</div>
+                <div className="text-xs text-gray-600">Mises à jour</div>
+              </div>
             </div>
-            <p className="text-2xl font-bold text-blue-600">{updateCount}</p>
-            <p className="text-xs text-gray-600">Mises à jour</p>
-          </CardContent>
-        </Card>
+          </div>
+
+          <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Zap className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <div className="text-xl font-bold text-purple-600">{autoClassifiedCount}</div>
+                <div className="text-xs text-gray-600">Auto-classifiés</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <TrendingUp className="w-5 h-5 text-orange-600" />
+              </div>
+              <div>
+                <div className="text-xl font-bold text-orange-600">
+                  {Math.round((changes.length / processedData.length) * 100)}%
+                </div>
+                <div className="text-xs text-gray-600">Taux de changement</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Légende auto-classification */}
+        {autoClassifiedCount > 0 && (
+          <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+            <div className="flex items-start space-x-3">
+              <Zap className="w-5 h-5 text-purple-600 mt-0.5" />
+              <div>
+                <h4 className="font-medium text-purple-800 mb-1">
+                  🤖 Classification CIR Automatique
+                </h4>
+                <p className="text-sm text-purple-700">
+                  <strong>{autoClassifiedCount} mappings</strong> ont été automatiquement classifiés en analysant 
+                  les marques existantes. Le système a trouvé le FSMEGA le plus fréquent pour chaque marque 
+                  et appliqué FSFAM=99, FSSFA=99 par défaut.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Table des changements */}
-      <Card>
-        <CardHeader>
+      {/* Table des changements améliorée */}
+      <Card className="shadow-lg border-gray-200">
+        <CardHeader className="bg-gray-50 border-b">
           <CardTitle className="flex items-center space-x-2">
             <AlertTriangle className="w-5 h-5 text-orange-500" />
-            <span>Aperçu des modifications ({changes.length})</span>
+            <span>Détail des modifications ({changes.length})</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-gray-100 border-b-2 border-gray-200">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                     Action
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                     Segment
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                     Marque
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                     CAT_FAB
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                     Description
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                     Stratégique
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                     Classification CIR
                   </th>
                 </tr>
@@ -255,41 +402,58 @@ export const MappingPreviewTable: React.FC<MappingPreviewTableProps> = ({
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.02 }}
-                      className="hover:bg-gray-50 transition-colors"
+                      className={`hover:bg-gray-50 transition-colors ${
+                        change.autoClassified ? 'bg-purple-25' : ''
+                      }`}
                     >
                       <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-3">
                           <Icon className={`w-4 h-4 ${getChangeColor(change.type)}`} />
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getChangeBadgeColor(change.type)}`}>
-                            {change.type === 'new' ? 'Nouveau' : 'Mise à jour'}
-                          </span>
+                          <div className="flex flex-col space-y-1">
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getChangeBadgeColor(change.type)}`}>
+                              {change.type === 'new' ? '✨ Nouveau' : '🔄 Mise à jour'}
+                            </span>
+                            {change.autoClassified && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 border border-purple-200">
+                                <Zap className="w-3 h-3 mr-1" />
+                                Auto-classifié
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm">
                         {renderFieldComparison('segment', change)}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm">
-                        <span className="font-medium text-gray-900">
+                        <span className="font-medium text-gray-900 bg-gray-50 px-2 py-1 rounded">
                           {change.data.marque}
                         </span>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm">
-                        <span className="font-medium text-gray-900">
+                        <span className="font-medium text-gray-900 bg-blue-50 px-2 py-1 rounded">
                           {change.data.cat_fab}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-sm max-w-xs">
-                        {renderFieldComparison('cat_fab_l', change)}
+                        <div className="truncate">
+                          {renderFieldComparison('cat_fab_l', change)}
+                        </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm">
                         {renderFieldComparison('strategiq', change)}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm font-mono">
-                        <div className="space-y-1">
-                          <div>
-                            {renderFieldComparison('fsmega', change)} {' '}
-                            {renderFieldComparison('fsfam', change)} {' '}
-                            {renderFieldComparison('fssfa', change)}
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">
+                        <div className="font-mono bg-gray-50 px-3 py-2 rounded-lg border">
+                          <div className="flex items-center space-x-2">
+                            <div className="grid grid-cols-3 gap-1 text-center">
+                              <div className="text-xs text-gray-500">MEGA</div>
+                              <div className="text-xs text-gray-500">FAM</div>
+                              <div className="text-xs text-gray-500">SFA</div>
+                              <div>{renderFieldComparison('fsmega', change)}</div>
+                              <div>{renderFieldComparison('fsfam', change)}</div>
+                              <div>{renderFieldComparison('fssfa', change)}</div>
+                            </div>
                           </div>
                         </div>
                       </td>
