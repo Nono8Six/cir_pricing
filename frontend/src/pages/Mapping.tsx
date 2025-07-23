@@ -234,8 +234,14 @@ export const Mapping: React.FC = () => {
     setApplyLoading(true);
 
     try {
+      // Remove classif_cir from data since it's a generated column
+      const dataWithoutGeneratedColumns = parseResult.data.map(mapping => {
+        const { classif_cir, ...mappingWithoutClassifCir } = mapping;
+        return mappingWithoutClassifCir;
+      });
+      
       // Appliquer les modifications via batch upsert
-      const result = await mappingApi.batchUpsertMappings(parseResult.data);
+      const result = await mappingApi.batchUpsertMappings(dataWithoutGeneratedColumns);
       
       toast.success(`${result.length} mappings traités avec succès`);
       
