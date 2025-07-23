@@ -16,7 +16,7 @@
     "preview": "vite preview --host --port 4173",
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist .vite node_modules/.vite",
-    "postinstall": "npm run clean"
+    "postinstall": "echo 'Frontend dependencies installed successfully'"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
