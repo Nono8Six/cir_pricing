@@ -3,13 +3,34 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "description": "CIR Pricing Management System - B2B Industrial Distributor Pricing Tool",
+  "keywords": ["pricing", "b2b", "industrial", "management", "supabase"],
+  "author": "CIR Team",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "workspaces": [
+    "frontend"
+  ],
   "scripts": {
-    "dev": "cd frontend && npm run dev",
-    "build": "cd frontend && npm run build",
-    "preview": "cd frontend && npm run preview",
-    "install:all": "npm install && cd frontend && npm install"
+    "dev": "npm run dev --workspace=frontend",
+    "build": "npm run build --workspace=frontend",
+    "preview": "npm run preview --workspace=frontend",
+    "lint": "npm run lint --workspace=frontend",
+    "type-check": "npm run type-check --workspace=frontend",
+    "install:all": "npm install",
+    "clean": "npm run clean:deps && npm run clean:cache",
+    "clean:deps": "rm -rf node_modules frontend/node_modules package-lock.json frontend/package-lock.json",
+    "clean:cache": "npm cache clean --force",
+    "postinstall": "npm run postinstall --workspace=frontend --if-present"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "private"
   }
 }
