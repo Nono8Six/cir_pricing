@@ -26,6 +26,7 @@ import { MappingAnalyticsTab } from '../components/mapping/MappingAnalyticsTab';
 import { MappingSettingsTab } from '../components/mapping/MappingSettingsTab';
 import { toast } from 'sonner';
 import { mappingApi } from '../lib/supabaseClient';
+import { supabase } from '../lib/api';
 import { useDebounce } from '../hooks/useDebounce';
 import { ParseResult } from '../lib/schemas';
 import { useAuth } from '../context/AuthContext';
@@ -261,17 +262,37 @@ export const Mapping: React.FC = () => {
     setApplyLoading(true);
 
     try {
+      const batchStats = {
+        total_lines: parseResult?.totalLines || finalDataToUpsert.length,
+        processed_lines: finalDataToUpsert.length,
+        error_lines: parseResult?.skippedLines || 0,
+        warnings: parseResult?.info || [],
+        comment: 'Excel upload'
+      };
+
+      const batch = await mappingApi.createImportBatch(
+        uploadedFile?.name || 'import.xlsx',
+        user?.id || '',
+        batchStats
+      );
+
+      await supabase.rpc('set_current_batch_id', { batch_uuid: batch.id });
+      await supabase.rpc('set_change_reason', { reason: batch.id });
+
       const dataWithoutGeneratedColumns = finalDataToUpsert.map(mapping => {
         const { classif_cir, autoClassified, ...cleanMapping } = mapping;
         return {
           ...cleanMapping,
           created_by: user?.id,
-          source_type: 'excel_upload'
+          source_type: 'excel_upload',
+          batch_id: batch.id
         };
       });
-      
+
       const result = await mappingApi.batchUpsertMappings(dataWithoutGeneratedColumns);
-      
+
+      await supabase.rpc('clear_audit_context');
+
       toast.success(`${result.length} mappings traités avec succès`);
       
       // Réinitialiser le workflow

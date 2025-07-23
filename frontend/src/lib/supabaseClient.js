@@ -109,8 +109,20 @@ export const mappingApi = {
       .from('brand_category_mappings')
       .delete()
       .eq('id', id);
-    
+
     if (error) throw error;
+  },
+
+  // Insert a new import batch and return the created row
+  async createImportBatch(filename, userId, stats) {
+    const { data, error } = await supabase
+      .from('import_batches')
+      .insert([{ filename, user_id: userId, ...stats }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
   },
 
   // Batch upsert mappings (for Excel upload)
