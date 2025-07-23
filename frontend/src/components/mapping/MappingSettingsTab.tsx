@@ -153,14 +153,15 @@ export const MappingSettingsTab: React.FC = () => {
           try {
             setLoading(true);
             
-            const { error, count } = await supabase
+            // Supprimer TOUS les enregistrements sans condition
+            const { error } = await supabase
               .from('brand_mapping_history')
               .delete()
-              .gte('changed_at', '1900-01-01T00:00:00.000Z');
+              .neq('history_id', '');
 
             if (error) throw error;
 
-            toast.success(`🗑️ ${count || 0} enregistrements d'historique supprimés`);
+            toast.success(`🗑️ TOUS les enregistrements d'historique ont été supprimés`);
             fetchDatabaseStats();
           } catch (error) {
             console.error('Erreur suppression historique:', error);
