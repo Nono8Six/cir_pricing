@@ -8,20 +8,23 @@ import {
   Database,
   Filter,
   Calendar,
-  Download
+  Download,
+  Trash2
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { mappingApi } from '../../lib/supabaseClient';
+import { supabase } from '../../lib/supabaseClient';
+import { toast } from 'sonner';
 
 interface AnalyticsData {
   totalMappings: number;
   strategicMappings: number;
+  totalMarques: number;
   segmentDistribution: { segment: string; count: number }[];
   marqueDistribution: { marque: string; count: number }[];
   cirClassification: { fsmega: number; count: number }[];
   sourceTypeDistribution: { source_type: string; count: number }[];
-  recentActivity: { date: string; count: number }[];
 }
 
 export const MappingAnalyticsTab: React.FC = () => {
@@ -44,6 +47,9 @@ export const MappingAnalyticsTab: React.FC = () => {
       const totalMappings = allMappings.length;
       const strategicMappings = allMappings.filter(m => m.strategiq === 1).length;
       
+      // Compter le nombre total de marques uniques
+      const totalMarques = new Set(allMappings.map(m => m.marque)).size;
+      
       // Distribution par segment
       const segmentCounts = allMappings.reduce((acc, mapping) => {
         acc[mapping.segment] = (acc[mapping.segment] || 0) + 1;
@@ -55,7 +61,7 @@ export const MappingAnalyticsTab: React.FC = () => {
         .sort((a, b) => b.count - a.count)
         .slice(0, 10);
 
-      // Distribution par marque (top 15)
+      // Distribution par marque (top 50)
       const marqueCounts = allMappings.reduce((acc, mapping) => {
         acc[mapping.marque] = (acc[mapping.marque] || 0) + 1;
         return acc;
@@ -64,7 +70,7 @@ export const MappingAnalyticsTab: React.FC = () => {
       const marqueDistribution = Object.entries(marqueCounts)
         .map(([marque, count]) => ({ marque, count }))
         .sort((a, b) => b.count - a.count)
-        .slice(0, 15);
+        .slice(0, 50); // Afficher plus de marques
 
       // Distribution par classification CIR (FSMEGA)
       const cirCounts = allMappings.reduce((acc, mapping) => {
@@ -88,17 +94,14 @@ export const MappingAnalyticsTab: React.FC = () => {
       const sourceTypeDistribution = Object.entries(sourceTypeCounts)
         .map(([source_type, count]) => ({ source_type, count }));
 
-      // Activité récente (simulée pour l'exemple)
-      const recentActivity = generateRecentActivity(timeRange);
-
       setAnalytics({
         totalMappings,
         strategicMappings,
+        totalMarques,
         segmentDistribution,
         marqueDistribution,
         cirClassification,
-        sourceTypeDistribution,
-        recentActivity
+        sourceTypeDistribution
       });
 
     } catch (error) {
@@ -108,21 +111,37 @@ export const MappingAnalyticsTab: React.FC = () => {
     }
   };
 
-  const generateRecentActivity = (range: string) => {
-    const days = range === '7d' ? 7 : range === '30d' ? 30 : range === '90d' ? 90 : 365;
-    const activity = [];
-    
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const count = Math.floor(Math.random() * 20); // Données simulées
-      activity.push({
-        date: date.toISOString().split('T')[0],
-        count
-      });
-    }
-    
-    return activity;
+  const handlePurgeAllData = async () => {
+    toast('⚠️ ATTENTION : Supprimer TOUTES les données de mapping ?', {
+      description: "Cette action supprimera définitivement tous les mappings, l'historique et les imports. Cette action est IRRÉVERSIBLE.",
+      action: {
+        label: "CONFIRMER LA SUPPRESSION",
+        onClick: async () => {
+          try {
+            setLoading(true);
+            
+            // Supprimer dans l'ordre pour respecter les contraintes de clés étrangères
+            await supabase.from('brand_mapping_history').delete().neq('history_id', '');
+            await supabase.from('brand_category_mappings').delete().neq('id', '');
+            await supabase.from('import_batches').delete().neq('id', '');
+            
+            toast.success('🗑️ Toutes les données ont été supprimées');
+            
+            // Recharger les analytics
+            fetchAnalytics();
+          } catch (error) {
+            console.error('Erreur suppression données:', error);
+            toast.error('Erreur lors de la suppression des données');
+          } finally {
+            setLoading(false);
+          }
+        },
+      },
+      cancel: {
+        label: "Annuler",
+        onClick: () => {},
+      },
+    });
   };
 
   const getSourceTypeLabel = (sourceType: string) => {
@@ -201,11 +220,20 @@ export const MappingAnalyticsTab: React.FC = () => {
             <Download className="w-4 h-4" />
             <span>Exporter</span>
           </Button>
+          
+          <Button 
+            onClick={handlePurgeAllData}
+            variant="outline" 
+            className="flex items-center space-x-2 text-red-600 border-red-300 hover:bg-red-50"
+          >
+            <Trash2 className="w-4 h-4" />
+            <span>Purger les données</span>
+          </Button>
         </div>
       </div>
 
       {/* KPIs principaux */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-3">
@@ -240,12 +268,12 @@ export const MappingAnalyticsTab: React.FC = () => {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-3">
-              <div className="p-3 bg-purple-50 rounded-lg">
-                <Filter className="w-6 h-6 text-purple-600" />
+              <div className="p-3 bg-orange-50 rounded-lg">
+                <TrendingUp className="w-6 h-6 text-orange-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Segments uniques</p>
-                <p className="text-2xl font-bold text-purple-600">{analytics.segmentDistribution.length}</p>
+                <p className="text-sm text-gray-600">Total marques</p>
+                <p className="text-2xl font-bold text-orange-600">{analytics.totalMarques}</p>
               </div>
             </div>
           </CardContent>
@@ -254,12 +282,12 @@ export const MappingAnalyticsTab: React.FC = () => {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-3">
-              <div className="p-3 bg-orange-50 rounded-lg">
-                <TrendingUp className="w-6 h-6 text-orange-600" />
+              <div className="p-3 bg-purple-50 rounded-lg">
+                <Filter className="w-6 h-6 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Marques uniques</p>
-                <p className="text-2xl font-bold text-orange-600">{analytics.marqueDistribution.length}</p>
+                <p className="text-sm text-gray-600">Classifications CIR</p>
+                <p className="text-2xl font-bold text-purple-600">{analytics.cirClassification.length}</p>
               </div>
             </div>
           </CardContent>
@@ -311,11 +339,11 @@ export const MappingAnalyticsTab: React.FC = () => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <PieChart className="w-5 h-5" />
-              <span>Top 15 Marques</span>
+              <span>Top 50 Marques</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 max-h-80 overflow-y-auto">
+            <div className="space-y-2 max-h-96 overflow-y-auto">
               {analytics.marqueDistribution.map((item, index) => (
                 <motion.div
                   key={item.marque}
@@ -326,7 +354,7 @@ export const MappingAnalyticsTab: React.FC = () => {
                 >
                   <div className="flex items-center space-x-3">
                     <div className="w-3 h-3 bg-gradient-to-r from-purple-400 to-purple-600 rounded-full" />
-                    <span className="text-sm font-medium text-gray-900 truncate max-w-32">
+                    <span className="text-sm font-medium text-gray-900 truncate max-w-40">
                       {item.marque}
                     </span>
                   </div>
@@ -430,40 +458,6 @@ export const MappingAnalyticsTab: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-
-      {/* Activité récente */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Calendar className="w-5 h-5" />
-            <span>Activité récente ({timeRange})</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64 flex items-end space-x-1">
-            {analytics.recentActivity.map((day, index) => (
-              <motion.div
-                key={day.date}
-                initial={{ height: 0 }}
-                animate={{ height: `${(day.count / Math.max(...analytics.recentActivity.map(d => d.count))) * 100}%` }}
-                transition={{ delay: index * 0.02, duration: 0.5 }}
-                className="flex-1 bg-cir-red rounded-t min-h-[4px] relative group"
-                title={`${day.date}: ${day.count} modifications`}
-              >
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                  {new Date(day.date).toLocaleDateString('fr-FR', { 
-                    month: 'short', 
-                    day: 'numeric' 
-                  })}: {day.count}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-          <div className="mt-4 text-center text-sm text-gray-500">
-            Nombre de modifications par jour
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };
