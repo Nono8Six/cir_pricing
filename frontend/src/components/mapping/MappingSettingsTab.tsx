@@ -13,7 +13,8 @@ import {
   Upload,
   RefreshCw,
   Lock,
-  Unlock
+  Unlock,
+  HardDrive
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -206,6 +207,39 @@ export const MappingSettingsTab: React.FC = () => {
           } catch (error) {
             console.error('Erreur réindexation:', error);
             toast.error('Erreur lors de la réindexation');
+          } finally {
+            setLoading(false);
+          }
+        },
+      },
+      cancel: {
+        label: "Annuler",
+        onClick: () => {},
+      },
+    });
+  };
+
+  const handlePurgeAllData = async () => {
+    toast('⚠️ ATTENTION : Supprimer TOUTES les données de mapping ?', {
+      description: "Cette action supprimera définitivement tous les mappings, l'historique et les imports. Cette action est IRRÉVERSIBLE.",
+      action: {
+        label: "CONFIRMER LA SUPPRESSION",
+        onClick: async () => {
+          try {
+            setLoading(true);
+            
+            // Supprimer dans l'ordre pour respecter les contraintes de clés étrangères
+            await supabase.from('brand_mapping_history').delete().neq('history_id', '00000000-0000-0000-0000-000000000000');
+            await supabase.from('brand_category_mappings').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            await supabase.from('import_batches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            
+            toast.success('🗑️ Toutes les données ont été supprimées');
+            
+            // Recharger les statistiques
+            fetchDatabaseStats();
+          } catch (error) {
+            console.error('Erreur suppression données:', error);
+            toast.error('Erreur lors de la suppression des données');
           } finally {
             setLoading(false);
           }
@@ -471,6 +505,14 @@ export const MappingSettingsTab: React.FC = () => {
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Nettoyer l'historique ancien</span>
+              </Button>
+              
+              <Button 
+                onClick={handlePurgeAllData}
+                className="w-full flex items-center justify-center space-x-2 bg-red-600 text-white hover:bg-red-700"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>🗑️ Purger toutes les données</span>
               </Button>
             </div>
 
