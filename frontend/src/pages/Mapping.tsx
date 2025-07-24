@@ -25,6 +25,8 @@ import { MappingPreviewTable } from '../components/mapping/MappingPreviewTable';
 import { MappingHistoryTab } from '../components/mapping/MappingHistoryTab';
 import { MappingAnalyticsTab } from '../components/mapping/MappingAnalyticsTab';
 import { MappingSettingsTab } from '../components/mapping/MappingSettingsTab';
+import { CirClassificationBrowser } from '../components/cir/CirClassificationBrowser';
+import { CirClassificationUploadTab } from '../components/cir/CirClassificationUploadTab';
 import { toast } from 'sonner';
 import { mappingApi } from '../lib/supabaseClient';
 import { supabase } from '../lib/api';
@@ -51,7 +53,7 @@ interface BrandMapping {
   source_type: string;
 }
 
-type TabType = 'mappings' | 'upload' | 'history' | 'analytics' | 'settings';
+type TabType = 'mappings' | 'upload' | 'history' | 'analytics' | 'settings' | 'cir-browser' | 'cir-upload';
 
 export const Mapping: React.FC = () => {
   const { user } = useAuth();
@@ -102,6 +104,8 @@ export const Mapping: React.FC = () => {
   const tabs = [
     { id: 'mappings' as TabType, label: 'Mappings', icon: Database, count: totalCount },
     { id: 'upload' as TabType, label: 'Import Excel', icon: Upload },
+    { id: 'cir-browser' as TabType, label: 'Classifications CIR', icon: Database },
+    { id: 'cir-upload' as TabType, label: 'Import Classifications', icon: Upload },
     { id: 'history' as TabType, label: 'Historique', icon: History },
     { id: 'analytics' as TabType, label: 'Analyses', icon: BarChart3 },
     { id: 'settings' as TabType, label: 'Paramètres', icon: Settings }
@@ -372,6 +376,10 @@ export const Mapping: React.FC = () => {
         return renderMappingsTab();
       case 'upload':
         return renderUploadTab();
+      case 'cir-browser':
+        return <CirClassificationBrowser />;
+      case 'cir-upload':
+        return <CirClassificationUploadTab />;
       case 'history':
         return <MappingHistoryTab />;
       case 'analytics':

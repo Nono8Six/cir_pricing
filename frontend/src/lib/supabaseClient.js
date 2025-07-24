@@ -284,3 +284,210 @@ export const mappingApi = {
     return data;
   }
 };
+
+// API functions for CIR classifications
+export const cirClassificationApi = {
+  // Get all classifications
+  async getAllClassifications() {
+    const { data, error } = await supabase
+      .from('cir_classifications')
+      .select('*')
+      .order('fsmega_code', { ascending: true })
+      .order('fsfam_code', { ascending: true })
+      .order('fssfa_code', { ascending: true });
+    
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Get classifications with filters and pagination
+  async getClassifications(filters = {}, page = 1, limit = 50) {
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+    
+    let query = supabase
+      .from('cir_classifications')
+      .select('*')
+      .order('fsmega_code', { ascending: true })
+      .order('fsfam_code', { ascending: true })
+      .order('fssfa_code', { ascending: true })
+      .range(from, to);
+
+    if (filters.fsmega_code) {
+      query = query.eq('fsmega_code', filters.fsmega_code);
+    }
+    if (filters.fsfam_code) {
+      query = query.eq('fsfam_code', filters.fsfam_code);
+    }
+    if (filters.fssfa_code) {
+      query = query.eq('fssfa_code', filters.fssfa_code);
+    }
+    if (filters.combined_code) {
+      query = query.ilike('combined_code', `%${filters.combined_code}%`);
+    }
+
+    // Get total count for pagination
+    let countQuery = supabase
+      .from('cir_classifications')
+      .select('*', { count: 'exact', head: true });
+
+    if (filters.fsmega_code) {
+      countQuery = countQuery.eq('fsmega_code', filters.fsmega_code);
+    }
+    if (filters.fsfam_code) {
+      countQuery = countQuery.eq('fsfam_code', filters.fsfam_code);
+    }
+    if (filters.fssfa_code) {
+      countQuery = countQuery.eq('fssfa_code', filters.fssfa_code);
+    }
+    if (filters.combined_code) {
+      countQuery = countQuery.ilike('combined_code', `%${filters.combined_code}%`);
+    }
+
+    const [{ data, error }, { count, error: countError }] = await Promise.all([
+      query,
+      countQuery
+    ]);
+    
+    if (error) throw error;
+    if (countError) throw countError;
+    
+    return {
+      data: data || [],
+      count: count || 0
+    };
+  },
+
+  // Batch upsert classifications (for Excel upload)
+  async batchUpsertClassifications(classifications) {
+    const { data, error } = await supabase
+      .from('cir_classifications')
+      .upsert(classifications, {
+        onConflict: 'combined_code',
+        ignoreDuplicates: false
+      })
+      .select();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  // Get unique FSMEGA codes
+  async getAllUniqueFsmegaCodes() {
+    const { data, error } = await supabase
+      .from('cir_classifications')
+      .select('fsmega_code, fsmega_designation')
+      .order('fsmega_code');
+    
+    if (error) throw error;
+    
+    // Remove duplicates and return unique mega families
+    const uniqueMegaFamilies = [];
+    const seen = new Set();
+    
+    for (const item of data || []) {
+      if (!seen.has(item.fsmega_code)) {
+        seen.add(item.fsmega_code);
+        uniqueMegaFamilies.push(item);
+      }
+    }
+    
+    return uniqueMegaFamilies;
+  },
+
+  // Get unique FSFAM codes for a given FSMEGA
+  async getAllUniqueFsfamCodes(fsmegaCode = null) {
+    let query = supabase
+      .from('cir_classifications')
+      .select('fsfam_code, fsfam_designation')
+      .order('fsfam_code');
+    
+    if (fsmegaCode) {
+      query = query.eq('fsmega_code', fsmegaCode);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    
+    // Remove duplicates and return unique families
+    const uniqueFamilies = [];
+    const seen = new Set();
+    
+    for (const item of data || []) {
+      if (!seen.has(item.fsfam_code)) {
+        seen.add(item.fsfam_code);
+        uniqueFamilies.push(item);
+      }
+    }
+    
+    return uniqueFamilies;
+  },
+
+  // Get unique FSSFA codes for given FSMEGA and FSFAM
+  async getAllUniqueFssfaCodes(fsmegaCode = null, fsfamCode = null) {
+    let query = supabase
+      .from('cir_classifications')
+      .select('fssfa_code, fssfa_designation')
+      .order('fssfa_code');
+    
+    if (fsmegaCode) {
+      query = query.eq('fsmega_code', fsmegaCode);
+    }
+    if (fsfamCode) {
+      query = query.eq('fsfam_code', fsfamCode);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    
+    // Remove duplicates and return unique sub-families
+    const uniqueSubFamilies = [];
+    const seen = new Set();
+    
+    for (const item of data || []) {
+      if (!seen.has(item.fssfa_code)) {
+        seen.add(item.fssfa_code);
+        uniqueSubFamilies.push(item);
+      }
+    }
+    
+    return uniqueSubFamilies;
+  },
+
+  // Create new classification
+  async createClassification(classificationData) {
+    const { data, error } = await supabase
+      .from('cir_classifications')
+      .insert([classificationData])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  // Update classification
+  async updateClassification(id, classificationData) {
+    const { data, error } = await supabase
+      .from('cir_classifications')
+      .update(classificationData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  // Delete classification
+  async deleteClassification(id) {
+    const { error } = await supabase
+      .from('cir_classifications')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+};
