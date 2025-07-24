@@ -352,7 +352,7 @@ function detectCirClassificationColumnMapping(headers: string[]): HeaderDetectio
   let totalMatches = 0;
 
   const fuseOptions = {
-    threshold: 0.3,
+    threshold: 0.1,
     distance: 100,
     includeScore: true
   };
@@ -372,7 +372,7 @@ function detectCirClassificationColumnMapping(headers: string[]): HeaderDetectio
       }
     }
 
-    if (bestMatch && bestMatch.score > 0.7) {
+    if (bestMatch && bestMatch.score > 0.8) {
       mapping[header] = bestMatch.field;
       totalMatches++;
     } else {
