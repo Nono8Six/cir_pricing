@@ -39,7 +39,7 @@ export function detectColumnMapping(headers: string[]): HeaderDetectionResult {
   let totalMatches = 0;
 
   const fuseOptions = {
-    threshold: 0.3,
+    threshold: 0.1,
     distance: 100,
     includeScore: true
   };
@@ -59,7 +59,7 @@ export function detectColumnMapping(headers: string[]): HeaderDetectionResult {
       }
     }
 
-    if (bestMatch && bestMatch.score > 0.7) {
+    if (bestMatch && bestMatch.score > 0.8) {
       mapping[header] = bestMatch.field;
       totalMatches++;
     } else {
