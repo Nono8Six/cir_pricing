@@ -351,29 +351,36 @@ function detectCirClassificationColumnMapping(headers: string[]): HeaderDetectio
   const unmappedHeaders: string[] = [];
   let totalMatches = 0;
 
-  const fuseOptions = {
-    threshold: 0.1,
-    distance: 100,
-    includeScore: true
-  };
-
   for (const header of headers) {
-    let bestMatch: { field: string; score: number } | null = null;
+    // Nettoyer l'en-tête (supprimer espaces en début/fin)
+    const cleanHeader = header.trim();
+    let matchedField: string | null = null;
 
     for (const [field, variations] of Object.entries(CIR_CLASSIFICATION_COLUMN_MAPPINGS)) {
-      const fuse = new Fuse(variations, fuseOptions);
-      const results = fuse.search(header);
-
-      if (results.length > 0 && results[0].score !== undefined) {
-        const score = 1 - results[0].score;
-        if (!bestMatch || score > bestMatch.score) {
-          bestMatch = { field, score };
+      // Correspondance exacte (insensible à la casse)
+      if (variations.some(variation => variation.toLowerCase() === cleanHeader.toLowerCase())) {
+        matchedField = field;
+        break;
+      }
+      
+      // Si pas de correspondance exacte, essayer fuzzy matching
+      if (!matchedField) {
+        const fuse = new Fuse(variations, {
+          threshold: 0.1,
+          distance: 100,
+          includeScore: true
+        });
+        const results = fuse.search(cleanHeader);
+        
+        if (results.length > 0 && results[0].score !== undefined && results[0].score < 0.2) {
+          matchedField = field;
+          break;
         }
       }
     }
 
-    if (bestMatch && bestMatch.score > 0.8) {
-      mapping[header] = bestMatch.field;
+    if (matchedField) {
+      mapping[header] = matchedField;
       totalMatches++;
     } else {
       unmappedHeaders.push(header);
