@@ -315,10 +315,12 @@ export async function parseCirClassificationExcelFile(
         const headers = jsonData[0] as string[];
         const headerDetection = detectCirClassificationColumnMapping(headers);
 
-        if (headerDetection.confidence < 0.5) {
+        if (headerDetection.confidence < 0.3) {
+          console.error('🚨 Confiance insuffisante pour le mapping des colonnes:', headerDetection);
           reject(new Error(
-            `Impossible de détecter les colonnes de classification CIR. ` +
-            `Colonnes non mappées: ${headerDetection.unmappedHeaders.join(', ')}`
+            `Impossible de détecter les colonnes de classification CIR (confiance: ${Math.round(headerDetection.confidence * 100)}%). ` +
+            `Colonnes non mappées: ${headerDetection.unmappedHeaders.join(', ')}. ` +
+            `Colonnes attendues: Code FSMEGA, Désignation FSMEGA, Code FSFAM, Désignation FSFAM, Code FSSFA, Désignation FSSFA, Code 1&2&3, Désignation 1&2&3`
           ));
           return;
         }
