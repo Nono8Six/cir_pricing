@@ -131,12 +131,44 @@ export const DEFAULT_COLUMN_MAPPINGS: Record<string, string[]> = {
 
 // Mapping des colonnes pour les classifications CIR
 export const CIR_CLASSIFICATION_COLUMN_MAPPINGS: Record<string, string[]> = {
-  fsmega_code: ['Code FSMEGA', 'Code FSMEGA '],
-  fsmega_designation: ['Désignation FSMEGA', 'Désignation FSMEGA '],
-  fsfam_code: ['Code FSFAM', 'Code FSFAM '],
-  fsfam_designation: ['Désignation FSFAM', 'Désignation FSFAM '],
-  fssfa_code: ['Code FSSFA', 'Code FSSFA '],
-  fssfa_designation: ['Désignation FSSFA', 'Désignation FSSFA '],
-  combined_code: ['Code 1&2&3', 'Code 1&2&3 '],
-  combined_designation: ['Désignation 1&2&3', 'Désignation 1&2&3 ']
+  fsmega_code: [
+    'Code FSMEGA', 'Code FSMEGA ', ' Code FSMEGA', ' Code FSMEGA ',
+    'CODE FSMEGA', 'Code_FSMEGA', 'FSMEGA_CODE', 'fsmega_code',
+    'Code FSMEGA', 'Code  FSMEGA', 'Code MEGA'
+  ],
+  fsmega_designation: [
+    'Désignation FSMEGA', 'Désignation FSMEGA ', ' Désignation FSMEGA', ' Désignation FSMEGA ',
+    'DESIGNATION FSMEGA', 'Designation FSMEGA', 'FSMEGA_DESIGNATION', 'fsmega_designation',
+    'Désignation  FSMEGA', 'Designation  FSMEGA', 'Libellé FSMEGA', 'Libelle FSMEGA'
+  ],
+  fsfam_code: [
+    'Code FSFAM', 'Code FSFAM ', ' Code FSFAM', ' Code FSFAM ',
+    'CODE FSFAM', 'Code_FSFAM', 'FSFAM_CODE', 'fsfam_code',
+    'Code  FSFAM', 'Code FAM', 'Code FAMILLE'
+  ],
+  fsfam_designation: [
+    'Désignation FSFAM', 'Désignation FSFAM ', ' Désignation FSFAM', ' Désignation FSFAM ',
+    'DESIGNATION FSFAM', 'Designation FSFAM', 'FSFAM_DESIGNATION', 'fsfam_designation',
+    'Désignation  FSFAM', 'Designation  FSFAM', 'Libellé FSFAM', 'Libelle FSFAM'
+  ],
+  fssfa_code: [
+    'Code FSSFA', 'Code FSSFA ', ' Code FSSFA', ' Code FSSFA ',
+    'CODE FSSFA', 'Code_FSSFA', 'FSSFA_CODE', 'fssfa_code',
+    'Code  FSSFA', 'Code SFA', 'Code SOUS-FAMILLE'
+  ],
+  fssfa_designation: [
+    'Désignation FSSFA', 'Désignation FSSFA ', ' Désignation FSSFA', ' Désignation FSSFA ',
+    'DESIGNATION FSSFA', 'Designation FSSFA', 'FSSFA_DESIGNATION', 'fssfa_designation',
+    'Désignation  FSSFA', 'Designation  FSSFA', 'Libellé FSSFA', 'Libelle FSSFA'
+  ],
+  combined_code: [
+    'Code 1&2&3', 'Code 1&2&3 ', ' Code 1&2&3', ' Code 1&2&3 ',
+    'CODE 1&2&3', 'Code_1&2&3', 'COMBINED_CODE', 'combined_code',
+    'Code  1&2&3', 'Code 123', 'Code Combiné', 'Code Combine'
+  ],
+  combined_designation: [
+    'Désignation 1&2&3', 'Désignation 1&2&3 ', ' Désignation 1&2&3', ' Désignation 1&2&3 ',
+    'DESIGNATION 1&2&3', 'Designation 1&2&3', 'COMBINED_DESIGNATION', 'combined_designation',
+    'Désignation  1&2&3', 'Designation  1&2&3', 'Désignation Combinée', 'Designation Combinee'
+  ]
 };
