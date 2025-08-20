@@ -16,8 +16,24 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  const isDevelopment = import.meta.env?.VITE_APP_MODE === 'development';
 
   useEffect(() => {
+    // En mode développement, simuler un utilisateur connecté
+    if (isDevelopment) {
+      setUser({
+        id: 'test-user-id',
+        email: 'test@cir-pricing.com',
+        user_metadata: {
+          first_name: 'Test',
+          last_name: 'User'
+        }
+      } as User);
+      setLoading(false);
+      return;
+    }
+
     // Get initial session
     const getInitialSession = async () => {
       try {
@@ -62,10 +78,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [isDevelopment]);
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
+    
+    if (isDevelopment) {
+      // Mock sign in
+      setUser({
+        id: 'test-user-id',
+        email: email,
+        user_metadata: {
+          first_name: 'Test',
+          last_name: 'User'
+        }
+      } as User);
+      setLoading(false);
+      return;
+    }
     
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -89,6 +119,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     lastName?: string
   ) => {
     setLoading(true);
+
+    if (isDevelopment) {
+      // Mock sign up
+      setUser({
+        id: 'test-user-id',
+        email: email,
+        user_metadata: {
+          first_name: firstName || 'Test',
+          last_name: lastName || 'User'
+        }
+      } as User);
+      setLoading(false);
+      return;
+    }
 
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -147,6 +191,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     setLoading(true);
+    
+    if (isDevelopment) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
     
     try {
       const { error } = await supabase.auth.signOut();
