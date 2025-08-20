@@ -351,6 +351,8 @@ function detectCirClassificationColumnMapping(headers: string[]): HeaderDetectio
   const unmappedHeaders: string[] = [];
   let totalMatches = 0;
 
+  console.log('🔍 Détection des colonnes CIR. Headers trouvés:', headers);
+
   for (const header of headers) {
     // Nettoyer l'en-tête (supprimer espaces en début/fin)
     const cleanHeader = header.trim();
@@ -360,20 +362,22 @@ function detectCirClassificationColumnMapping(headers: string[]): HeaderDetectio
       // Correspondance exacte (insensible à la casse)
       if (variations.some(variation => variation.toLowerCase() === cleanHeader.toLowerCase())) {
         matchedField = field;
+        console.log(`✅ Correspondance exacte: "${cleanHeader}" → ${field}`);
         break;
       }
       
-      // Si pas de correspondance exacte, essayer fuzzy matching
+      // Si pas de correspondance exacte, essayer fuzzy matching plus permissif
       if (!matchedField) {
         const fuse = new Fuse(variations, {
-          threshold: 0.1,
+          threshold: 0.3, // Plus permissif
           distance: 100,
           includeScore: true
         });
         const results = fuse.search(cleanHeader);
         
-        if (results.length > 0 && results[0].score !== undefined && results[0].score < 0.2) {
+        if (results.length > 0 && results[0].score !== undefined && results[0].score < 0.4) {
           matchedField = field;
+          console.log(`🔍 Correspondance fuzzy: "${cleanHeader}" → ${field} (score: ${results[0].score})`);
           break;
         }
       }
@@ -384,10 +388,14 @@ function detectCirClassificationColumnMapping(headers: string[]): HeaderDetectio
       totalMatches++;
     } else {
       unmappedHeaders.push(header);
+      console.log(`❌ Colonne non mappée: "${cleanHeader}"`);
     }
   }
 
   const confidence = totalMatches / Object.keys(CIR_CLASSIFICATION_COLUMN_MAPPINGS).length;
+  
+  console.log(`📊 Résultat mapping: ${totalMatches}/${Object.keys(CIR_CLASSIFICATION_COLUMN_MAPPINGS).length} colonnes mappées (confiance: ${Math.round(confidence * 100)}%)`);
+  console.log('Mapping final:', mapping);
 
   return {
     mapping,
