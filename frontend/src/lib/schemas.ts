@@ -131,12 +131,12 @@ export const DEFAULT_COLUMN_MAPPINGS: Record<string, string[]> = {
 
 // Mapping des colonnes pour les classifications CIR
 export const CIR_CLASSIFICATION_COLUMN_MAPPINGS: Record<string, string[]> = {
-  fsmega_code: ['Code FSMEGA'],
-  fsmega_designation: ['Désignation FSMEGA'],
-  fsfam_code: ['Code FSFAM'],
-  fsfam_designation: ['Désignation FSFAM'],
-  fssfa_code: ['Code FSSFA'],
-  fssfa_designation: ['Désignation FSSFA'],
-  combined_code: ['Code 1&2&3'],
-  combined_designation: ['Désignation 1&2&3']
+  fsmega_code: ['Code FSMEGA', 'Code FSMEGA '],
+  fsmega_designation: ['Désignation FSMEGA', 'Désignation FSMEGA '],
+  fsfam_code: ['Code FSFAM', 'Code FSFAM '],
+  fsfam_designation: ['Désignation FSFAM', 'Désignation FSFAM '],
+  fssfa_code: ['Code FSSFA', 'Code FSSFA '],
+  fssfa_designation: ['Désignation FSSFA', 'Désignation FSSFA '],
+  combined_code: ['Code 1&2&3', 'Code 1&2&3 '],
+  combined_designation: ['Désignation 1&2&3', 'Désignation 1&2&3 ']
 };

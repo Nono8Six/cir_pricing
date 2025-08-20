@@ -1,16 +1,18 @@
 import React, { useCallback, useState } from 'react';
 import { Upload, FileSpreadsheet, AlertCircle } from 'lucide-react';
-import { parseExcelFile } from '../../lib/excelParser';
+import { parseExcelFile, parseCirClassificationExcelFile } from '../../lib/excelParser';
 import { ParseResult } from '../../lib/schemas';
 
 interface ExcelUploadZoneProps {
   onParseComplete: (result: ParseResult, file: File) => void;
   onParseError: (error: string) => void;
+  parserType?: 'mapping' | 'cir-classification';
 }
 
 export function ExcelUploadZone({ 
   onParseComplete, 
-  onParseError
+  onParseError,
+  parserType = 'mapping'
 }: ExcelUploadZoneProps) {
   const [dragActive, setDragActive] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -58,10 +60,18 @@ export function ExcelUploadZone({
     setIsLoading(true);
 
     try {
-      const result = await parseExcelFile(file, {
-        skipEmptyRows: true,
-        maxErrors: 10000
-      });
+      let result;
+      if (parserType === 'cir-classification') {
+        result = await parseCirClassificationExcelFile(file, {
+          skipEmptyRows: true,
+          maxErrors: 10000
+        });
+      } else {
+        result = await parseExcelFile(file, {
+          skipEmptyRows: true,
+          maxErrors: 10000
+        });
+      }
       onParseComplete(result, file);
     } catch (error) {
       onParseError(error instanceof Error ? error.message : 'Erreur lors du parsing du fichier');
@@ -131,7 +141,10 @@ export function ExcelUploadZone({
           <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
           <div>
             <p className="font-medium">Format attendu:</p>
-            <p>Le fichier doit contenir les colonnes: <strong>SEGMENT</strong>, <strong>MARQUE</strong>, <strong>CAT_FAB</strong>, <strong>CAT_FAB_L</strong>, <strong>STRATEGIQ</strong>, <strong>CODIF_FAIR</strong>, <strong>FSMEGA</strong>, <strong>FSFAM</strong>, <strong>FSSFA</strong></p>
+            <p>Le fichier doit contenir les colonnes: {parserType === 'cir-classification' ? 
+              <><strong>Code FSMEGA</strong>, <strong>Désignation FSMEGA</strong>, <strong>Code FSFAM</strong>, <strong>Désignation FSFAM</strong>, <strong>Code FSSFA</strong>, <strong>Désignation FSSFA</strong>, <strong>Code 1&2&3</strong>, <strong>Désignation 1&2&3</strong></> :
+              <><strong>SEGMENT</strong>, <strong>MARQUE</strong>, <strong>CAT_FAB</strong>, <strong>CAT_FAB_L</strong>, <strong>STRATEGIQ</strong>, <strong>CODIF_FAIR</strong>, <strong>FSMEGA</strong>, <strong>FSFAM</strong>, <strong>FSSFA</strong></>
+            }</p>
           </div>
         </div>
       </div>

@@ -131,13 +131,9 @@ export const CirClassificationUploadTab: React.FC = () => {
       </Card>
 
       <ExcelUploadZone
-        onParseComplete={(result, file) => {
-          // Utiliser le parser spécialisé pour les classifications CIR
-          parseCirClassificationExcelFile(file)
-            .then(cirResult => handleParseComplete(cirResult, file))
-            .catch(error => handleParseError(error.message));
-        }}
+        onParseComplete={handleParseComplete}
         onParseError={handleParseError}
+        parserType="cir-classification"
       />
     </div>
   );
