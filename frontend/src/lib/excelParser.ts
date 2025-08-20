@@ -462,10 +462,10 @@ function parseCirClassificationDataRows(
       }
 
       // Vérifier les champs obligatoires
-      if (rowData.fsmega_code && rowData.fsmega_designation && 
-          rowData.fsfam_code !== undefined && rowData.fsfam_designation &&
-          rowData.fssfa_code !== undefined && rowData.fssfa_designation &&
-          rowData.combined_code && rowData.combined_designation) {
+      if (rowData.fsmega_code !== null && rowData.fsmega_code !== undefined && rowData.fsmega_designation &&
+          rowData.fsfam_code !== null && rowData.fsfam_code !== undefined && rowData.fsfam_designation &&
+          rowData.fssfa_code !== null && rowData.fssfa_code !== undefined && rowData.fssfa_designation &&
+          rowData.combined_code !== null && rowData.combined_code !== undefined && rowData.combined_designation) {
         
         data.push(rowData as CirClassificationOutput);
         validLines++;
