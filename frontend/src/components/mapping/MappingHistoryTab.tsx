@@ -1,12 +1,11 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  History, 
-  User, 
-  Calendar, 
-  FileSpreadsheet, 
-  CheckCircle, 
+import {
+  History,
+  User,
+  Calendar,
+  FileSpreadsheet,
+  CheckCircle,
   AlertCircle,
   Clock,
   TrendingUp,
@@ -15,7 +14,8 @@ import {
   ChevronRight,
   Filter,
   Search,
-  Eye
+  Eye,
+  Edit
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -42,11 +42,23 @@ interface ImportBatch {
   };
 }
 
+interface BrandMappingData {
+  segment?: string;
+  marque?: string;
+  cat_fab?: string;
+  cat_fab_l?: string;
+  strategiq?: number;
+  fsmega?: number;
+  fsfam?: number;
+  fssfa?: number;
+  [key: string]: unknown;
+}
+
 interface BrandMappingHistory {
   history_id: string;
   mapping_id: string;
-  old_data: any;
-  new_data: any;
+  old_data: BrandMappingData | null;
+  new_data: BrandMappingData | null;
   change_type: 'INSERT' | 'UPDATE' | 'DELETE';
   changed_at: string;
   changed_by: string;
