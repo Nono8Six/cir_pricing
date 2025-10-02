@@ -140,34 +140,22 @@ export const DEFAULT_COLUMN_MAPPINGS: Record<string, string[]> = {
 // Mapping des colonnes pour les classifications CIR
 export const CIR_CLASSIFICATION_COLUMN_MAPPINGS: Record<string, string[]> = {
   fsmega_code: [
-    'Code FSMEGA', 'Code FSMEGA ', ' Code FSMEGA', ' Code FSMEGA ',
-    'CODE FSMEGA', 'Code_FSMEGA', 'FSMEGA_CODE', 'fsmega_code',
-    'Code FSMEGA', 'Code  FSMEGA', 'Code MEGA'
+    'Code FSMEGA'
   ],
   fsmega_designation: [
-    'Désignation FSMEGA', 'Désignation FSMEGA ', ' Désignation FSMEGA', ' Désignation FSMEGA ',
-    'DESIGNATION FSMEGA', 'Designation FSMEGA', 'FSMEGA_DESIGNATION', 'fsmega_designation',
-    'Désignation  FSMEGA', 'Designation  FSMEGA', 'Libellé FSMEGA', 'Libelle FSMEGA'
+    'Désignation FSMEGA'
   ],
   fsfam_code: [
-    'Code FSFAM', 'Code FSFAM ', ' Code FSFAM', ' Code FSFAM ',
-    'CODE FSFAM', 'Code_FSFAM', 'FSFAM_CODE', 'fsfam_code',
-    'Code  FSFAM', 'Code FAM', 'Code FAMILLE'
+    'Code FSFAM'
   ],
   fsfam_designation: [
-    'Désignation FSFAM', 'Désignation FSFAM ', ' Désignation FSFAM', ' Désignation FSFAM ',
-    'DESIGNATION FSFAM', 'Designation FSFAM', 'FSFAM_DESIGNATION', 'fsfam_designation',
-    'Désignation  FSFAM', 'Designation  FSFAM', 'Libellé FSFAM', 'Libelle FSFAM'
+    'Désignation FSFAM'
   ],
   fssfa_code: [
-    'Code FSSFA', 'Code FSSFA ', ' Code FSSFA', ' Code FSSFA ',
-    'CODE FSSFA', 'Code_FSSFA', 'FSSFA_CODE', 'fssfa_code',
-    'Code  FSSFA', 'Code SFA', 'Code SOUS-FAMILLE'
+    'Code FSSFA'
   ],
   fssfa_designation: [
-    'Désignation FSSFA', 'Désignation FSSFA ', ' Désignation FSSFA', ' Désignation FSSFA ',
-    'DESIGNATION FSSFA', 'Designation FSSFA', 'FSSFA_DESIGNATION', 'fssfa_designation',
-    'Désignation  FSSFA', 'Designation  FSSFA', 'Libellé FSSFA', 'Libelle FSSFA'
+    'Désignation FSSFA'
   ],
   combined_code: [
     'Code 1&2&3', 'Code 1&2&3 ', ' Code 1&2&3', ' Code 1&2&3 ',

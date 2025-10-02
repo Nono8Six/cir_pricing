@@ -10,6 +10,9 @@ import { Clients } from './pages/Clients';
 import { GroupsPage } from './pages/GroupsPage';
 import { Mapping } from './pages/Mapping';
 import { PlaceholderPage } from './pages/PlaceholderPage';
+import { ImportsNew } from './pages/ImportsNew';
+import { ImportsHistory } from './pages/ImportsHistory';
+import { ImportBatchDetails } from './pages/ImportBatchDetails';
 
 // Error Boundary pour capturer les erreurs React
 class ErrorBoundary extends React.Component<
@@ -79,6 +82,9 @@ function AppContent() {
           <Route path="/clients" element={<Clients />} />
           <Route path="/groups" element={<GroupsPage />} />
           <Route path="/mapping" element={<Mapping />} />
+          <Route path="/imports/new" element={<ImportsNew />} />
+          <Route path="/imports/history" element={<ImportsHistory />} />
+          <Route path="/imports/history/:id" element={<ImportBatchDetails />} />
           <Route path="/prices" element={<PlaceholderPage />} />
           <Route path="/prices/new" element={<PlaceholderPage />} />
           <Route path="/analytics" element={<PlaceholderPage />} />

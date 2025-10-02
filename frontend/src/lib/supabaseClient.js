@@ -36,6 +36,9 @@ export const mappingApi = {
     if (filters.strategiq !== undefined) {
       query = query.eq('strategiq', filters.strategiq);
     }
+    if (filters.source_type) {
+      query = query.eq('source_type', filters.source_type);
+    }
 
     // Get total count for pagination
     let countQuery = supabase
@@ -62,6 +65,9 @@ export const mappingApi = {
     }
     if (filters.strategiq !== undefined) {
       countQuery = countQuery.eq('strategiq', filters.strategiq);
+    }
+    if (filters.source_type) {
+      countQuery = countQuery.eq('source_type', filters.source_type);
     }
 
     const [{ data, error }, { count, error: countError }] = await Promise.all([
@@ -141,13 +147,9 @@ export const mappingApi = {
 
   // Get unique segments for filter
   async getUniqueSegments() {
-    const { data, error } = await supabase
-      .from('brand_category_mappings')
-      .select('segment')
-      .order('segment');
-    
+    const { data, error } = await supabase.rpc('get_all_unique_segments');
     if (error) throw error;
-    return [...new Set(data.map(item => item.segment))];
+    return data || [];
   },
 
   // Get ALL unique segments (no filters applied)
@@ -160,13 +162,9 @@ export const mappingApi = {
 
   // Get unique marques for filter
   async getUniqueMarques() {
-    const { data, error } = await supabase
-      .from('brand_category_mappings')
-      .select('marque')
-      .order('marque');
-    
+    const { data, error } = await supabase.rpc('get_all_unique_marques');
     if (error) throw error;
-    return [...new Set(data.map(item => item.marque))];
+    return data || [];
   },
 
   // Get ALL unique marques (no filters applied)
@@ -179,13 +177,9 @@ export const mappingApi = {
 
   // Get unique FSMEGA values for filter
   async getUniqueFsmegas() {
-    const { data, error } = await supabase
-      .from('brand_category_mappings')
-      .select('fsmega')
-      .order('fsmega');
-    
+    const { data, error } = await supabase.rpc('get_all_unique_fsmegas');
     if (error) throw error;
-    return [...new Set(data.map(item => item.fsmega))];
+    return data || [];
   },
 
   // Get ALL unique FSMEGA values (no filters applied)
@@ -198,13 +192,9 @@ export const mappingApi = {
 
   // Get unique FSFAM values for filter
   async getUniqueFsfams() {
-    const { data, error } = await supabase
-      .from('brand_category_mappings')
-      .select('fsfam')
-      .order('fsfam');
-    
+    const { data, error } = await supabase.rpc('get_all_unique_fsfams');
     if (error) throw error;
-    return [...new Set(data.map(item => item.fsfam))];
+    return data || [];
   },
 
   // Get ALL unique FSFAM values (no filters applied)
@@ -217,13 +207,9 @@ export const mappingApi = {
 
   // Get unique FSSFA values for filter
   async getUniqueFssfas() {
-    const { data, error } = await supabase
-      .from('brand_category_mappings')
-      .select('fssfa')
-      .order('fssfa');
-    
+    const { data, error } = await supabase.rpc('get_all_unique_fssfas');
     if (error) throw error;
-    return [...new Set(data.map(item => item.fssfa))];
+    return data || [];
   },
 
   // Get ALL unique FSSFA values (no filters applied)
@@ -282,6 +268,14 @@ export const mappingApi = {
       throw error;
     }
     return data;
+  },
+
+  // Lookup mappings by natural_key via RPC
+  async getMappingsByKeys(keys) {
+    if (!Array.isArray(keys) || keys.length === 0) return [];
+    const { data, error } = await supabase.rpc('get_mappings_by_keys', { keys });
+    if (error) throw error;
+    return data || [];
   }
 };
 
@@ -489,5 +483,13 @@ export const cirClassificationApi = {
       .eq('id', id);
 
     if (error) throw error;
+  },
+
+  // Lookup classifications by combined_code via RPC
+  async getByCodes(codes) {
+    if (!Array.isArray(codes) || codes.length === 0) return [];
+    const { data, error } = await supabase.rpc('get_classifications_by_codes', { codes });
+    if (error) throw error;
+    return data || [];
   }
 };

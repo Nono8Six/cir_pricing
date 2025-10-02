@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Upload, FileSpreadsheet, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle } from 'lucide-react';

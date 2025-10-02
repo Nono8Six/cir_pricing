@@ -6,11 +6,12 @@ import {
   Calculator, 
   Users, 
   Building,
- FileSpreadsheet,
+  FileSpreadsheet,
   DollarSign, 
   Settings,
   BarChart3,
-  FileText
+  FileText,
+  Upload
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -23,7 +24,8 @@ const menuItems = [
   { icon: Calculator, label: 'Calculateur', path: '/calculator' },
   { icon: Users, label: 'Clients', path: '/clients' },
   { icon: Building, label: 'Groupements', path: '/groups' },
- { icon: FileSpreadsheet, label: 'Mapping', path: '/mapping' },
+  { icon: FileSpreadsheet, label: 'Mapping', path: '/mapping' },
+  { icon: Upload, label: 'Imports', path: '/imports/new' },
   { icon: DollarSign, label: 'Prix', path: '/prices' },
   { icon: BarChart3, label: 'Analyses', path: '/analytics' },
   { icon: FileText, label: 'Rapports', path: '/reports' },

@@ -351,9 +351,11 @@ export async function parseCirClassificationExcelFile(
 function detectCirClassificationColumnMapping(headers: string[]): HeaderDetectionResult {
   const mapping: Record<string, string> = {};
   const unmappedHeaders: string[] = [];
+  const usedFields = new Set<string>(); // Éviter les doublons
   let totalMatches = 0;
 
-  console.log('🔍 Détection des colonnes CIR. Headers trouvés:', headers);
+  // Debug: uncomment to see column detection details
+  // console.log('🔍 Détection des colonnes CIR. Headers trouvés:', headers);
 
   for (const header of headers) {
     // Nettoyer l'en-tête (supprimer espaces en début/fin)
@@ -361,15 +363,26 @@ function detectCirClassificationColumnMapping(headers: string[]): HeaderDetectio
     let matchedField: string | null = null;
 
     for (const [field, variations] of Object.entries(CIR_CLASSIFICATION_COLUMN_MAPPINGS)) {
+      // Ignorer les champs déjà utilisés
+      if (usedFields.has(field)) {
+        continue;
+      }
+
       // Correspondance exacte (insensible à la casse)
       if (variations.some(variation => variation.toLowerCase() === cleanHeader.toLowerCase())) {
         matchedField = field;
-        console.log(`✅ Correspondance exacte: "${cleanHeader}" → ${field}`);
+        // console.log(`✅ Correspondance exacte: "${cleanHeader}" → ${field}`);
         break;
       }
-      
-      // Si pas de correspondance exacte, essayer fuzzy matching plus permissif
-      if (!matchedField) {
+    }
+
+    // Si pas de correspondance exacte, essayer fuzzy matching mais seulement sur les champs non utilisés
+    if (!matchedField) {
+      for (const [field, variations] of Object.entries(CIR_CLASSIFICATION_COLUMN_MAPPINGS)) {
+        if (usedFields.has(field)) {
+          continue;
+        }
+
         const fuse = new Fuse(variations, {
           threshold: 0.3, // Plus permissif
           distance: 100,
@@ -379,7 +392,7 @@ function detectCirClassificationColumnMapping(headers: string[]): HeaderDetectio
         
         if (results.length > 0 && results[0].score !== undefined && results[0].score < 0.4) {
           matchedField = field;
-          console.log(`🔍 Correspondance fuzzy: "${cleanHeader}" → ${field} (score: ${results[0].score})`);
+          // console.log(`🔍 Correspondance fuzzy: "${cleanHeader}" → ${field} (score: ${results[0].score})`);
           break;
         }
       }
@@ -387,17 +400,18 @@ function detectCirClassificationColumnMapping(headers: string[]): HeaderDetectio
 
     if (matchedField) {
       mapping[header] = matchedField;
+      usedFields.add(matchedField);
       totalMatches++;
     } else {
       unmappedHeaders.push(header);
-      console.log(`❌ Colonne non mappée: "${cleanHeader}"`);
+      // console.log(`❌ Colonne non mappée: "${cleanHeader}" (JSON: ${JSON.stringify(header)})`);
     }
   }
 
   const confidence = totalMatches / Object.keys(CIR_CLASSIFICATION_COLUMN_MAPPINGS).length;
   
-  console.log(`📊 Résultat mapping: ${totalMatches}/${Object.keys(CIR_CLASSIFICATION_COLUMN_MAPPINGS).length} colonnes mappées (confiance: ${Math.round(confidence * 100)}%)`);
-  console.log('Mapping final:', mapping);
+  // console.log(`📊 Résultat mapping: ${totalMatches}/${Object.keys(CIR_CLASSIFICATION_COLUMN_MAPPINGS).length} colonnes mappées (confiance: ${Math.round(confidence * 100)}%)`);
+  // console.log('Mapping final:', mapping);
 
   return {
     mapping,

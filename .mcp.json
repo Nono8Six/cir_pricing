@@ -1,0 +1,44 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--read-only",
+        "--project-ref=zribcjrdrblajrhigwxd"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "sbp_e332c2653236347f51c5dd7254c2ed7a215fa9a9"
+      }
+    },
+    "context7": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@upstash/context7-mcp@latest"
+      ]
+    },
+    "supabase-deploya": {
+      "command": "supabase-mcp-server",
+      "args": [
+        "--read-only",
+        "--project-ref=zribcjrdrblajrhigwxd"
+      ],
+      "env": {
+        "SUPABASE_PROJECT_REF": "zribcjrdrblajrhigwxd",
+        "SUPABASE_DB_PASSWORD": "bbdIyfwMMtuqZ622",
+        "SUPABASE_REGION": "eu-west-3",
+        "SUPABASE_ACCESS_TOKEN": "sbp_e332c2653236347f51c5dd7254c2ed7a215fa9a9"
+      }
+    }
+  },
+  "client": {
+    "name": "claude-code",
+    "version": "1.0.0"
+  }
+}

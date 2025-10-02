@@ -1,10 +1,12 @@
 // @ts-nocheck
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { FileSpreadsheet, Plus, Search, CreditCard as Edit, Trash2, ListFilter as Filter, ChevronLeft, ChevronRight, Upload, History, Settings, ChartBar as BarChart3, Database } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { SearchableSelect } from '../components/ui/SearchableSelect';
 import { MappingModal } from '../components/mapping/MappingModal';
+import { MappingTable } from '../components/mapping/MappingTable';
 import { ExcelUploadZone } from '../components/mapping/ExcelUploadZone';
 import { ParseResultSummary } from '../components/mapping/ParseResultSummary';
 import { MappingPreviewTable } from '../components/mapping/MappingPreviewTable';
@@ -13,6 +15,7 @@ import { MappingAnalyticsTab } from '../components/mapping/MappingAnalyticsTab';
 import { MappingSettingsTab } from '../components/mapping/MappingSettingsTab';
 import { CirClassificationBrowser } from '../components/cir/CirClassificationBrowser';
 import { CirClassificationUploadTab } from '../components/cir/CirClassificationUploadTab';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { mappingApi } from '../lib/supabaseClient';
 import { supabase } from '../lib/api';
@@ -39,7 +42,7 @@ interface BrandMapping {
   source_type: string;
 }
 
-type TabType = 'mappings' | 'upload' | 'history' | 'analytics' | 'settings' | 'cir-browser' | 'cir-upload';
+type TabType = 'mappings' | 'history' | 'analytics' | 'settings' | 'cir-browser';
 
 export const Mapping: React.FC = () => {
   const { user } = useAuth();
@@ -48,7 +51,10 @@ export const Mapping: React.FC = () => {
   // États pour les mappings
   const [mappings, setMappings] = useState<BrandMapping[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  // Global loading should not block initial render of the mappings tab
+  // It is used transiently in the upload workflow; start as false here
+  const [loading, setLoading] = useState(false);
+  const [tableLoading, setTableLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [selectedSegment, setSelectedSegment] = useState<string>('all');
@@ -65,10 +71,12 @@ export const Mapping: React.FC = () => {
   const [selectedFsfam, setSelectedFsfam] = useState<string>('all');
   const [selectedFssfa, setSelectedFssfa] = useState<string>('all');
   const [selectedStrategiq, setSelectedStrategiq] = useState<string>('all');
-  const [selectedSourceType, setSelectedSourceType] = useState<string>('all');
   const [fsmegas, setFsmegas] = useState<number[]>([]);
   const [fsfams, setFsfams] = useState<number[]>([]);
   const [fssfas, setFssfas] = useState<number[]>([]);
+  
+  // États de loading pour les filtres
+  const [filtersLoading, setFiltersLoading] = useState(true);
   
   // États pour la pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -90,9 +98,7 @@ export const Mapping: React.FC = () => {
   // Définition des onglets
   const tabs = [
     { id: 'mappings' as TabType, label: 'Mappings', icon: Database, count: totalCount },
-    { id: 'upload' as TabType, label: 'Import Excel', icon: Upload },
     { id: 'cir-browser' as TabType, label: 'Classifications CIR', icon: Database },
-    { id: 'cir-upload' as TabType, label: 'Import Classifications', icon: Upload },
     { id: 'history' as TabType, label: 'Historique', icon: History },
     { id: 'analytics' as TabType, label: 'Analyses', icon: BarChart3 },
     { id: 'settings' as TabType, label: 'Paramètres', icon: Settings }
@@ -142,23 +148,11 @@ export const Mapping: React.FC = () => {
     });
   };
 
-  // Charger les données des mappings
-  const fetchData = async () => {
+  // Charger les options de filtre (une seule fois au début)
+  const fetchFilterOptions = async () => {
     try {
-      setLoading(true);
-      const filters = {
-        ...(selectedSegment !== 'all' && { segment: selectedSegment }),
-        ...(selectedMarque !== 'all' && { marque: selectedMarque }),
-        ...(debouncedSearchTerm && { cat_fab: debouncedSearchTerm }),
-        ...(selectedFsmega !== 'all' && { fsmega: parseInt(selectedFsmega) }),
-        ...(selectedFsfam !== 'all' && { fsfam: parseInt(selectedFsfam) }),
-        ...(selectedFssfa !== 'all' && { fssfa: parseInt(selectedFssfa) }),
-        ...(selectedStrategiq !== 'all' && { strategiq: parseInt(selectedStrategiq) }),
-        ...(selectedSourceType !== 'all' && { source_type: selectedSourceType })
-      };
-      
+      setFiltersLoading(true);
       const [
-        mappingsResult, 
         allSegmentsData, 
         allMarquesData, 
         allFsmegasData, 
@@ -168,7 +162,6 @@ export const Mapping: React.FC = () => {
         totalMarquesCount, 
         totalStrategiquesCount
       ] = await Promise.all([
-        mappingApi.getMappings(filters, currentPage, itemsPerPage),
         mappingApi.getAllUniqueSegments(),
         mappingApi.getAllUniqueMarques(),
         mappingApi.getAllUniqueFsmegas(),
@@ -179,8 +172,6 @@ export const Mapping: React.FC = () => {
         mappingApi.getTotalStrategiquesCount()
       ]);
 
-      setMappings(mappingsResult.data);
-      setTotalCount(mappingsResult.count);
       setSegments(allSegmentsData);
       setMarques(allMarquesData);
       setFsmegas(allFsmegasData);
@@ -191,23 +182,58 @@ export const Mapping: React.FC = () => {
       setTotalStrategiques(totalStrategiquesCount);
       
     } catch (error) {
+      console.error('Erreur chargement options de filtre:', error);
+      toast.error('Erreur lors du chargement des filtres');
+    } finally {
+      setFiltersLoading(false);
+    }
+  };
+
+  // Charger seulement les données des mappings (rapide)
+  const fetchMappings = async () => {
+    try {
+      setTableLoading(true);
+      const filters = {
+        ...(selectedSegment !== 'all' && { segment: selectedSegment }),
+        ...(selectedMarque !== 'all' && { marque: selectedMarque }),
+        ...(debouncedSearchTerm && { cat_fab: debouncedSearchTerm }),
+        ...(selectedFsmega !== 'all' && { fsmega: parseInt(selectedFsmega) }),
+        ...(selectedFsfam !== 'all' && { fsfam: parseInt(selectedFsfam) }),
+        ...(selectedFssfa !== 'all' && { fssfa: parseInt(selectedFssfa) }),
+        ...(selectedStrategiq !== 'all' && { strategiq: parseInt(selectedStrategiq) })
+      };
+      
+      const mappingsResult = await mappingApi.getMappings(filters, currentPage, itemsPerPage);
+
+      setMappings(mappingsResult.data);
+      setTotalCount(mappingsResult.count);
+      
+    } catch (error) {
       console.error('Erreur chargement mappings:', error);
       toast.error('Erreur lors du chargement des mappings');
     } finally {
-      setLoading(false);
+      setTableLoading(false);
     }
   };
 
   // Effects
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedSegment, selectedMarque, debouncedSearchTerm, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq, selectedSourceType]);
+  }, [selectedSegment, selectedMarque, debouncedSearchTerm, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq]);
 
+  // Charger les options de filtre une seule fois quand on ouvre l'onglet mappings
   useEffect(() => {
-    if (activeTab === 'mappings') {
-      fetchData();
+    if (activeTab === 'mappings' && segments.length === 0) {
+      fetchFilterOptions();
     }
-  }, [activeTab, selectedSegment, selectedMarque, debouncedSearchTerm, currentPage, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq, selectedSourceType]);
+  }, [activeTab]);
+
+  // Charger seulement les données quand les filtres/page changent
+  useEffect(() => {
+    if (activeTab === 'mappings' && !filtersLoading) {
+      fetchMappings();
+    }
+  }, [activeTab, selectedSegment, selectedMarque, debouncedSearchTerm, currentPage, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq, filtersLoading]);
 
   // Gestionnaires pour le workflow d'upload
   const handleParseComplete = (result: ParseResult, file: File) => {
@@ -326,7 +352,7 @@ export const Mapping: React.FC = () => {
             setDeleteLoading(mapping.id);
             await mappingApi.deleteMapping(mapping.id);
             toast.success('Mapping supprimé avec succès');
-            fetchData();
+            fetchMappings();
           } catch (error: any) {
             console.error('Erreur suppression mapping:', error);
             toast.error(error.message || 'Erreur lors de la suppression');
@@ -348,7 +374,7 @@ export const Mapping: React.FC = () => {
   };
 
   const handleModalSuccess = () => {
-    fetchData();
+    fetchMappings();
   };
 
   // Calculs pour la pagination
@@ -356,17 +382,56 @@ export const Mapping: React.FC = () => {
   const startItem = (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalCount);
 
+  // Convertir les données pour SearchableSelect (mémorisé)
+  const segmentOptions = useMemo(() => 
+    segments.map(segment => ({
+      value: segment,
+      label: `Segment ${segment}`
+    })), [segments]
+  );
+
+  const marqueOptions = useMemo(() => 
+    marques.map(marque => ({
+      value: marque,
+      label: marque
+    })), [marques]
+  );
+
+  const fsmegaOptions = useMemo(() => 
+    fsmegas.map(fsmega => ({
+      value: fsmega.toString(),
+      label: fsmega.toString()
+    })), [fsmegas]
+  );
+
+  const fsfamOptions = useMemo(() => 
+    fsfams.map(fsfam => ({
+      value: fsfam.toString(),
+      label: fsfam.toString()
+    })), [fsfams]
+  );
+
+  const fssfaOptions = useMemo(() => 
+    fssfas.map(fssfa => ({
+      value: fssfa.toString(),
+      label: fssfa.toString()
+    })), [fssfas]
+  );
+
+  const strategiqOptions = useMemo(() => [
+    { value: '1', label: 'Stratégique uniquement' },
+    { value: '0', label: 'Non stratégique uniquement' }
+  ], []);
+
+  
+
   // Rendu du contenu selon l'onglet actif
   const renderTabContent = () => {
     switch (activeTab) {
       case 'mappings':
         return renderMappingsTab();
-      case 'upload':
-        return renderUploadTab();
       case 'cir-browser':
         return <CirClassificationBrowser />;
-      case 'cir-upload':
-        return <CirClassificationUploadTab />;
       case 'history':
         return <MappingHistoryTab />;
       case 'analytics':
@@ -469,68 +534,35 @@ export const Mapping: React.FC = () => {
             </div>
 
             {/* Deuxième ligne : Filtres de base */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-              <div className="relative">
-                <input
-                  type="text"
-                  value={segmentSearch}
-                  onChange={(e) => setSegmentSearch(e.target.value)}
-                  placeholder="Rechercher un segment..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-t-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-                />
-                <select
-                  value={selectedSegment}
-                  onChange={(e) => setSelectedSegment(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-b-lg border-t-0 focus:ring-2 focus:ring-cir-red focus:border-transparent max-h-48 overflow-y-auto"
-                  size={5}
-                >
-                  <option value="all">Tous les segments</option>
-                  {segments
-                    .filter(segment =>
-                      segment.toLowerCase().includes(segmentSearch.toLowerCase())
-                    )
-                    .map(segment => (
-                      <option key={segment} value={segment}>
-                        {segment}
-                      </option>
-                    ))}
-                </select>
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <SearchableSelect
+                value={selectedSegment}
+                onValueChange={setSelectedSegment}
+                options={segmentOptions}
+                placeholder="Tous les segments"
+                allOptionLabel="Tous les segments"
+                loading={filtersLoading}
+              />
 
-              <select
+              <SearchableSelect
                 value={selectedMarque}
-                onChange={(e) => setSelectedMarque(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-              >
-                <option value="all">Toutes les marques</option>
-                {marques.map(marque => (
-                  <option key={marque} value={marque}>
-                    {marque}
-                  </option>
-                ))}
-              </select>
+                onValueChange={setSelectedMarque}
+                options={marqueOptions}
+                placeholder="Toutes les marques"
+                allOptionLabel="Toutes les marques"
+                loading={filtersLoading}
+              />
 
-              <select
+              <SearchableSelect
                 value={selectedStrategiq}
-                onChange={(e) => setSelectedStrategiq(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-              >
-                <option value="all">Tous (stratégique)</option>
-                <option value="1">Stratégique uniquement</option>
-                <option value="0">Non stratégique uniquement</option>
-              </select>
+                onValueChange={setSelectedStrategiq}
+                options={strategiqOptions}
+                placeholder="Tous (stratégique)"
+                allOptionLabel="Tous (stratégique)"
+                loading={filtersLoading}
+              />
 
-              <select
-                value={selectedSourceType}
-                onChange={(e) => setSelectedSourceType(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-              >
-                <option value="all">Toutes les sources</option>
-                <option value="excel_upload">Import Excel</option>
-                <option value="manual_edit">Saisie manuelle</option>
-                <option value="api_import">Import API</option>
-                <option value="initial_load">Chargement initial</option>
-              </select>
+              {/* Source filter removed per request */}
             </div>
 
             {/* Troisième ligne : Filtres CIR avancés */}
@@ -544,54 +576,45 @@ export const Mapping: React.FC = () => {
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Méga Famille (FSMEGA)
                   </label>
-                  <select
+                  <SearchableSelect
                     value={selectedFsmega}
-                    onChange={(e) => setSelectedFsmega(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-                  >
-                    <option value="all">Toutes</option>
-                    {fsmegas.sort((a, b) => a - b).map(fsmega => (
-                      <option key={fsmega} value={fsmega.toString()}>
-                        {fsmega}
-                      </option>
-                    ))}
-                  </select>
+                    onValueChange={setSelectedFsmega}
+                    options={fsmegaOptions.sort((a, b) => parseInt(a.value) - parseInt(b.value))}
+                    placeholder="Toutes"
+                    allOptionLabel="Toutes"
+                    loading={filtersLoading}
+                    className="text-sm"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Famille (FSFAM)
                   </label>
-                  <select
+                  <SearchableSelect
                     value={selectedFsfam}
-                    onChange={(e) => setSelectedFsfam(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-                  >
-                    <option value="all">Toutes</option>
-                    {fsfams.sort((a, b) => a - b).map(fsfam => (
-                      <option key={fsfam} value={fsfam.toString()}>
-                        {fsfam}
-                      </option>
-                    ))}
-                  </select>
+                    onValueChange={setSelectedFsfam}
+                    options={fsfamOptions.sort((a, b) => parseInt(a.value) - parseInt(b.value))}
+                    placeholder="Toutes"
+                    allOptionLabel="Toutes"
+                    loading={filtersLoading}
+                    className="text-sm"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Sous Famille (FSSFA)
                   </label>
-                  <select
+                  <SearchableSelect
                     value={selectedFssfa}
-                    onChange={(e) => setSelectedFssfa(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-                  >
-                    <option value="all">Toutes</option>
-                    {fssfas.sort((a, b) => a - b).map(fssfa => (
-                      <option key={fssfa} value={fssfa.toString()}>
-                        {fssfa}
-                      </option>
-                    ))}
-                  </select>
+                    onValueChange={setSelectedFssfa}
+                    options={fssfaOptions.sort((a, b) => parseInt(a.value) - parseInt(b.value))}
+                    placeholder="Toutes"
+                    allOptionLabel="Toutes"
+                    loading={filtersLoading}
+                    className="text-sm"
+                  />
                 </div>
 
                 <div className="flex items-end">
@@ -606,7 +629,6 @@ export const Mapping: React.FC = () => {
                       setSelectedFsfam('all');
                       setSelectedFssfa('all');
                       setSelectedStrategiq('all');
-                      setSelectedSourceType('all');
                     }}
                     className="w-full flex items-center justify-center space-x-2"
                   >
@@ -638,129 +660,16 @@ export const Mapping: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cir-red"></div>
-            </div>
-          ) : mappings.length === 0 ? (
-            <div className="text-center py-12">
-              <FileSpreadsheet className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 mb-2">Aucun mapping trouvé</p>
-              <p className="text-sm text-gray-400 mb-4">
-                {searchTerm || selectedSegment !== 'all' || selectedMarque !== 'all' 
-                  ? 'Aucun résultat pour les filtres appliqués'
-                  : 'Utilisez l\'onglet Import Excel pour commencer'
-                }
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Segment
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Marque
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      CAT_FAB
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Description
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Stratégique
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Classification CIR
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Source
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {mappings.map((mapping, index) => (
-                    <motion.tr
-                      key={mapping.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.02 }}
-                      className="hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {mapping.segment}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {mapping.marque}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {mapping.cat_fab}
-                      </td>
-                      <td className="px-4 py-4 text-sm text-gray-900 max-w-xs truncate">
-                        {mapping.cat_fab_l || '-'}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        {mapping.strategiq === 1 ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            Oui
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                            Non
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
-                        {mapping.classif_cir}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          mapping.source_type === 'excel_upload' ? 'bg-blue-100 text-blue-800' :
-                          mapping.source_type === 'manual_edit' ? 'bg-green-100 text-green-800' :
-                          mapping.source_type === 'api_import' ? 'bg-purple-100 text-purple-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {mapping.source_type === 'excel_upload' ? 'Excel' :
-                           mapping.source_type === 'manual_edit' ? 'Manuel' :
-                           mapping.source_type === 'api_import' ? 'API' :
-                           'Initial'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end space-x-2">
-                          <button
-                            onClick={() => handleEditMapping(mapping)}
-                            className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
-                            title="Modifier"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteMapping(mapping)}
-                            disabled={deleteLoading === mapping.id}
-                            className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors disabled:opacity-50"
-                            title="Supprimer"
-                          >
-                            {deleteLoading === mapping.id ? (
-                              <div className="w-4 h-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <MappingTable
+            mappings={mappings}
+            loading={tableLoading}
+            searchTerm={searchTerm}
+            selectedSegment={selectedSegment}
+            selectedMarque={selectedMarque}
+            deleteLoading={deleteLoading}
+            onEdit={handleEditMapping}
+            onDelete={handleDeleteMapping}
+          />
         </CardContent>
         
         {/* Pagination */}
@@ -869,6 +778,12 @@ export const Mapping: React.FC = () => {
           <p className="text-sm sm:text-base text-gray-600">
             Gestion avancée des mappings entre familles fabricant et classifications CIR
           </p>
+        </div>
+        <div>
+          <Link to="/imports/new" className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">
+            <Upload className="w-4 h-4 mr-2" />
+            Importer
+          </Link>
         </div>
       </div>
 

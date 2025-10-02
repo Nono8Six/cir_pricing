@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__supabase-deploya__get_db_schemas",
+      "mcp__supabase-deploya__get_tables",
+      "mcp__supabase-deploya__get_table_schema",
+      "mcp__supabase-deploya__execute_sql_query",
+      "mcp__supabase-deploya__get_management_api_spec",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "mcp__supabase-deploya__live_dangerously",
+      "mcp__supabase-deploya__send_management_api_request",
+      "mcp__supabase__get_project_url",
+      "mcp__supabase__get_anon_key",
+      "mcp__supabase__deploy_edge_function",
+      "mcp__supabase__list_edge_functions",
+      "WebFetch(domain:zribcjrdrblajrhigwxd.supabase.co)",
+      "mcp__supabase__get_logs",
+      "Bash(git fetch:*)",
+      "Bash(git stash push:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(git add:*)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase",
+    "context7",
+    "supabase-deploya"
+  ]
+}
