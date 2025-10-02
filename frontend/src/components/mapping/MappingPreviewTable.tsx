@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -29,6 +28,7 @@ interface BrandMapping {
   fsfam: number;
   fssfa: number;
   classif_cir?: string;
+  autoClassified?: boolean;
 }
 
 interface MappingChange {
@@ -145,7 +145,7 @@ export const MappingPreviewTable: React.FC<MappingPreviewTableProps> = ({
           const parsedValue = parsedMapping[field as keyof BrandMapping];
           
           // Normaliser les valeurs pour la comparaison
-          const normalizeValue = (val: any) => {
+          const normalizeValue = (val: unknown) => {
             if (val === null || val === undefined || val === '') return null;
             return val;
           };
@@ -202,7 +202,7 @@ export const MappingPreviewTable: React.FC<MappingPreviewTableProps> = ({
       : 'bg-blue-50 text-blue-700 border-blue-200';
   };
 
-  const formatValue = (value: any) => {
+  const formatValue = (value: unknown): string => {
     if (value === null || value === undefined || value === '') return '-';
     return String(value);
   };
