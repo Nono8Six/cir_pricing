@@ -34,17 +34,10 @@ export function guessMapping(headers: string[], dataset: 'mapping' | 'classifica
   const normHeaders = headers.map((h) => ({ raw: h, norm: normalizeHeader(h) }));
   const dict = dataset === 'mapping' ? MAPPING_SYNONYMS : CLASSIF_SYNONYMS;
   const res: Record<string, string> = {};
-  
-  console.debug('guessMapping debug:', {
-    dataset,
-    normHeaders,
-    dictKeys: Object.keys(dict)
-  });
-  
+
   for (const key of Object.keys(dict)) {
     const candidates = dict[key].map(normalizeHeader);
     const hit = normHeaders.find((h) => candidates.includes(h.norm));
-    console.debug(`Checking ${key}:`, { candidates: candidates.slice(0,3), hit: hit?.norm });
     if (hit) res[key] = hit.raw;
   }
   return res;

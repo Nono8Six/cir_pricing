@@ -75,9 +75,7 @@ export const ColumnMapper: React.FC<Props> = ({ datasetType, columns, headers = 
             <div className="font-medium mb-2">Associer les colonnes requises</div>
             <button type="button" onClick={() => {
               if (!datasetType) return;
-              console.debug('Auto-map button clicked - headers received:', headers, 'length:', headers.length);
               const guessed = guessMapping(headers, datasetType);
-              console.debug('Auto-map guessed:', guessed, 'from headers:', headers);
               
               const next: Record<string, string> = { ...columns };
               let detectedCount = 0;

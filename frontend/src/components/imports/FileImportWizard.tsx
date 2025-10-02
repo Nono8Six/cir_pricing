@@ -230,12 +230,10 @@ export const FileImportWizard: React.FC = () => {
                     const rowsArray = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as any[][];
                     const hdrRow = (rowsArray[0] || []).map((x) => String(x ?? '').trim()).filter(Boolean);
                     const json = XLSX.utils.sheet_to_json(ws, { defval: '' });
-                    console.debug('Excel headers extracted:', hdrRow, 'from rowsArray[0]:', rowsArray[0]);
                     setRawRows(json as any[]);
                     setHeaders(hdrRow);
                     if (datasetType) {
                       const guessed = guessMapping(hdrRow, datasetType);
-                      console.debug('Initial auto-guess on file load:', guessed);
                       setColumns((prev) => ({ ...guessed, ...prev }));
                     }
                     setExamples({ total: (json as any[]).length, sample: (json as any[]).slice(0, 5) });
@@ -333,12 +331,6 @@ export const FileImportWizard: React.FC = () => {
               
               <div className="flex items-center gap-3 flex-wrap">
               <Button onClick={async () => {
-                console.log('🎯 Button clicked - checking conditions:', { 
-                  datasetType, 
-                  fileName, 
-                  diff,
-                  diffRows: diffRows.length 
-                });
                 if (!datasetType || !fileName) {
                   console.error('❌ Missing datasetType or fileName');
                   toast.error('Données manquantes pour l\'import');
@@ -351,7 +343,6 @@ export const FileImportWizard: React.FC = () => {
                 }
                 try {
                   setApplyLoading(true);
-                  console.log('🚀 SYNC Import direct clicked');
                   const batchStats = {
                     total_lines: rawRows.length,
                     processed_lines: 0,
@@ -486,7 +477,6 @@ export const FileImportWizard: React.FC = () => {
                 }
                 try {
                   setApplyLoading(true);
-                  console.log('⏱️ ASYNC Import en arrière-plan clicked');
                   // 1) Upload dans Storage
                   const key = `uploads/${Date.now()}_${fileName}`;
                   const { error: upErr } = await supabase.storage.from('imports').upload(key, fileObj, { upsert: true });
@@ -552,9 +542,6 @@ export const FileImportWizard: React.FC = () => {
               mapped.forEach((row, idx) => {
                 const res = schema.safeParse(row);
                 if (!res.success) {
-                  if (idx < 5) { // Log first 5 errors for debugging
-                    console.debug(`Validation error row ${idx + 2}:`, { row, errors: res.error.issues });
-                  }
                   res.error.issues.forEach((iss) => {
                     failures.push({ row: idx + 2, field: (iss.path[0] as string) || '', message: iss.message, value: (row as any)[iss.path[0] as string] });
                   });

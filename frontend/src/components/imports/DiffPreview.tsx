@@ -37,10 +37,8 @@ export const DiffPreview: React.FC<Props> = ({ diff, onSetDiff, items = [], data
     else if (anyCreate) autoFilter = 'create';
     
     const filter = statusFilter || autoFilter;
-    console.log('🔍 Filter debug:', { statusFilter, autoFilter, filter, itemsCount: def.length, anyConflict, anyUpdate, anyCreate });
-    
+
     const result = def.filter(i => filter === 'all' ? true : i.status === filter);
-    console.log('🎯 Filtered result:', result.length, 'items');
     return result;
   }, [items, statusFilter]);
 
