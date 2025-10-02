@@ -99,17 +99,21 @@
 
 ---
 
-### 4. 🧹 Nettoyage du Code [P1]
+### 4. 🧹 Nettoyage du Code [P1] ✅
 
-- [ ] **P1** Supprimer **tous** les `console.log` (21 occurrences détectées) :
+- [x] **P1** Supprimer **tous** les `console.log` et `console.debug` → **28 suppressions** ✓
   - `excelParser.ts` : 16 logs avec emojis 📊
   - `DiffPreview.tsx` : 2 logs debug
-  - `FileImportWizard.tsx` : 3 logs
-- [ ] **P1** Option : Remplacer par logger structuré (ex: `pino` ou `winston`) avec env check
+  - `FileImportWizard.tsx` : 3 logs + 2 debug
+  - `ColumnMapper.tsx` : 2 debug
+  - `utils.ts` : 2 debug
+  - `FileImportWizard.tsx` : 1 debug validation
+- [x] **P1** Garder `console.error`/`console.warn` pour tracking production → **Conservés** ✓
 - [ ] **P2** Supprimer imports inutilisés (ESLint `--fix`)
 - [ ] **P2** Formatter tout le code (`prettier --write src/`)
 
-**Durée estimée** : 2-3 heures
+**Durée réelle** : 20 min
+**Commit** : `39366b9` - chore: remove all console.log and console.debug statements [P1]
 
 ---
 
