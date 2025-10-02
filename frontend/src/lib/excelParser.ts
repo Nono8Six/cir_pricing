@@ -422,6 +422,9 @@ function parseCirClassificationDataRows(
   let errorCount = 0;
   const { maxErrors = Infinity } = options;
 
+  console.log('🔍 Début du parsing des données CIR');
+  console.log('📋 Mapping des colonnes:', columnMapping);
+  console.log('📊 Nombre de lignes à traiter:', rows.length);
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const lineNumber = i + 2;
@@ -432,6 +435,7 @@ function parseCirClassificationDataRows(
       continue;
     }
 
+    console.log(`📝 Traitement ligne ${lineNumber}:`, row);
     try {
       // Construire l'objet à partir du mapping des colonnes
       const rowData: Partial<CirClassificationOutput> = {};
@@ -461,23 +465,56 @@ function parseCirClassificationDataRows(
         }
       }
 
+      console.log(`📋 Données extraites ligne ${lineNumber}:`, rowData);
       // Vérifier les champs obligatoires
-      if (rowData.fsmega_code !== null && rowData.fsmega_code !== undefined && rowData.fsmega_designation &&
-          rowData.fsfam_code !== null && rowData.fsfam_code !== undefined && rowData.fsfam_designation &&
-          rowData.fssfa_code !== null && rowData.fssfa_code !== undefined && rowData.fssfa_designation &&
-          rowData.combined_code !== null && rowData.combined_code !== undefined && rowData.combined_designation) {
+      const hasRequiredFields = 
+        rowData.fsmega_code !== null && rowData.fsmega_code !== undefined &&
+        rowData.fsmega_designation && 
+        rowData.fsfam_code !== null && rowData.fsfam_code !== undefined &&
+        rowData.fsfam_designation &&
+        rowData.fssfa_code !== null && rowData.fssfa_code !== undefined &&
+        rowData.fssfa_designation &&
+        rowData.combined_code && 
+        rowData.combined_designation;
+
+      console.log(`✅ Validation ligne ${lineNumber}:`, {
+        fsmega_code: rowData.fsmega_code,
+        fsmega_designation: rowData.fsmega_designation,
+        fsfam_code: rowData.fsfam_code,
+        fsfam_designation: rowData.fsfam_designation,
+        fssfa_code: rowData.fssfa_code,
+        fssfa_designation: rowData.fssfa_designation,
+        combined_code: rowData.combined_code,
+        combined_designation: rowData.combined_designation,
+        hasRequiredFields
+      });
+
+      if (hasRequiredFields) {
         
         data.push(rowData as CirClassificationOutput);
         validLines++;
+        console.log(`✅ Ligne ${lineNumber} acceptée`);
       } else {
         skippedLines++;
-        info.push(`Ligne ${lineNumber}: Champs obligatoires manquants`);
+        const missingFields = [];
+        if (!rowData.fsmega_code) missingFields.push('fsmega_code');
+        if (!rowData.fsmega_designation) missingFields.push('fsmega_designation');
+        if (!rowData.fsfam_code) missingFields.push('fsfam_code');
+        if (!rowData.fsfam_designation) missingFields.push('fsfam_designation');
+        if (!rowData.fssfa_code) missingFields.push('fssfa_code');
+        if (!rowData.fssfa_designation) missingFields.push('fssfa_designation');
+        if (!rowData.combined_code) missingFields.push('combined_code');
+        if (!rowData.combined_designation) missingFields.push('combined_designation');
+        
+        info.push(`Ligne ${lineNumber}: Champs obligatoires manquants: ${missingFields.join(', ')}`);
+        console.log(`❌ Ligne ${lineNumber} rejetée - Champs manquants:`, missingFields);
         errorCount++;
       }
 
     } catch (error) {
       skippedLines++;
       info.push(`Ligne ${lineNumber}: Erreur de parsing - ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+      console.log(`💥 Erreur ligne ${lineNumber}:`, error);
       errorCount++;
     }
 
@@ -487,6 +524,12 @@ function parseCirClassificationDataRows(
     }
   }
 
+  console.log('📊 Résultat final du parsing:', {
+    totalLines: rows.length,
+    validLines,
+    skippedLines,
+    dataLength: data.length
+  });
   return {
     data: data as any[], // Type assertion pour compatibilité avec ParseResult
     totalLines: rows.length,
