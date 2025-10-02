@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -57,7 +56,7 @@ export const MappingAnalyticsTab: React.FC = () => {
       }, {} as Record<string, number>);
       
       const segmentDistribution = Object.entries(segmentCounts)
-        .map(([segment, count]) => ({ segment, count }))
+        .map(([segment, count]) => ({ segment, count: count as number }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 10);
 
@@ -68,7 +67,7 @@ export const MappingAnalyticsTab: React.FC = () => {
       }, {} as Record<string, number>);
       
       const marqueDistribution = Object.entries(marqueCounts)
-        .map(([marque, count]) => ({ marque, count }))
+        .map(([marque, count]) => ({ marque, count: count as number }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 50); // Afficher plus de marques
 
@@ -81,7 +80,7 @@ export const MappingAnalyticsTab: React.FC = () => {
       }, {} as Record<number, number>);
       
       const cirClassification = Object.entries(cirCounts)
-        .map(([fsmega, count]) => ({ fsmega: parseInt(fsmega), count }))
+        .map(([fsmega, count]) => ({ fsmega: parseInt(fsmega), count: count as number }))
         .sort((a, b) => a.fsmega - b.fsmega);
 
       // Distribution par type de source
@@ -92,7 +91,7 @@ export const MappingAnalyticsTab: React.FC = () => {
       }, {} as Record<string, number>);
       
       const sourceTypeDistribution = Object.entries(sourceTypeCounts)
-        .map(([source_type, count]) => ({ source_type, count }));
+        .map(([source_type, count]) => ({ source_type, count: count as number }));
 
       setAnalytics({
         totalMappings,
