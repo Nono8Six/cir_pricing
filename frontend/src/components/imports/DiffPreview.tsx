@@ -236,7 +236,7 @@ export const DiffPreview: React.FC<Props> = ({ diff, onSetDiff, items = [], data
                   return (
                     <Button
                       key={pageNum}
-                      variant={pageNum === currentPage ? "default" : "outline"}
+                      variant={pageNum === currentPage ? "primary" : "outline"}
                       size="sm"
                       onClick={() => setCurrentPage(pageNum)}
                     >
