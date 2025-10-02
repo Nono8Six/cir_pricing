@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '../../lib/utils';
@@ -46,7 +45,7 @@ export const Button: React.FC<ButtonProps> = ({
         className
       )}
       disabled={disabled || loading}
-      {...props}
+      {...(props as any)}
     >
       {loading && (
         <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
