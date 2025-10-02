@@ -7,17 +7,17 @@ import { ExcelUploadZone } from '../mapping/ExcelUploadZone';
 import { ParseResultSummary } from '../mapping/ParseResultSummary';
 import { parseCirClassificationExcelFile } from '../../lib/excelParser';
 import { cirClassificationApi } from '../../lib/supabaseClient';
-import { ParseResult } from '../../lib/schemas';
+import { ParseResult, CirParseResult } from '../../lib/schemas';
 import { toast } from 'sonner';
 
 export const CirClassificationUploadTab: React.FC = () => {
   const [uploadPhase, setUploadPhase] = useState<'upload' | 'analyze' | 'apply'>('upload');
-  const [parseResult, setParseResult] = useState<ParseResult | null>(null);
+  const [parseResult, setParseResult] = useState<CirParseResult | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [applyLoading, setApplyLoading] = useState(false);
 
-  const handleParseComplete = (result: ParseResult, file: File) => {
-    setParseResult(result);
+  const handleParseComplete = (result: any, file: File) => {
+    setParseResult(result as CirParseResult);
     setUploadedFile(file);
     setUploadPhase('analyze');
   };

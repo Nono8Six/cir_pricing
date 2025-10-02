@@ -9,10 +9,10 @@ import {
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
-import { ParseResult } from '../../lib/schemas';
+import { ParseResult, CirParseResult } from '../../lib/schemas';
 
 interface ParseResultSummaryProps {
-  result: ParseResult;
+  result: ParseResult | CirParseResult;
   filename: string;
   onContinue: () => void;
   onRetry: () => void;

@@ -112,6 +112,14 @@ export interface ParseResult {
   skippedLines: number;
 }
 
+export interface CirParseResult {
+  data: CirClassificationOutput[];
+  info: string[];
+  totalLines: number;
+  validLines: number;
+  skippedLines: number;
+}
+
 // Configuration pour le mapping des colonnes
 export interface ColumnMapping {
   [key: string]: string; // key = nom de colonne détecté, value = nom de champ dans le schéma
