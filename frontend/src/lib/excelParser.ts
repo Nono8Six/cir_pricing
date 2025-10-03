@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as XLSX from 'xlsx';
 import Fuse from 'fuse.js';
 import type { ParseResult, BrandMappingOutput, CirClassificationOutput } from './schemas';
@@ -136,7 +135,7 @@ export async function parseExcelFile(
 
         // Parser les données sans validation stricte
         const result = parseDataRowsSimple(
-          jsonData.slice(1),
+          jsonData.slice(1) as (string | number | null | undefined)[][],
           headers,
           headerDetection.mapping,
           options
@@ -158,7 +157,7 @@ export async function parseExcelFile(
  * Parse les lignes de données sans validation stricte
  */
 function parseDataRowsSimple(
-  rows: any[][],
+  rows: (string | number | null | undefined)[][],
   headers: string[],
   columnMapping: Record<string, string>,
   options: ExcelParseOptions = {}
@@ -229,12 +228,9 @@ function parseDataRowsSimple(
 
       // Vérifier seulement les champs absolument obligatoires
       if (rowData.segment && rowData.marque && rowData.cat_fab) {
-        // Calculer classif_cir automatiquement (sera fait après auto-classification)
-        if (rowData.fsmega && rowData.fsfam && rowData.fssfa && 
-            rowData.fsmega > 0 && rowData.fsfam > 0 && rowData.fssfa > 0) {
-          rowData.classif_cir = `${rowData.fsmega} ${rowData.fsfam} ${rowData.fssfa}`;
-        }
-        
+        // Note: classif_cir calculation removed - not in BrandMappingSchema
+        // Can be computed on the fly when needed
+
         data.push(rowData as BrandMappingOutput);
         validLines++;
       } else {
@@ -327,7 +323,7 @@ export async function parseCirClassificationExcelFile(
 
         // Parser les données
         const result = parseCirClassificationDataRows(
-          jsonData.slice(1),
+          jsonData.slice(1) as (string | number | null | undefined)[][],
           headers,
           headerDetection.mapping,
           options
@@ -424,7 +420,7 @@ function detectCirClassificationColumnMapping(headers: string[]): HeaderDetectio
  * Parse les lignes de données de classification CIR
  */
 function parseCirClassificationDataRows(
-  rows: any[][],
+  rows: (string | number | null | undefined)[][],
   headers: string[],
   columnMapping: Record<string, string>,
   options: ExcelParseOptions = {}
