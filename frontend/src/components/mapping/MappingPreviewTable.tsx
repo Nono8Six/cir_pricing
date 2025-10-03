@@ -21,26 +21,45 @@ interface BrandMapping {
   segment: string;
   marque: string;
   cat_fab: string;
-  cat_fab_l?: string;
+  cat_fab_l?: string | null;
   strategiq: number;
-  codif_fair?: string;
+  codif_fair?: string | null;
   fsmega: number;
   fsfam: number;
   fssfa: number;
   classif_cir?: string;
   autoClassified?: boolean;
+  created_at?: string;
+  version?: number;
+  batch_id?: string;
+  created_by?: string;
+  source_type?: string;
 }
 
 interface MappingChange {
   type: 'new' | 'update';
-  data: BrandMapping;
+  data: ParsedDataItem;
   existing?: BrandMapping;
   changes?: string[];
   autoClassified?: boolean;
 }
 
+interface ParsedDataItem {
+  segment?: string;
+  marque?: string;
+  cat_fab?: string;
+  cat_fab_l?: string | null;
+  strategiq?: number;
+  codif_fair?: string | null;
+  fsmega?: number;
+  fsfam?: number;
+  fssfa?: number;
+  autoClassified?: boolean;
+  classif_cir?: string;
+}
+
 interface MappingPreviewTableProps {
-  parsedData: BrandMapping[];
+  parsedData: ParsedDataItem[];
   existingMappings: BrandMapping[];
   onApplyChanges: () => void;
   onRetry: () => void;
@@ -66,10 +85,12 @@ export const MappingPreviewTable: React.FC<MappingPreviewTableProps> = ({
           mapping.fsmega === 0 || mapping.fsfam === 0 || mapping.fssfa === 0) {
         
         // Chercher d'autres lignes avec la même marque dans les données existantes
-        const sameMarqueMappings = existingMappings.filter(m => 
-          m.marque.toLowerCase() === mapping.marque.toLowerCase() && 
-          m.fsmega && m.fsmega > 0
-        );
+        const sameMarqueMappings = mapping.marque
+          ? existingMappings.filter(m =>
+              m.marque.toLowerCase() === mapping.marque!.toLowerCase() &&
+              m.fsmega && m.fsmega > 0
+            )
+          : [];
 
         if (sameMarqueMappings.length > 0) {
           // Compter les occurrences de chaque FSMEGA

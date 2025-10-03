@@ -1,7 +1,6 @@
-// @ts-nocheck
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { FileSpreadsheet, Plus, Search, CreditCard as Edit, Trash2, ListFilter as Filter, ChevronLeft, ChevronRight, Upload, History, Settings, ChartBar as BarChart3, Database } from 'lucide-react';
+import { FileSpreadsheet, Plus, Search, ListFilter as Filter, ChevronLeft, ChevronRight, Upload, History, Settings, BarChart3, Database } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { SearchableSelect } from '../components/ui/SearchableSelect';
@@ -14,13 +13,12 @@ import { MappingHistoryTab } from '../components/mapping/MappingHistoryTab';
 import { MappingAnalyticsTab } from '../components/mapping/MappingAnalyticsTab';
 import { MappingSettingsTab } from '../components/mapping/MappingSettingsTab';
 import { CirClassificationBrowser } from '../components/cir/CirClassificationBrowser';
-import { CirClassificationUploadTab } from '../components/cir/CirClassificationUploadTab';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { mappingApi } from '../lib/supabaseClient';
 import { supabase } from '../lib/api';
 import { useDebounce } from '../hooks/useDebounce';
-import { ParseResult } from '../lib/schemas';
+import { ParseResult, BrandMappingOutput } from '../lib/schemas';
 import { useAuth } from '../context/AuthContext';
 
 interface BrandMapping {
@@ -35,6 +33,7 @@ interface BrandMapping {
   fsfam: number;
   fssfa: number;
   classif_cir?: string;
+  autoClassified?: boolean;
   created_at: string;
   version: number;
   batch_id?: string;
@@ -59,7 +58,6 @@ export const Mapping: React.FC = () => {
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [selectedSegment, setSelectedSegment] = useState<string>('all');
   const [selectedMarque, setSelectedMarque] = useState<string>('all');
-  const [segmentSearch, setSegmentSearch] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedMapping, setSelectedMapping] = useState<BrandMapping | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
@@ -93,7 +91,7 @@ export const Mapping: React.FC = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [existingMappingsForPreview, setExistingMappingsForPreview] = useState<BrandMapping[]>([]);
   const [applyLoading, setApplyLoading] = useState(false);
-  const [finalDataToUpsert, setFinalDataToUpsert] = useState<BrandMapping[]>([]);
+  const [finalDataToUpsert, setFinalDataToUpsert] = useState<(BrandMappingOutput & { autoClassified?: boolean; classif_cir?: string })[]>([]);
 
   // Définition des onglets
   const tabs = [
@@ -105,13 +103,16 @@ export const Mapping: React.FC = () => {
   ];
 
   // Helper function pour traiter les données avec auto-classification
-  const processParsedData = (parsedData: BrandMapping[], existingMappings: BrandMapping[]) => {
+  const processParsedData = (
+    parsedData: BrandMappingOutput[],
+    existingMappings: BrandMapping[]
+  ): (BrandMappingOutput & { autoClassified?: boolean; classif_cir?: string })[] => {
     return parsedData.map(mapping => {
-      if (!mapping.fsmega || !mapping.fsfam || !mapping.fssfa || 
+      if (!mapping.fsmega || !mapping.fsfam || !mapping.fssfa ||
           mapping.fsmega === 0 || mapping.fsfam === 0 || mapping.fssfa === 0) {
-        
-        const sameMarqueMappings = existingMappings.filter(m => 
-          m.marque.toLowerCase() === mapping.marque.toLowerCase() && 
+
+        const sameMarqueMappings = existingMappings.filter(m =>
+          m.marque.toLowerCase() === mapping.marque.toLowerCase() &&
           m.fsmega && m.fsmega > 0
         );
 
@@ -298,7 +299,7 @@ export const Mapping: React.FC = () => {
       await supabase.rpc('set_change_reason', { reason: batch.id });
 
       const dataWithoutGeneratedColumns = finalDataToUpsert.map(mapping => {
-        const { classif_cir, autoClassified, ...cleanMapping } = mapping;
+        const { classif_cir: _classif_cir, autoClassified: _autoClassified, ...cleanMapping } = mapping;
         return {
           ...cleanMapping,
           created_by: user?.id,
@@ -323,9 +324,10 @@ export const Mapping: React.FC = () => {
       // Retourner à l'onglet mappings et recharger
       setActiveTab('mappings');
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erreur application des changements:', error);
-      toast.error(error.message || 'Erreur lors de l\'application des modifications');
+      const errorMessage = error instanceof Error ? error.message : 'Erreur lors de l\'application des modifications';
+      toast.error(errorMessage);
     } finally {
       setApplyLoading(false);
     }
@@ -353,9 +355,10 @@ export const Mapping: React.FC = () => {
             await mappingApi.deleteMapping(mapping.id);
             toast.success('Mapping supprimé avec succès');
             fetchMappings();
-          } catch (error: any) {
+          } catch (error: unknown) {
             console.error('Erreur suppression mapping:', error);
-            toast.error(error.message || 'Erreur lors de la suppression');
+            const errorMessage = error instanceof Error ? error.message : 'Erreur lors de la suppression';
+            toast.error(errorMessage);
           } finally {
             setDeleteLoading(null);
           }
@@ -623,7 +626,6 @@ export const Mapping: React.FC = () => {
                     onClick={() => {
                       setSearchTerm('');
                       setSelectedSegment('all');
-                      setSegmentSearch('');
                       setSelectedMarque('all');
                       setSelectedFsmega('all');
                       setSelectedFsfam('all');
@@ -719,45 +721,8 @@ export const Mapping: React.FC = () => {
     </div>
   );
 
-  const renderUploadTab = () => (
-    <div className="space-y-6">
-      {uploadPhase === 'upload' && (
-        <>
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
-              Import de fichier Excel
-            </h2>
-            <p className="text-gray-600">
-              Importez vos mappings depuis un fichier Excel SEGMENTS TARIFAIRES
-            </p>
-          </div>
-          <ExcelUploadZone
-            onParseComplete={handleParseComplete}
-            onParseError={handleParseError}
-          />
-        </>
-      )}
 
-      {uploadPhase === 'analyze' && parseResult && uploadedFile && (
-        <ParseResultSummary
-          result={parseResult}
-          filename={uploadedFile.name}
-          onContinue={handleContinueToPreview}
-          onRetry={handleRetryUpload}
-        />
-      )}
-
-      {uploadPhase === 'preview' && parseResult && (
-        <MappingPreviewTable
-          parsedData={finalDataToUpsert}
-          existingMappings={existingMappingsForPreview}
-          onApplyChanges={handleApplyChanges}
-          onRetry={handleRetryUpload}
-          applyLoading={applyLoading}
-        />
-      )}
-    </div>
-  );
+  // Dead code removed: renderUploadTab was unused
 
   if (loading && activeTab === 'mappings') {
     return (

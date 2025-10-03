@@ -592,7 +592,7 @@ export const FileImportWizard: React.FC = () => {
                   const mapExisting = new Map(existing.map((e) => [e.natural_key ?? `${String(e.marque).toLowerCase()}|${String(e.cat_fab).toUpperCase()}`, e]));
                   const sensitive = ['segment','marque','cat_fab','strategiq','fsmega','fsfam','fssfa'];
                   const nonSensitive = ['cat_fab_l','codif_fair'];
-                  let counts = { unchanged: 0, create: 0, update: 0, conflict: 0 };
+                  const counts = { unchanged: 0, create: 0, update: 0, conflict: 0 };
                   const rows: any[] = [];
                   for (const v of valid) {
                     const key = `${String(v.marque).toLowerCase()}|${String(v.cat_fab).toUpperCase()}`;
@@ -632,7 +632,7 @@ export const FileImportWizard: React.FC = () => {
                     existing.push(...(part || []));
                   }
                   const mapExisting = new Map(existing.map((e) => [e.combined_code, e]));
-                  let counts = { unchanged: 0, create: 0, update: 0, conflict: 0 };
+                  const counts = { unchanged: 0, create: 0, update: 0, conflict: 0 };
                   const rows: any[] = [];
                   for (const v of valid) {
                     const before = mapExisting.get(String(v.combined_code));

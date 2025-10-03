@@ -20,7 +20,18 @@
       "Bash(git stash push:*)",
       "Bash(git pull:*)",
       "Bash(git stash:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(git log:*)",
+      "Bash(findstr:*)",
+      "Bash(grep:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: implement Phase 1 security hardening [P0]\n\n- Add .env.example template for secure onboarding\n- Create env validation layer with Zod (frontend/src/lib/env.ts)\n- Migrate api.ts to use validated env variables\n- Document secrets rotation procedure (SECRETS_ROTATION.md)\n\nSecurity improvements:\n- Runtime validation of VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY\n- Clear error messages for missing/invalid env vars\n- No secrets committed (verified: .env never in git history)\n- .env properly gitignored\n\nPhase 1 of AUDIT.md complete: 🔒 Sécurité des Secrets & Configuration\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(npm run lint)",
+      "Bash(git restore:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nchore: remove all console.log and console.debug statements [P1]\n\n- Remove 16 console.log from excelParser.ts (parsing debug logs)\n- Remove 2 console.log from DiffPreview.tsx (filter debug)\n- Remove 3 console.log from FileImportWizard.tsx (import flow debug)\n- Remove 7 console.debug from ColumnMapper, FileImportWizard, utils.ts\n\nCode cleanup before TypeScript strict mode activation.\nKeep console.error/warn for production error tracking.\n\nRefs: AUDIT.md Phase 1.4\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git commit:*)",
+      "Bash(npm run lint:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
