@@ -1,7 +1,6 @@
-// @ts-nocheck
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, FileSpreadsheet, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle } from 'lucide-react';
+import { Upload, FileSpreadsheet, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { ExcelUploadZone } from '../mapping/ExcelUploadZone';
@@ -17,7 +16,7 @@ export const CirClassificationUploadTab: React.FC = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [applyLoading, setApplyLoading] = useState(false);
 
-  const handleParseComplete = (result: any, file: File) => {
+  const handleParseComplete = (result: ParseResult | CirParseResult, file: File) => {
     setParseResult(result as CirParseResult);
     setUploadedFile(file);
     setUploadPhase('analyze');
@@ -60,9 +59,10 @@ export const CirClassificationUploadTab: React.FC = () => {
       setParseResult(null);
       setUploadedFile(null);
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erreur import classifications:', error);
-      toast.error(error.message || 'Erreur lors de l\'import des classifications');
+      const errorMessage = error instanceof Error ? error.message : 'Erreur lors de l\'import des classifications';
+      toast.error(errorMessage);
     } finally {
       setApplyLoading(false);
     }
