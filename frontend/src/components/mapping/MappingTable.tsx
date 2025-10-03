@@ -1,25 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { FileSpreadsheet, Edit, Trash2 } from 'lucide-react';
-
-interface BrandMapping {
-  id: string;
-  segment: string;
-  marque: string;
-  cat_fab: string;
-  cat_fab_l?: string;
-  strategiq: number;
-  codif_fair?: string;
-  fsmega: number;
-  fsfam: number;
-  fssfa: number;
-  classif_cir?: string;
-  created_at: string;
-  version: number;
-  batch_id?: string;
-  created_by: string;
-  source_type: string;
-}
+import { type BrandMapping } from '../../lib/supabaseClient';
 
 interface MappingTableProps {
   mappings: BrandMapping[];

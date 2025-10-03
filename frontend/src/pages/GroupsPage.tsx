@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Building, 
-  Plus, 
-  Search, 
-  Edit, 
-  Trash2, 
-  Users,
+import {
+  Building,
+  Plus,
+  Search,
+  Edit,
+  Trash2,
   Calendar
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';

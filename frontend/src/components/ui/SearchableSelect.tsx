@@ -15,7 +15,6 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   value,
   onValueChange,
   options,
-  placeholder,
   allOptionLabel = "Tous",
   loading = false,
   className = ""

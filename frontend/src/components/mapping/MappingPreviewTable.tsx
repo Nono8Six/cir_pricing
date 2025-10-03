@@ -163,7 +163,7 @@ export const MappingPreviewTable: React.FC<MappingPreviewTableProps> = ({
 
         fieldsToCompare.forEach(field => {
           const existingValue = existing[field as keyof BrandMapping];
-          const parsedValue = parsedMapping[field as keyof BrandMapping];
+          const parsedValue = parsedMapping[field as keyof ParsedDataItem];
           
           // Normaliser les valeurs pour la comparaison
           const normalizeValue = (val: unknown) => {
@@ -230,7 +230,7 @@ export const MappingPreviewTable: React.FC<MappingPreviewTableProps> = ({
 
   const renderFieldComparison = (field: string, change: MappingChange) => {
     if (change.type === 'new') {
-      const value = change.data[field as keyof BrandMapping];
+      const value = change.data[field as keyof ParsedDataItem];
       const isAutoClassified = change.autoClassified && ['fsmega', 'fsfam', 'fssfa'].includes(field);
       
       return (
@@ -250,7 +250,7 @@ export const MappingPreviewTable: React.FC<MappingPreviewTableProps> = ({
 
     const isChanged = change.changes?.includes(field);
     const oldValue = change.existing?.[field as keyof BrandMapping];
-    const newValue = change.data[field as keyof BrandMapping];
+    const newValue = change.data[field as keyof ParsedDataItem];
     const isAutoClassified = change.autoClassified && ['fsmega', 'fsfam', 'fssfa'].includes(field);
 
     if (!isChanged) {

@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  History, 
-  User, 
-  Calendar, 
-  FileSpreadsheet, 
-  CheckCircle, 
+import {
+  History,
+  User,
+  Calendar,
+  FileSpreadsheet,
+  CheckCircle,
   AlertCircle,
   Clock,
-  TrendingUp,
-  Download
+  TrendingUp
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';

@@ -9,10 +9,8 @@ import {
   AlertCircle,
   Clock,
   TrendingUp,
-  Download,
   ChevronLeft,
   ChevronRight,
-  Filter,
   Search,
   Eye,
   Edit

@@ -1,20 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  BarChart3, 
-  PieChart, 
-  TrendingUp, 
+import {
+  BarChart3,
+  PieChart,
+  TrendingUp,
   Target,
   Database,
   Filter,
-  Calendar,
-  Download,
-  Trash2
+  Download
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { mappingApi } from '../../lib/supabaseClient';
-import { supabase } from '../../lib/supabaseClient';
 
 interface AnalyticsData {
   totalMappings: number;

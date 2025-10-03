@@ -14,23 +14,18 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { mappingApi, type BrandMapping } from '../lib/supabaseClient';
 import { useDebounce } from '../hooks/useDebounce';
-// Removed unused imports: ParseResult, BrandMappingOutput
-import { useAuth } from '../context/AuthContext';
+// Removed unused imports: ParseResult, BrandMappingOutput, useAuth
 
 // BrandMapping interface imported from supabaseClient.ts
 
 type TabType = 'mappings' | 'history' | 'analytics' | 'settings' | 'cir-browser';
 
 export const Mapping: React.FC = () => {
-  const { user: _user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('mappings');
-  
+
   // États pour les mappings
   const [mappings, setMappings] = useState<BrandMapping[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  // Global loading should not block initial render of the mappings tab
-  // It is used transiently in the upload workflow; start as false here
-  const [loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -554,15 +549,7 @@ export const Mapping: React.FC = () => {
   );
 
 
-  // Dead code removed: renderUploadTab was unused
-
-  if (loading && activeTab === 'mappings') {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cir-red"></div>
-      </div>
-    );
-  }
+  // Dead code removed: renderUploadTab was unused and loading state
 
   return (
     <div className="space-y-6">

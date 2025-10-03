@@ -165,7 +165,7 @@ export const DiffPreview: React.FC<Props> = ({ diff, onSetDiff, items = [], data
                     <td className="px-3 py-2">
                       {cf.length ? (
                         <div className="space-y-2 max-w-md">
-                          {cf.map((f) => (
+                          {cf.map((f: string) => (
                             <div key={f} className="p-2 bg-gray-50 rounded text-xs">
                               <div className="font-medium text-gray-700 mb-1">{f}</div>
                               <div className="grid grid-cols-1 gap-1">
@@ -193,7 +193,7 @@ export const DiffPreview: React.FC<Props> = ({ diff, onSetDiff, items = [], data
                       </div>
                       {res.action === 'merge' && (
                         <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {cf.map((f) => (
+                          {cf.map((f: string) => (
                             <div key={f} className="border rounded p-2">
                               <div className="text-xs font-medium mb-1">{f}</div>
                               <div className="text-[11px] text-gray-500 mb-1">Avant: {String(it.before?.[f] ?? '—')}</div>

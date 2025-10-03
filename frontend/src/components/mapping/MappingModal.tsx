@@ -4,21 +4,9 @@ import { X, FileSpreadsheet } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card, CardContent } from '../ui/Card';
 import { toast } from 'sonner';
-import { mappingApi } from '../../lib/supabaseClient';
+import { mappingApi, type BrandMapping } from '../../lib/supabaseClient';
 
-interface BrandMapping {
-  id?: string;
-  segment: string;
-  marque: string;
-  cat_fab: string;
-  cat_fab_l?: string;
-  strategiq: number;
-  codif_fair?: string;
-  fsmega: number;
-  fsfam: number;
-  fssfa: number;
-  classif_cir?: string;
-}
+type MappingFormData = Omit<BrandMapping, 'id' | 'created_at' | 'version' | 'batch_id' | 'created_by' | 'source_type'>;
 
 interface MappingModalProps {
   isOpen: boolean;
@@ -34,7 +22,7 @@ export const MappingModal: React.FC<MappingModalProps> = ({
   onSuccess
 }) => {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<BrandMapping>({
+  const [formData, setFormData] = useState<MappingFormData>({
     segment: '',
     marque: '',
     cat_fab: '',
@@ -276,7 +264,7 @@ export const MappingModal: React.FC<MappingModalProps> = ({
                     </label>
                     <input
                       type="text"
-                      value={formData.cat_fab_l}
+                      value={formData.cat_fab_l || ''}
                       onChange={(e) => handleInputChange('cat_fab_l', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
                       placeholder="CARB (ex MSERV - MSERV)"
@@ -306,7 +294,7 @@ export const MappingModal: React.FC<MappingModalProps> = ({
                     </label>
                     <input
                       type="text"
-                      value={formData.codif_fair}
+                      value={formData.codif_fair || ''}
                       onChange={(e) => handleInputChange('codif_fair', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
                       placeholder="SKF_16"
