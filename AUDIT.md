@@ -36,7 +36,7 @@
 
 ---
 
-### 2. ⚙️ Configuration TypeScript Stricte [P0]
+### 2. ⚙️ Configuration TypeScript Stricte [P0] ✅ (Partie 1/2)
 
 **Problème** : `strict: false`, `noUnusedLocals: false` → violations massives de CLAUDE.md
 
@@ -51,21 +51,35 @@
   }
   ```
 - [ ] **P0** Corriger toutes les erreurs TypeScript révélées (estimation : 50-100 erreurs)
-- [ ] **P0** Supprimer **tous** les `@ts-nocheck` (10 fichiers identifiés) :
-  - `excelParser.ts`
-  - `Mapping.tsx`
-  - `CirClassificationUploadTab.tsx`
-  - `AuthContext.tsx`
-  - `Button.tsx`
-  - `MappingPreviewTable.tsx`
-  - `MappingSettingsTab.tsx`
-  - `MappingAnalyticsTab.tsx`
-  - `MappingHistoryTab.tsx`
-  - `ImportHistoryDashboard.tsx`
+- [x] **P0** Supprimer **tous** les `@ts-nocheck` (10 fichiers identifiés) → **TERMINÉ** ✓
+  - [x] `excelParser.ts` → Fixed `any[][]` to proper tuple types
+  - [x] `Mapping.tsx` → Fixed processParsedData types, removed dead code
+  - [x] `CirClassificationUploadTab.tsx` → Fixed icon imports, replaced `any`
+  - [x] `AuthContext.tsx` → Clean removal, no errors
+  - [x] `Button.tsx` → Fixed framer-motion props with `as any`
+  - [x] `MappingPreviewTable.tsx` → Created ParsedDataItem interface, fixed types
+  - [x] `MappingSettingsTab.tsx` → Clean removal
+  - [x] `MappingAnalyticsTab.tsx` → Fixed Object.entries() inference
+  - [x] `MappingHistoryTab.tsx` → Created BrandMappingData interface
+  - [x] `ImportHistoryDashboard.tsx` → Clean removal
 - [ ] **P1** Ajouter types de retour explicites à toutes fonctions exportées
 - [ ] **P1** Remplacer tous les `any` par types appropriés ou `unknown` avec validation
 
-**Durée estimée** : 3-4 jours
+**Durée réelle (Partie 1)** : 3h (10 fichiers @ts-nocheck supprimés, 0 type errors)
+**Commits** :
+- `283995b` - fix: resolve pre-existing TypeScript errors (DiffPreview, ParseResultSummary)
+- `8f0ef79` - fix: remove @ts-nocheck from Button.tsx
+- `98f6d9c` - fix: remove @ts-nocheck from AuthContext.tsx
+- `41100e7` - fix: remove @ts-nocheck from MappingSettingsTab.tsx
+- `8181f66` - fix: remove @ts-nocheck from MappingAnalyticsTab.tsx
+- `625c9b9` - fix: remove @ts-nocheck from MappingHistoryTab.tsx
+- `610903b` - fix: remove @ts-nocheck from ImportHistoryDashboard.tsx
+- `3fac269` - fix: remove @ts-nocheck from MappingPreviewTable.tsx
+- `0c0c500` - fix: remove @ts-nocheck from CirClassificationUploadTab.tsx
+- `f29f24b` - fix: remove @ts-nocheck from excelParser.ts
+- `49d5724` - fix: remove @ts-nocheck from Mapping.tsx and fix type safety
+
+**Prochaine étape (Partie 2)** : Activer `strict: true` dans tsconfig.json et corriger nouvelles erreurs révélées
 
 ---
 
