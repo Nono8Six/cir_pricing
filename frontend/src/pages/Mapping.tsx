@@ -6,45 +6,23 @@ import { Button } from '../components/ui/Button';
 import { SearchableSelect } from '../components/ui/SearchableSelect';
 import { MappingModal } from '../components/mapping/MappingModal';
 import { MappingTable } from '../components/mapping/MappingTable';
-import { ExcelUploadZone } from '../components/mapping/ExcelUploadZone';
-import { ParseResultSummary } from '../components/mapping/ParseResultSummary';
-import { MappingPreviewTable } from '../components/mapping/MappingPreviewTable';
 import { MappingHistoryTab } from '../components/mapping/MappingHistoryTab';
 import { MappingAnalyticsTab } from '../components/mapping/MappingAnalyticsTab';
 import { MappingSettingsTab } from '../components/mapping/MappingSettingsTab';
 import { CirClassificationBrowser } from '../components/cir/CirClassificationBrowser';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { mappingApi } from '../lib/supabaseClient';
-import { supabase } from '../lib/api';
+import { mappingApi, type BrandMapping } from '../lib/supabaseClient';
 import { useDebounce } from '../hooks/useDebounce';
-import { ParseResult, BrandMappingOutput } from '../lib/schemas';
+// Removed unused imports: ParseResult, BrandMappingOutput
 import { useAuth } from '../context/AuthContext';
 
-interface BrandMapping {
-  id: string;
-  segment: string;
-  marque: string;
-  cat_fab: string;
-  cat_fab_l?: string;
-  strategiq: number;
-  codif_fair?: string;
-  fsmega: number;
-  fsfam: number;
-  fssfa: number;
-  classif_cir?: string;
-  autoClassified?: boolean;
-  created_at: string;
-  version: number;
-  batch_id?: string;
-  created_by: string;
-  source_type: string;
-}
+// BrandMapping interface imported from supabaseClient.ts
 
 type TabType = 'mappings' | 'history' | 'analytics' | 'settings' | 'cir-browser';
 
 export const Mapping: React.FC = () => {
-  const { user } = useAuth();
+  const { user: _user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('mappings');
   
   // États pour les mappings
@@ -85,13 +63,7 @@ export const Mapping: React.FC = () => {
   const [totalMarques, setTotalMarques] = useState(0);
   const [totalStrategiques, setTotalStrategiques] = useState(0);
 
-  // États pour le workflow d'upload
-  const [uploadPhase, setUploadPhase] = useState<'upload' | 'analyze' | 'preview' | 'apply'>('upload');
-  const [parseResult, setParseResult] = useState<ParseResult | null>(null);
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [existingMappingsForPreview, setExistingMappingsForPreview] = useState<BrandMapping[]>([]);
-  const [applyLoading, setApplyLoading] = useState(false);
-  const [finalDataToUpsert, setFinalDataToUpsert] = useState<(BrandMappingOutput & { autoClassified?: boolean; classif_cir?: string })[]>([]);
+  // États pour le workflow d'upload (removed - dead code from deleted renderUploadTab)
 
   // Définition des onglets
   const tabs = [
@@ -102,52 +74,7 @@ export const Mapping: React.FC = () => {
     { id: 'settings' as TabType, label: 'Paramètres', icon: Settings }
   ];
 
-  // Helper function pour traiter les données avec auto-classification
-  const processParsedData = (
-    parsedData: BrandMappingOutput[],
-    existingMappings: BrandMapping[]
-  ): (BrandMappingOutput & { autoClassified?: boolean; classif_cir?: string })[] => {
-    return parsedData.map(mapping => {
-      if (!mapping.fsmega || !mapping.fsfam || !mapping.fssfa ||
-          mapping.fsmega === 0 || mapping.fsfam === 0 || mapping.fssfa === 0) {
-
-        const sameMarqueMappings = existingMappings.filter(m =>
-          m.marque.toLowerCase() === mapping.marque.toLowerCase() &&
-          m.fsmega && m.fsmega > 0
-        );
-
-        if (sameMarqueMappings.length > 0) {
-          const fsmegaCounts = sameMarqueMappings.reduce((acc, m) => {
-            acc[m.fsmega] = (acc[m.fsmega] || 0) + 1;
-            return acc;
-          }, {} as Record<number, number>);
-
-          const mostFrequentFsmega = Object.entries(fsmegaCounts)
-            .sort(([,a], [,b]) => b - a)[0];
-
-          if (mostFrequentFsmega) {
-            return {
-              ...mapping,
-              fsmega: parseInt(mostFrequentFsmega[0]),
-              fsfam: 99,
-              fssfa: 99,
-              autoClassified: true
-            };
-          }
-        }
-
-        return {
-          ...mapping,
-          fsmega: mapping.fsmega || 1,
-          fsfam: mapping.fsfam || 99,
-          fssfa: mapping.fssfa || 99,
-          autoClassified: !mapping.fsmega || !mapping.fsfam || !mapping.fssfa
-        };
-      }
-
-      return mapping;
-    });
-  };
+  // Helper function pour traiter les données avec auto-classification (removed - dead code)
 
   // Charger les options de filtre (une seule fois au début)
   const fetchFilterOptions = async () => {
@@ -236,102 +163,7 @@ export const Mapping: React.FC = () => {
     }
   }, [activeTab, selectedSegment, selectedMarque, debouncedSearchTerm, currentPage, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq, filtersLoading]);
 
-  // Gestionnaires pour le workflow d'upload
-  const handleParseComplete = (result: ParseResult, file: File) => {
-    setParseResult(result);
-    setUploadedFile(file);
-    setUploadPhase('analyze');
-  };
-
-  const handleParseError = (error: string) => {
-    toast.error(error);
-  };
-
-  const handleContinueToPreview = async () => {
-    try {
-      setLoading(true);
-      const existingMappings = await mappingApi.getAllBrandCategoryMappings();
-      setExistingMappingsForPreview(existingMappings);
-      
-      if (parseResult?.data) {
-        const processedData = processParsedData(parseResult.data, existingMappings);
-        setFinalDataToUpsert(processedData);
-      }
-      
-      setUploadPhase('preview');
-    } catch (error) {
-      console.error('Erreur chargement mappings existants:', error);
-      toast.error('Erreur lors du chargement des mappings existants');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRetryUpload = () => {
-    setUploadPhase('upload');
-    setParseResult(null);
-    setUploadedFile(null);
-    setExistingMappingsForPreview([]);
-    setFinalDataToUpsert([]);
-  };
-
-  const handleApplyChanges = async () => {
-    if (!finalDataToUpsert.length) return;
-
-    setApplyLoading(true);
-
-    try {
-      const batchStats = {
-        total_lines: parseResult?.totalLines || finalDataToUpsert.length,
-        processed_lines: finalDataToUpsert.length,
-        error_lines: parseResult?.skippedLines || 0,
-        warnings: parseResult?.info || [],
-        comment: 'Excel upload'
-      };
-
-      const batch = await mappingApi.createImportBatch(
-        uploadedFile?.name || 'import.xlsx',
-        user?.id || '',
-        batchStats
-      );
-
-      await supabase.rpc('set_current_batch_id', { batch_uuid: batch.id });
-      await supabase.rpc('set_change_reason', { reason: batch.id });
-
-      const dataWithoutGeneratedColumns = finalDataToUpsert.map(mapping => {
-        const { classif_cir: _classif_cir, autoClassified: _autoClassified, ...cleanMapping } = mapping;
-        return {
-          ...cleanMapping,
-          created_by: user?.id,
-          source_type: 'excel_upload',
-          batch_id: batch.id
-        };
-      });
-
-      const result = await mappingApi.batchUpsertMappings(dataWithoutGeneratedColumns);
-
-      await supabase.rpc('clear_audit_context');
-
-      toast.success(`${result.length} mappings traités avec succès`);
-      
-      // Réinitialiser le workflow
-      setUploadPhase('upload');
-      setParseResult(null);
-      setUploadedFile(null);
-      setExistingMappingsForPreview([]);
-      setFinalDataToUpsert([]);
-      
-      // Retourner à l'onglet mappings et recharger
-      setActiveTab('mappings');
-      
-    } catch (error: unknown) {
-      console.error('Erreur application des changements:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erreur lors de l\'application des modifications';
-      toast.error(errorMessage);
-    } finally {
-      setApplyLoading(false);
-    }
-  };
+  // Gestionnaires pour le workflow d'upload (removed - dead code from deleted renderUploadTab)
 
   // Gestionnaires pour les mappings
   const handleCreateMapping = () => {

@@ -31,7 +31,9 @@
       "Bash(git restore:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\nchore: remove all console.log and console.debug statements [P1]\n\n- Remove 16 console.log from excelParser.ts (parsing debug logs)\n- Remove 2 console.log from DiffPreview.tsx (filter debug)\n- Remove 3 console.log from FileImportWizard.tsx (import flow debug)\n- Remove 7 console.debug from ColumnMapper, FileImportWizard, utils.ts\n\nCode cleanup before TypeScript strict mode activation.\nKeep console.error/warn for production error tracking.\n\nRefs: AUDIT.md Phase 1.4\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git commit:*)",
-      "Bash(npm run lint:*)"
+      "Bash(npm run lint:*)",
+      "Bash(tee:*)",
+      "Bash(npx eslint:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

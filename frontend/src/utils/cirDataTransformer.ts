@@ -84,7 +84,7 @@ export function transformCirClassificationsToHierarchy(
         designation: fssfa_designation,
         combinedCode: combined_code,
         combinedDesignation: combined_designation,
-        id
+        ...(id !== undefined && { id })
       };
       family.subFamilies.push(subFamily);
     }

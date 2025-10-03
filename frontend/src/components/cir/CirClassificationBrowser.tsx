@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Database, RefreshCw, BarChart3 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
+import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { MegaFamilyList } from './MegaFamilyList';
 import { FamilyList } from './FamilyList';

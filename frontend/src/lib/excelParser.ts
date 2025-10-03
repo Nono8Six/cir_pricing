@@ -222,7 +222,7 @@ function parseDataRowsSimple(
             }
           }
           
-          rowData[fieldName] = value;
+          (rowData as Record<string, unknown>)[fieldName] = value;
         }
       }
 
@@ -467,7 +467,7 @@ function parseCirClassificationDataRows(
             }
           }
           
-          rowData[fieldName] = value;
+          (rowData as Record<string, unknown>)[fieldName] = value;
         }
       }
 

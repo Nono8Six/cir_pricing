@@ -62,7 +62,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen })
         <div className="flex flex-col h-full">
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-2">
-            {menuItems.map((item, index) => {
+            {menuItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
               

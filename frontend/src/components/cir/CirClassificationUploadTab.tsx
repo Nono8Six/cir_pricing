@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, FileSpreadsheet, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Upload, FileSpreadsheet, CheckCircle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { ExcelUploadZone } from '../mapping/ExcelUploadZone';
 import { ParseResultSummary } from '../mapping/ParseResultSummary';
-import { parseCirClassificationExcelFile } from '../../lib/excelParser';
 import { cirClassificationApi } from '../../lib/supabaseClient';
 import { ParseResult, CirParseResult } from '../../lib/schemas';
 import { toast } from 'sonner';
