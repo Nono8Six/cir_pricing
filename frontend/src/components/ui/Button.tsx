@@ -16,11 +16,10 @@ export const Button: React.FC<ButtonProps> = ({
   className,
   children,
   disabled,
-  style,
   ...restProps
 }) => {
   const baseClasses = "inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2";
-  
+
   const variants = {
     primary: "bg-gradient-to-r from-cir-red to-cir-red-light text-white hover:from-cir-red-dark hover:to-cir-red shadow-cir hover:shadow-cir-lg",
     secondary: "bg-gray-100 text-gray-900 hover:bg-gray-200 border border-gray-300",
@@ -34,11 +33,12 @@ export const Button: React.FC<ButtonProps> = ({
     lg: "px-6 py-3 text-lg"
   };
 
+  // Type assertion needed due to conflict between React.ButtonHTMLAttributes and framer-motion's HTMLMotionProps
+  // with exactOptionalPropertyTypes: true. This is safe since motion.button accepts all standard button props.
   return (
     <motion.button
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
-      style={style}
       className={cn(
         baseClasses,
         variants[variant],
@@ -47,7 +47,7 @@ export const Button: React.FC<ButtonProps> = ({
         className
       )}
       disabled={disabled || loading}
-      {...restProps}
+      {...(restProps as unknown as Record<string, unknown>)}
     >
       {loading && (
         <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

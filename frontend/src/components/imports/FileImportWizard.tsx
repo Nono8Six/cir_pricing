@@ -11,6 +11,7 @@ import { mappingRowSchema, requiredMappingFields } from '../../schemas/imports/m
 import { classificationRowSchema, requiredClassificationFields } from '../../schemas/imports/classificationSchema';
 import { mappingApi, cirClassificationApi } from '../../lib/supabaseClient';
 import { supabase } from '../../lib/api';
+import type { TablesInsert } from '../../types/database.types';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -18,6 +19,19 @@ import { useNavigate } from 'react-router-dom';
 type DatasetType = 'mapping' | 'classification';
 
 type WizardStep = 0 | 1 | 2 | 3 | 4 | 5; // Type, File, Columns, Validation, Diff, Apply
+
+// Type for raw Excel row data (before validation)
+type RawRowData = Record<string, string | number | null | undefined>;
+
+// Type for diff row data (comparison between existing and imported)
+interface DiffRowData {
+  key: string;
+  status: 'create' | 'update' | 'conflict' | 'unchanged';
+  before?: Record<string, unknown> | null | undefined;
+  after?: Record<string, unknown> | null | undefined;
+  changedFields?: string[];
+  sensitiveChanged?: boolean | undefined;
+}
 
 type Draft = {
   datasetType?: DatasetType | undefined;
@@ -67,14 +81,14 @@ export const FileImportWizard: React.FC = () => {
   const [fileSize, setFileSize] = useState<number | undefined>(draft?.fileSize);
   const [columns, setColumns] = useState<Record<string, string>>(draft?.columns || {});
   const [headers, setHeaders] = useState<string[]>([]);
-  const [rawRows, setRawRows] = useState<any[]>([]);
+  const [rawRows, setRawRows] = useState<RawRowData[]>([]);
   const [errorsCsv, setErrorsCsv] = useState<string | null>(null);
-  const [examples, setExamples] = useState<{ total: number; sample: any[] } | undefined>(undefined);
+  const [examples, setExamples] = useState<{ total: number; sample: unknown[] } | undefined>(undefined);
   const [applyLoading, setApplyLoading] = useState(false);
   const [resolutions, setResolutions] = useState<Record<string, { action: 'keep' | 'replace' | 'merge'; fieldChoices?: Record<string, 'existing' | 'import'> }>>({});
   const { user } = useAuth();
   const [fileObj, setFileObj] = useState<File | null>(null); // not persisted
-  const [diffRows, setDiffRows] = useState<any[]>([]);
+  const [diffRows, setDiffRows] = useState<DiffRowData[]>([]);
   const [validation, setValidation] = useState<Draft['validation']>(draft?.validation);
   const [diff, setDiff] = useState<Draft['diff']>(draft?.diff);
   const [step, setStep] = useState<WizardStep>(draft?.step ?? 0);
@@ -227,16 +241,16 @@ export const FileImportWizard: React.FC = () => {
                     const sheetName = wb.SheetNames[0];
                     const ws = wb.Sheets[sheetName];
                     // Extract headers from first row for robustness
-                    const rowsArray = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as any[][];
+                    const rowsArray = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as unknown[][];
                     const hdrRow = (rowsArray[0] || []).map((x) => String(x ?? '').trim()).filter(Boolean);
-                    const json = XLSX.utils.sheet_to_json(ws, { defval: '' });
-                    setRawRows(json as any[]);
+                    const json = XLSX.utils.sheet_to_json(ws, { defval: '' }) as RawRowData[];
+                    setRawRows(json);
                     setHeaders(hdrRow);
                     if (datasetType) {
                       const guessed = guessMapping(hdrRow, datasetType);
                       setColumns((prev) => ({ ...guessed, ...prev }));
                     }
-                    setExamples({ total: (json as any[]).length, sample: (json as any[]).slice(0, 5) });
+                    setExamples({ total: json.length, sample: json.slice(0, 5) });
                   };
                   reader.readAsArrayBuffer(f);
                 }}
@@ -277,7 +291,7 @@ export const FileImportWizard: React.FC = () => {
           resolutions={resolutions}
           onResolveChange={(key, res) => setResolutions((prev) => ({ ...prev, [key]: res }))}
           onBulkResolve={(status, action) => {
-            const next = { ...resolutions } as any;
+            const next = { ...resolutions };
             diffRows.filter(r => r.status === status).forEach(r => {
               next[r.key] = { action };
             });
@@ -347,9 +361,8 @@ export const FileImportWizard: React.FC = () => {
                     total_lines: rawRows.length,
                     processed_lines: 0,
                     error_lines: validation?.errors || 0,
-                    warnings: [],
                     comment: 'Import Center Wizard'
-                  } as any;
+                  };
                   const batch = await mappingApi.createImportBatch(fileName, user?.id || '', batchStats);
 
                   await supabase.rpc('set_current_batch_id', { batch_uuid: batch.id });
@@ -359,16 +372,17 @@ export const FileImportWizard: React.FC = () => {
                   let created = 0, updated = 0, skipped = 0;
 
                   if (datasetType === 'mapping') {
-                    const creates: any[] = [];
-                    const updates: any[] = [];
+                    const creates: TablesInsert<'brand_category_mappings'>[] = [];
+                    const updates: Partial<TablesInsert<'brand_category_mappings'> & { id?: string }>[] = [];
                     for (const it of diffRows) {
                       const res = getRes(it.key);
                       if (it.status === 'unchanged') { skipped++; continue; }
                       if (it.status === 'create') {
                         if (res.action === 'keep') { skipped++; continue; }
-                        const after = { ...it.after };
-                        creates.push({ ...after, created_by: user?.id, source_type: 'excel_upload', batch_id: batch.id });
-                        created++;
+                        if (it.after) {
+                          creates.push({ ...(it.after as unknown as TablesInsert<'brand_category_mappings'>), created_by: user?.id || '', source_type: 'excel_upload', batch_id: batch.id });
+                          created++;
+                        }
                         continue;
                       }
                       if (res.action === 'keep') { skipped++; continue; }
@@ -392,10 +406,10 @@ export const FileImportWizard: React.FC = () => {
                     }
                     if (updates.length) {
                       for (const u of updates) {
-                        const updateFields = { ...u } as any;
+                        const updateFields: Partial<TablesInsert<'brand_category_mappings'>> = { ...u };
                         delete updateFields.id;
-                        delete updateFields.classif_cir; // Generated column
-                        delete updateFields.natural_key; // Generated column
+                        delete (updateFields as Record<string, unknown>).classif_cir; // Generated column
+                        delete (updateFields as Record<string, unknown>).natural_key; // Generated column
                         await supabase
                           .from('brand_category_mappings')
                           .update(updateFields)
@@ -404,15 +418,17 @@ export const FileImportWizard: React.FC = () => {
                       }
                     }
                   } else if (datasetType === 'classification') {
-                    const creates: any[] = [];
-                    const updates: any[] = [];
+                    const creates: TablesInsert<'cir_classifications'>[] = [];
+                    const updates: Partial<TablesInsert<'cir_classifications'> & { id?: string; combined_code?: string }>[] = [];
                     for (const it of diffRows) {
                       const res = getRes(it.key);
                       if (it.status === 'unchanged') { skipped++; continue; }
                       if (it.status === 'create') {
                         if (res.action === 'keep') { skipped++; continue; }
-                        creates.push(it.after);
-                        created++;
+                        if (it.after) {
+                          creates.push(it.after as unknown as TablesInsert<'cir_classifications'>);
+                          created++;
+                        }
                       } else {
                         if (res.action === 'keep') { skipped++; continue; }
                         let finalRow = { ...it.before, ...it.after };
@@ -436,7 +452,7 @@ export const FileImportWizard: React.FC = () => {
                     }
                     if (updates.length) {
                       for (const u of updates) {
-                        const upd: any = { ...u };
+                        const upd: Partial<TablesInsert<'cir_classifications'>> = { ...u };
                         delete upd.id;
                         await supabase
                           .from('cir_classifications')
@@ -460,9 +476,10 @@ export const FileImportWizard: React.FC = () => {
                     .eq('id', batch.id);
 
                   toast.success(`Import appliqué: ${created} créés, ${updated} mis à jour, ${skipped} ignorés`);
-                } catch (e: any) {
+                } catch (e: unknown) {
                   console.error(e);
-                  toast.error(e?.message || 'Erreur application import');
+                  const message = e instanceof Error ? e.message : 'Erreur application import';
+                  toast.error(message);
                 } finally {
                   setApplyLoading(false);
                 }
@@ -483,11 +500,10 @@ export const FileImportWizard: React.FC = () => {
                   if (upErr) throw upErr;
 
                   // 2) Créer le lot
-                  const batchStats: any = {
+                  const batchStats = {
                     total_lines: rawRows.length,
                     processed_lines: 0,
                     error_lines: validation?.errors || 0,
-                    warnings: [],
                     comment: 'Async import via wizard',
                     dataset_type: datasetType,
                     file_url: key,
@@ -508,9 +524,10 @@ export const FileImportWizard: React.FC = () => {
 
                   toast.success('Import asynchrone lancé');
                   navigate(`/imports/history/${batch.id}`);
-                } catch (e: any) {
+                } catch (e: unknown) {
                   console.error(e);
-                  toast.error(e?.message || 'Erreur lancement import asynchrone');
+                  const message = e instanceof Error ? e.message : 'Erreur lancement import asynchrone';
+                  toast.error(message);
                 } finally {
                   setApplyLoading(false);
                 }
@@ -531,19 +548,20 @@ export const FileImportWizard: React.FC = () => {
               // Run validation when leaving mapping step
               const schema = datasetType === 'classification' ? classificationRowSchema : mappingRowSchema;
               const mapped = rawRows.map((r) => {
-                const o: any = {};
+                const o: Record<string, unknown> = {};
                 Object.entries(columns).forEach(([field, header]) => {
                   if (!header) return;
-                  o[field] = (r as any)[header];
+                  o[field] = r[header];
                 });
                 return o;
               });
-              const failures: Array<{ row: number; field: string; message: string; value: any }> = [];
+              const failures: Array<{ row: number; field: string; message: string; value: unknown }> = [];
               mapped.forEach((row, idx) => {
                 const res = schema.safeParse(row);
                 if (!res.success) {
                   res.error.issues.forEach((iss) => {
-                    failures.push({ row: idx + 2, field: (iss.path[0] as string) || '', message: iss.message, value: (row as any)[iss.path[0] as string] });
+                    const fieldName = String(iss.path[0] || '');
+                    failures.push({ row: idx + 2, field: fieldName, message: iss.message, value: row[fieldName] });
                   });
                 }
               });
@@ -564,16 +582,16 @@ export const FileImportWizard: React.FC = () => {
               (async () => {
                 const schema = datasetType === 'classification' ? classificationRowSchema : mappingRowSchema;
                 const mapped = rawRows.map((r) => {
-                  const obj: any = {};
+                  const obj: Record<string, unknown> = {};
                   Object.entries(columns).forEach(([field, header]) => {
                     if (!header) return;
-                    obj[field] = (r as any)[header];
+                    obj[field] = r[header];
                   });
                   return obj;
                 });
 
                 // Validate rows and transform
-                const valid: any[] = [];
+                const valid: RawRowData[] = [];
                 mapped.forEach((row) => {
                   const res = schema.safeParse(row);
                   if (res.success) valid.push(res.data);
@@ -583,17 +601,17 @@ export const FileImportWizard: React.FC = () => {
                   // Create natural keys
                   const keys = Array.from(new Set(valid.map(v => `${String(v.marque).toLowerCase()}|${String(v.cat_fab).toUpperCase()}`)));
                   const batchSize = 1000;
-                  const existing: any[] = [];
+                  const existing: Array<Record<string, unknown>> = [];
                   for (let i = 0; i < keys.length; i += batchSize) {
                     const slice = keys.slice(i, i + batchSize);
                     const part = await mappingApi.getMappingsByKeys(slice);
-                    existing.push(...(part || []));
+                    existing.push(...(part || []).map(p => p as unknown as Record<string, unknown>));
                   }
                   const mapExisting = new Map(existing.map((e) => [e.natural_key ?? `${String(e.marque).toLowerCase()}|${String(e.cat_fab).toUpperCase()}`, e]));
                   const sensitive = ['segment','marque','cat_fab','strategiq','fsmega','fsfam','fssfa'];
                   const nonSensitive = ['cat_fab_l','codif_fair'];
                   const counts = { unchanged: 0, create: 0, update: 0, conflict: 0 };
-                  const rows: any[] = [];
+                  const rows: DiffRowData[] = [];
                   for (const v of valid) {
                     const key = `${String(v.marque).toLowerCase()}|${String(v.cat_fab).toUpperCase()}`;
                     const before = mapExisting.get(key);
@@ -605,7 +623,7 @@ export const FileImportWizard: React.FC = () => {
                     // compare fields
                     const changedFields: string[] = [];
                     for (const f of [...sensitive, ...nonSensitive]) {
-                      if (String(before[f] ?? '') !== String((v as any)[f] ?? '')) changedFields.push(f);
+                      if (String(before[f] ?? '') !== String(v[f] ?? '')) changedFields.push(f);
                     }
                     const sensChanged = changedFields.some((f) => sensitive.includes(f));
                     const nonSensChanged = changedFields.some((f) => nonSensitive.includes(f));
@@ -625,31 +643,32 @@ export const FileImportWizard: React.FC = () => {
                 } else if (datasetType === 'classification') {
                   const codes = Array.from(new Set(valid.map(v => String(v.combined_code))));
                   const batchSize = 1000;
-                  const existing: any[] = [];
+                  const existing: Array<Record<string, unknown>> = [];
                   for (let i = 0; i < codes.length; i += batchSize) {
                     const slice = codes.slice(i, i + batchSize);
                     const part = await cirClassificationApi.getByCodes(slice);
-                    existing.push(...(part || []));
+                    existing.push(...(part || []).map(p => p as unknown as Record<string, unknown>));
                   }
-                  const mapExisting = new Map(existing.map((e) => [e.combined_code, e]));
+                  const mapExisting = new Map(existing.map((e) => [String(e.combined_code), e]));
                   const counts = { unchanged: 0, create: 0, update: 0, conflict: 0 };
-                  const rows: any[] = [];
+                  const rows: DiffRowData[] = [];
                   for (const v of valid) {
-                    const before = mapExisting.get(String(v.combined_code));
+                    const key = String(v.combined_code);
+                    const before = mapExisting.get(key);
                     if (!before) {
                       counts.create++;
-                      rows.push({ key: v.combined_code, status: 'create', before: null, after: v });
+                      rows.push({ key, status: 'create', before: null, after: v });
                       continue;
                     }
                     const fields = ['fsmega_code','fsmega_designation','fsfam_code','fsfam_designation','fssfa_code','fssfa_designation','combined_code'];
-                    const changedFields: string[] = fields.filter((f) => String(before[f] ?? '') !== String((v as any)[f] ?? ''));
+                    const changedFields: string[] = fields.filter((f) => String(before[f] ?? '') !== String(v[f] ?? ''));
                     if (changedFields.length === 0) {
                       counts.unchanged++;
-                      rows.push({ key: v.combined_code, status: 'unchanged', before, after: v, changedFields });
+                      rows.push({ key, status: 'unchanged', before, after: v, changedFields });
                     } else {
                       // No conflict concept here yet → mark as update
                       counts.update++;
-                      rows.push({ key: v.combined_code, status: 'update', before, after: v, changedFields });
+                      rows.push({ key, status: 'update', before, after: v, changedFields });
                     }
                   }
                   setDiff(counts);

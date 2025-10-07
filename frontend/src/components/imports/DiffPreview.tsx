@@ -3,14 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 
 // Type for diff item data (mapping or classification records)
-type DiffItemData = Record<string, string | number | null | undefined>;
-
 interface DiffItem {
   key: string;
   status: string;
-  before?: DiffItemData;
-  after?: DiffItemData;
+  before?: Record<string, unknown> | null | undefined;
+  after?: Record<string, unknown> | null | undefined;
   changedFields?: string[];
+  sensitiveChanged?: boolean | undefined;
 }
 
 interface Props {
