@@ -20,14 +20,14 @@ type DatasetType = 'mapping' | 'classification';
 type WizardStep = 0 | 1 | 2 | 3 | 4 | 5; // Type, File, Columns, Validation, Diff, Apply
 
 type Draft = {
-  datasetType?: DatasetType;
-  fileName?: string;
-  fileSize?: number;
+  datasetType?: DatasetType | undefined;
+  fileName?: string | undefined;
+  fileSize?: number | undefined;
   // Columns mapping is intentionally loose at this stage (skeleton)
   columns?: Record<string, string>;
   // Placeholder summaries to display in steps (populated in later phases)
-  validation?: { errors: number; warnings: number };
-  diff?: { unchanged: number; create: number; update: number; conflict: number };
+  validation?: { errors: number; warnings: number } | undefined;
+  diff?: { unchanged: number; create: number; update: number; conflict: number } | undefined;
   step?: WizardStep;
 };
 

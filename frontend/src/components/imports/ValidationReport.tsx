@@ -3,10 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 
 interface Props {
-  validation?: { errors: number; warnings: number };
+  validation?: { errors: number; warnings: number } | undefined;
   onSetValidation: (v: { errors: number; warnings: number }) => void;
   errorsCsv?: string | null; // CSV data URL
-  examples?: { total: number; sample: any[] };
+  examples?: { total: number; sample: any[] } | undefined;
 }
 
 export const ValidationReport: React.FC<Props> = ({ validation, onSetValidation, errorsCsv, examples }) => {

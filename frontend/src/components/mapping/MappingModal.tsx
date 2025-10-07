@@ -161,9 +161,9 @@ export const MappingModal: React.FC<MappingModalProps> = ({
 
       onSuccess();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erreur sauvegarde mapping:', error);
-      const message = error.message || 'Erreur lors de la sauvegarde';
+      const message = error instanceof Error ? error.message : 'Erreur lors de la sauvegarde';
       toast.error(message);
     } finally {
       setLoading(false);

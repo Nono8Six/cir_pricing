@@ -3,10 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 
 interface Props {
-  diff?: { unchanged: number; create: number; update: number; conflict: number };
+  diff?: { unchanged: number; create: number; update: number; conflict: number } | undefined;
   onSetDiff: (d: { unchanged: number; create: number; update: number; conflict: number }) => void;
   items?: Array<{ key: string; status: string; before?: any; after?: any; changedFields?: string[] }>;
-  datasetType?: 'mapping' | 'classification';
+  datasetType?: 'mapping' | 'classification' | undefined;
   resolutions?: Record<string, { action: 'keep' | 'replace' | 'merge'; fieldChoices?: Record<string, 'existing' | 'import'> }>;
   onResolveChange?: (key: string, res: { action: 'keep' | 'replace' | 'merge'; fieldChoices?: Record<string, 'existing' | 'import'> }) => void;
   onBulkResolve?: (status: string, action: 'keep' | 'replace') => void;

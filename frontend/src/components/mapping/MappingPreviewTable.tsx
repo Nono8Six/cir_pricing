@@ -41,7 +41,7 @@ interface MappingChange {
   data: ParsedDataItem;
   existing?: BrandMapping;
   changes?: string[];
-  autoClassified?: boolean;
+  autoClassified?: boolean | undefined;
 }
 
 interface ParsedDataItem {

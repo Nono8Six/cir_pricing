@@ -79,9 +79,9 @@ export const GroupsPage: React.FC = () => {
             await api.deleteGroup(group.id);
             toast.success('Groupement supprimé avec succès');
             fetchGroups();
-          } catch (error: any) {
+          } catch (error: unknown) {
             console.error('Erreur suppression groupe:', error);
-            const message = error.message || 'Erreur lors de la suppression';
+            const message = error instanceof Error ? error.message : 'Erreur lors de la suppression';
             toast.error(message);
           } finally {
             setDeleteLoading(null);

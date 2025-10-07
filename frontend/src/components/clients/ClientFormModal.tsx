@@ -20,14 +20,14 @@ interface Group {
 interface Client {
   id?: string;
   name: string;
-  address?: string;
-  city?: string;
-  zip?: string;
-  country?: string;
-  siret?: string;
-  cir_account_number?: string;
-  group_id?: string;
-  agency?: string;
+  address?: string | undefined;
+  city?: string | undefined;
+  zip?: string | undefined;
+  country?: string | undefined;
+  siret?: string | undefined;
+  cir_account_number?: string | undefined;
+  group_id?: string | undefined;
+  agency?: string | undefined;
   contacts?: Contact[];
 }
 
@@ -207,9 +207,9 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
 
       onSuccess();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erreur sauvegarde client:', error);
-      const message = error.response?.data?.error || 'Erreur lors de la sauvegarde';
+      const message = error instanceof Error ? error.message : 'Erreur lors de la sauvegarde';
       toast.error(message);
     } finally {
       setLoading(false);

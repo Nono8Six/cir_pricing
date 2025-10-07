@@ -113,9 +113,9 @@ export const Clients: React.FC = () => {
             await api.deleteClient(client.id);
             toast.success('Client supprimé avec succès');
             fetchData();
-          } catch (error: any) {
+          } catch (error: unknown) {
             console.error('Erreur suppression client:', error);
-            const message = error.message || 'Erreur lors de la suppression';
+            const message = error instanceof Error ? error.message : 'Erreur lors de la suppression';
             toast.error(message);
           } finally {
             setDeleteLoading(null);

@@ -8,7 +8,7 @@ import { requiredClassificationFields, optionalClassificationFields } from '../.
 import { toast } from 'sonner';
 
 interface Props {
-  datasetType?: 'mapping' | 'classification';
+  datasetType?: 'mapping' | 'classification' | undefined;
   columns: Record<string, string>; // fieldKey -> header
   headers?: string[]; // available headers from file
   onChange: (next: Record<string, string>) => void;

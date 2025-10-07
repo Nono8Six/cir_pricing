@@ -50,8 +50,9 @@ export const LoginForm: React.FC = () => {
         await signIn(email, password);
         toast.success('Connexion réussie !');
       }
-    } catch (error: any) {
-      toast.error(error.message || (isSignUp ? 'Erreur lors de la création du compte' : 'Erreur de connexion'));
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : (isSignUp ? 'Erreur lors de la création du compte' : 'Erreur de connexion');
+      toast.error(message);
     } finally {
       setLoading(false);
     }
