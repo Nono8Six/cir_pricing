@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import Fuse from 'fuse.js';
-import type { ParseResult, BrandMappingOutput, CirClassificationOutput } from './schemas';
+import type { ParseResult, CirParseResult, BrandMappingOutput, CirClassificationOutput } from './schemas';
 import { CIR_CLASSIFICATION_COLUMN_MAPPINGS } from './schemas';
 
 export interface ExcelParseOptions {
@@ -264,9 +264,9 @@ function parseDataRowsSimple(
  * Parse un fichier Excel de classifications CIR
  */
 export async function parseCirClassificationExcelFile(
-  file: File, 
+  file: File,
   options: ExcelParseOptions = {}
-): Promise<ParseResult> {
+): Promise<CirParseResult> {
   const {
     sheetName,
     skipEmptyRows = true
@@ -424,7 +424,7 @@ function parseCirClassificationDataRows(
   headers: string[],
   columnMapping: Record<string, string>,
   options: ExcelParseOptions = {}
-): ParseResult {
+): CirParseResult {
   const data: CirClassificationOutput[] = [];
   const info: string[] = [];
   let validLines = 0;
@@ -516,7 +516,7 @@ function parseCirClassificationDataRows(
   }
 
   return {
-    data: data as any[], // Type assertion pour compatibilité avec ParseResult
+    data,
     totalLines: rows.length,
     validLines,
     skippedLines,

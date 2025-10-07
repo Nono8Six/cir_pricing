@@ -6,7 +6,7 @@ interface Props {
   validation?: { errors: number; warnings: number } | undefined;
   onSetValidation: (v: { errors: number; warnings: number }) => void;
   errorsCsv?: string | null; // CSV data URL
-  examples?: { total: number; sample: any[] } | undefined;
+  examples?: { total: number; sample: unknown[] } | undefined;
 }
 
 export const ValidationReport: React.FC<Props> = ({ validation, onSetValidation, errorsCsv, examples }) => {

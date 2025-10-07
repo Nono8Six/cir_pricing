@@ -16,7 +16,8 @@ export const Button: React.FC<ButtonProps> = ({
   className,
   children,
   disabled,
-  ...props
+  style,
+  ...restProps
 }) => {
   const baseClasses = "inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2";
   
@@ -37,6 +38,7 @@ export const Button: React.FC<ButtonProps> = ({
     <motion.button
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
+      style={style}
       className={cn(
         baseClasses,
         variants[variant],
@@ -45,7 +47,7 @@ export const Button: React.FC<ButtonProps> = ({
         className
       )}
       disabled={disabled || loading}
-      {...(props as any)}
+      {...restProps}
     >
       {loading && (
         <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

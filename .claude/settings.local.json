@@ -33,7 +33,9 @@
       "Bash(git commit:*)",
       "Bash(npm run lint:*)",
       "Bash(tee:*)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(xargs sed:*)",
+      "Bash(cat:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

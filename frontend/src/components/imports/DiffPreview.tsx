@@ -2,10 +2,21 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 
+// Type for diff item data (mapping or classification records)
+type DiffItemData = Record<string, string | number | null | undefined>;
+
+interface DiffItem {
+  key: string;
+  status: string;
+  before?: DiffItemData;
+  after?: DiffItemData;
+  changedFields?: string[];
+}
+
 interface Props {
   diff?: { unchanged: number; create: number; update: number; conflict: number } | undefined;
   onSetDiff: (d: { unchanged: number; create: number; update: number; conflict: number }) => void;
-  items?: Array<{ key: string; status: string; before?: any; after?: any; changedFields?: string[] }>;
+  items?: DiffItem[];
   datasetType?: 'mapping' | 'classification' | undefined;
   resolutions?: Record<string, { action: 'keep' | 'replace' | 'merge'; fieldChoices?: Record<string, 'existing' | 'import'> }>;
   onResolveChange?: (key: string, res: { action: 'keep' | 'replace' | 'merge'; fieldChoices?: Record<string, 'existing' | 'import'> }) => void;
@@ -57,7 +68,7 @@ export const DiffPreview: React.FC<Props> = ({ diff, onSetDiff, items = [], data
     ? ['fsmega_code','fsmega_designation','fsfam_code','fsfam_designation','fssfa_code','fssfa_designation','combined_code']
     : ['segment','marque','cat_fab','cat_fab_l','strategiq','fsmega','fsfam','fssfa','codif_fair'];
 
-  const changedFields = (it: any) => it.changedFields || fieldsByType.filter((f) => String(it.before?.[f] ?? '') !== String(it.after?.[f] ?? ''));
+  const changedFields = (it: DiffItem): string[] => it.changedFields || fieldsByType.filter((f) => String(it.before?.[f] ?? '') !== String(it.after?.[f] ?? ''));
 
   return (
     <Card>

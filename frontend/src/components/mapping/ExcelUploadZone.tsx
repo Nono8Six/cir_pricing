@@ -1,10 +1,10 @@
 import React, { useCallback, useState } from 'react';
 import { Upload, FileSpreadsheet, AlertCircle } from 'lucide-react';
 import { parseExcelFile, parseCirClassificationExcelFile } from '../../lib/excelParser';
-import { ParseResult } from '../../lib/schemas';
+import { ParseResult, CirParseResult } from '../../lib/schemas';
 
 interface ExcelUploadZoneProps {
-  onParseComplete: (result: ParseResult, file: File) => void;
+  onParseComplete: (result: ParseResult | CirParseResult, file: File) => void;
   onParseError: (error: string) => void;
   parserType?: 'mapping' | 'cir-classification';
 }

@@ -23,10 +23,12 @@ interface AnalyticsData {
   sourceTypeDistribution: { source_type: string; count: number }[];
 }
 
+type TimeRange = '7d' | '30d' | '90d' | 'all';
+
 export const MappingAnalyticsTab: React.FC = () => {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
+  const [timeRange, setTimeRange] = useState<TimeRange>('30d');
 
   useEffect(() => {
     fetchAnalytics();
@@ -170,7 +172,7 @@ export const MappingAnalyticsTab: React.FC = () => {
         <div className="flex items-center space-x-3">
           <select
             value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value as any)}
+            onChange={(e) => setTimeRange(e.target.value as TimeRange)}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
           >
             <option value="7d">7 derniers jours</option>

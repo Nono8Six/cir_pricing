@@ -6,7 +6,7 @@ import { Button } from '../ui/Button';
 import { ExcelUploadZone } from '../mapping/ExcelUploadZone';
 import { ParseResultSummary } from '../mapping/ParseResultSummary';
 import { cirClassificationApi } from '../../lib/supabaseClient';
-import { ParseResult, CirParseResult } from '../../lib/schemas';
+import { ParseResult, CirParseResult, CirClassificationOutput } from '../../lib/schemas';
 import { toast } from 'sonner';
 
 export const CirClassificationUploadTab: React.FC = () => {
@@ -172,7 +172,7 @@ export const CirClassificationUploadTab: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {parseResult.data.slice(0, 5).map((classification: any, index) => (
+                  {parseResult.data.slice(0, 5).map((classification: CirClassificationOutput, index: number) => (
                     <tr key={index} className="hover:bg-gray-50">
                       <td className="px-3 py-2 font-mono">{classification.fsmega_code}</td>
                       <td className="px-3 py-2 max-w-xs truncate">{classification.fsmega_designation}</td>
