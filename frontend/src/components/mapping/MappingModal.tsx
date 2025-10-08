@@ -80,7 +80,7 @@ export const MappingModal: React.FC<MappingModalProps> = ({
         classif_cir: newClassifCir
       }));
     }
-  }, [formData.fsmega, formData.fsfam, formData.fssfa]);
+  }, [formData.fsmega, formData.fsfam, formData.fssfa, formData.classif_cir]);
 
   const handleInputChange = (field: keyof BrandMapping, value: string | number) => {
     setFormData(prev => ({

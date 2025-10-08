@@ -5,6 +5,7 @@ import { Button } from '../ui/Button';
 import { Card, CardContent } from '../ui/Card';
 import { toast } from 'sonner';
 import { api } from '../../lib/api';
+import type { Json } from '../../types/database.types';
 
 interface Contact {
   name: string;
@@ -178,17 +179,18 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
 
     try {
       // Nettoyer les contacts vides
-      const cleanedContacts = formData.contacts?.filter(contact => 
+      const cleanedContacts = formData.contacts?.filter(contact =>
         contact.name.trim() !== '' || contact.email.trim() !== '' || contact.phone.trim() !== ''
       ) || [];
 
       const clientData = {
-        ...formData,
-        contacts: cleanedContacts,
+        name: formData.name,
+        contacts: cleanedContacts as unknown as Json,
         // Nettoyer les champs vides
         address: formData.address?.trim() || null,
         city: formData.city?.trim() || null,
         zip: formData.zip?.trim() || null,
+        country: formData.country?.trim() || null,
         siret: formData.siret?.trim() || null,
         cir_account_number: formData.cir_account_number?.trim() || null,
         agency: formData.agency?.trim() || null,

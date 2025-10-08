@@ -15,6 +15,7 @@ export const ValidationReport: React.FC<Props> = ({ validation, onSetValidation,
     if (!validation) {
       onSetValidation({ errors: 0, warnings: 0 });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

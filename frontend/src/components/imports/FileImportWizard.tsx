@@ -104,6 +104,7 @@ export const FileImportWizard: React.FC = () => {
       const guessed = guessMapping(headers, datasetType);
       setColumns((prev) => ({ ...guessed, ...prev }));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetType]);
 
   const steps = useMemo(
@@ -133,7 +134,7 @@ export const FileImportWizard: React.FC = () => {
     if (step === 5) return true; // Step 5: Apply - always allow finish
     // Steps 2..5 are placeholders; allow navigation for now
     return true;
-  }, [datasetType, fileName, step, columns, validation]);
+  }, [datasetType, fileName, step, columns, validation, diff]);
 
   const goNext = () => {
     if (step === 5) {

@@ -95,6 +95,7 @@ export const MappingHistoryTab: React.FC = () => {
     } else {
       fetchMappingChanges();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeView, currentPage, itemsPerPage, searchTerm, statusFilter, changeTypeFilter]);
 
   const fetchImportBatches = async () => {

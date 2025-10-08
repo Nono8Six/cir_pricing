@@ -5,20 +5,9 @@ import { supabase } from '../lib/api';
 import { ArrowLeft, FileText } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { toast } from 'sonner';
+import type { Tables } from '../types/database.types';
 
-type Batch = {
-  id: string;
-  filename: string;
-  user_id: string;
-  timestamp: string;
-  status: string;
-  dataset_type: string | null;
-  created_count: number | null;
-  updated_count: number | null;
-  skipped_count: number | null;
-  total_lines?: number | null;
-  processed_lines?: number | null;
-};
+type Batch = Tables<'import_batches'>;
 
 export const ImportBatchDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -27,10 +16,10 @@ export const ImportBatchDetails: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const load = async () => {
+    const load = async (): Promise<void> => {
       setLoading(true);
       const { data } = await supabase.from('import_batches').select('*').eq('id', id).single();
-      setBatch((data as any) || null);
+      setBatch(data || null);
       const { count } = await supabase
         .from('brand_mapping_history')
         .select('*', { count: 'exact', head: true })
@@ -38,21 +27,23 @@ export const ImportBatchDetails: React.FC = () => {
       setHistoryCount(count ?? null);
       setLoading(false);
     };
-    if (id) load();
+    if (id) {
+      void load();
+    }
     // Realtime subscription (si publication active)
     const channel = supabase
       .channel('import-batch-details')
       .on('postgres_changes', { schema: 'public', table: 'import_batches', event: '*', filter: `id=eq.${id}` }, (payload) => {
-        const row: any = (payload as any).new || (payload as any).old;
+        const row = (payload.new || payload.old) as Batch | null;
         if (row && row.id === id) {
-          setBatch((prev) => ({ ...(prev as any), ...row }));
+          setBatch((prev) => (prev ? { ...prev, ...row } : row));
         }
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => { void supabase.removeChannel(channel); };
   }, [id]);
 
-  const handleRollback = async () => {
+  const handleRollback = async (): Promise<void> => {
     if (!id || !batch) return;
     if (batch.status !== 'completed') {
       toast.error('Rollback indisponible: le lot doit être au statut completed');
@@ -66,15 +57,15 @@ export const ImportBatchDetails: React.FC = () => {
       toast.success('Rollback lancé avec succès');
       // Refresh
       const { data } = await supabase.from('import_batches').select('*').eq('id', id).single();
-      setBatch((data as any) || null);
+      setBatch(data || null);
       const { count } = await supabase
         .from('brand_mapping_history')
         .select('*', { count: 'exact', head: true })
         .eq('batch_id', id);
       setHistoryCount(count ?? null);
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e?.message || 'Erreur lors du rollback');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Erreur lors du rollback';
+      toast.error(message);
     }
   };
 

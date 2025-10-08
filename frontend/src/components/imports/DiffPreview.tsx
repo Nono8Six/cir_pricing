@@ -28,6 +28,7 @@ export const DiffPreview: React.FC<Props> = ({ diff, onSetDiff, items = [], data
     if (!diff) {
       onSetDiff({ unchanged: 0, create: 0, update: 0, conflict: 0 });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const [statusFilter, setStatusFilter] = useState<string>('');

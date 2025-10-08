@@ -162,6 +162,7 @@ export const MarginCalculator: React.FC = () => {
     const purchase = calculatePurchasePrices();
     const selling = calculateSellingPrice(purchase);
     calculateMargins(purchase, selling);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     directPurchasePrice, supplierTariff, standardDiscount, hasDerogation,
     derogatedNetPrice, derogatedDiscount, sellingPrice, targetMarkupRate, cirDiscount

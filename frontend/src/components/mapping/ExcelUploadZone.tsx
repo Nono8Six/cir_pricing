@@ -36,6 +36,7 @@ export function ExcelUploadZone({
       const file = e.dataTransfer.files[0];
       await handleFile(file);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleFileInput = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,6 +44,7 @@ export function ExcelUploadZone({
       const file = e.target.files[0];
       await handleFile(file);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleFile = async (file: File) => {

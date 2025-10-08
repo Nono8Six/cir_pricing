@@ -149,13 +149,14 @@ export const Mapping: React.FC = () => {
     if (activeTab === 'mappings' && segments.length === 0) {
       fetchFilterOptions();
     }
-  }, [activeTab]);
+  }, [activeTab, segments.length]);
 
   // Charger seulement les données quand les filtres/page changent
   useEffect(() => {
     if (activeTab === 'mappings' && !filtersLoading) {
       fetchMappings();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, selectedSegment, selectedMarque, debouncedSearchTerm, currentPage, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq, filtersLoading]);
 
   // Gestionnaires pour le workflow d'upload (removed - dead code from deleted renderUploadTab)
