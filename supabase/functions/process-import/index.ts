@@ -18,8 +18,12 @@ Deno.serve(async (req: Request) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // Track batch_id for error handling in catch block
+  let batchId: string | null = null;
+
   try {
     const { batch_id, dataset_type, file_path, mapping } = await req.json();
+    batchId = batch_id;
 
     // 1) Récupérer le lot, quick guard
     const { data: batch } = await supabase.from('import_batches').select('*').eq('id', batch_id).single();
@@ -91,10 +95,10 @@ Deno.serve(async (req: Request) => {
     });
   } catch (e) {
     console.error('Edge Function Error:', e);
-    // Update batch status to failed
-    if (typeof batch_id === 'string') {
+    // Update batch status to failed (if batch_id was successfully extracted)
+    if (batchId) {
       try {
-        await supabase.from('import_batches').update({ status: 'failed' }).eq('id', batch_id);
+        await supabase.from('import_batches').update({ status: 'failed' }).eq('id', batchId);
       } catch (updateErr) {
         console.error('Failed to update batch status:', updateErr);
       }

@@ -71,17 +71,21 @@ Notes : - Client Supabase initialisé en dehors du request handler
 ```
 
 #### Étape 0.1.4 : Créer variable batchId accessible dans catch
-- [ ] Avant le try, déclarer `let batchId: string | null = null;`
-- [ ] Dans le try, assigner `batchId = batch_id;` juste après destructuring
-- [ ] Dans le catch, remplacer `batch_id` par `batchId`
-- [ ] Ajouter condition `if (batchId) { ... }` autour du update
+- [x] Avant le try, déclarer `let batchId: string | null = null;`
+- [x] Dans le try, assigner `batchId = batch_id;` juste après destructuring
+- [x] Dans le catch, remplacer `batch_id` par `batchId`
+- [x] Ajouter condition `if (batchId) { ... }` autour du update
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Variable correctement scopée : ☐ Oui
-Tests manuels :
+Date : 2025-01-08
+Durée : 5 min
+Variable correctement scopée : ☑ Oui
+Notes : - Variable déclarée ligne 22 (avant try)
+        - Assignment ligne 26 (juste après destructuring)
+        - Condition `if (batchId)` ligne 99 (dans catch)
+        - Usage ligne 101 pour update status 'failed'
+        - ✅ Scope correct : accessible dans try ET catch
 ```
 
 #### Étape 0.1.5 : Ajouter validation Zod du request body
