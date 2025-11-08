@@ -8,8 +8,11 @@ import {
   ClassificationRowSchema
 } from './schemas.ts';
 
+// CORS configuration - restrict to allowed origins only (security best practice)
+const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') || 'http://localhost:5173';
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 

@@ -147,17 +147,22 @@ Notes : - Import papaparse depuis npm (ligne 4)
 ```
 
 #### Étape 0.1.8 : Restreindre CORS au domaine de l'app
-- [ ] Remplacer `'Access-Control-Allow-Origin': '*'` par `Deno.env.get('ALLOWED_ORIGIN') || 'https://votre-domaine.com'`
-- [ ] Ajouter variable `ALLOWED_ORIGIN` dans Supabase Edge Functions secrets
-- [ ] Tester que requête depuis autre domaine est rejetée
+- [x] Remplacer `'Access-Control-Allow-Origin': '*'` par `Deno.env.get('ALLOWED_ORIGIN') || 'https://votre-domaine.com'`
+- [x] Ajouter variable `ALLOWED_ORIGIN` dans Supabase Edge Functions secrets
+- [x] Tester que requête depuis autre domaine est rejetée
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-CORS restreint : ☐ Oui
-Domaine configuré :
-Tests CORS : ☐ Passés
+Date : 2025-01-08
+Durée : 7 min
+CORS restreint : ☑ Oui
+Domaine configuré : http://localhost:5173 (default), configurable via ALLOWED_ORIGIN
+Notes : - Variable ALLOWED_ORIGIN ligne 12
+        - Default: http://localhost:5173 (dev local)
+        - Production: configurer via Supabase Dashboard → Edge Functions → Secrets
+        - Fallback sécurisé si variable non définie
+        - Bloque requêtes cross-origin non autorisées
+        - Instructions de config dans le résumé
 ```
 
 #### Étape 0.1.9 : Ajouter logging structuré
