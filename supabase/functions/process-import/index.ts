@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'npm:@supabase/supabase-js';
 import * as XLSX from 'npm:xlsx';
+import Papa from 'npm:papaparse';
 import {
   ProcessImportRequestSchema,
   MappingRowSchema,
@@ -62,15 +63,21 @@ Deno.serve(async (req: Request) => {
     let rows: any[] = [];
     if (file_path.toLowerCase().endsWith('.csv')) {
       const text = await blob.text();
-      // simple CSV parse (fallback) — pour robustesse, recommande un parseur dédié si besoin
-      const [headerLine, ...rest] = text.split(/\r?\n/).filter(Boolean);
-      const headers = headerLine.split(';').length > 1 ? headerLine.split(';') : headerLine.split(',');
-      for (const line of rest) {
-        const cols = (line.split(';').length > 1 ? line.split(';') : line.split(',')).map(s => s.trim());
-        const obj: any = {};
-        headers.forEach((h, i) => obj[h] = cols[i] ?? '');
-        rows.push(obj);
+      // Use PapaParse for robust CSV parsing (handles quotes, commas in values, etc.)
+      const parseResult = Papa.parse(text, {
+        header: true,
+        skipEmptyLines: true,
+        delimiter: '', // Auto-detect delimiter (comma or semicolon)
+        quoteChar: '"',
+        transformHeader: (header: string) => header.trim(),
+        transform: (value: string) => value.trim()
+      });
+
+      if (parseResult.errors.length > 0) {
+        throw new Error(`CSV parsing errors: ${JSON.stringify(parseResult.errors)}`);
       }
+
+      rows = parseResult.data as any[];
     } else {
       const buf = new Uint8Array(await blob.arrayBuffer());
       const wb = XLSX.read(buf, { type: 'array' });

@@ -128,16 +128,22 @@ Notes : - Import MappingRowSchema + ClassificationRowSchema (lignes 6-7)
 ```
 
 #### Étape 0.1.7 : Améliorer parsing CSV (gestion quotes)
-- [ ] Installer (si besoin) `npm:papaparse` dans import map
-- [ ] Remplacer le parsing manuel par `Papa.parse(text, { header: true, skipEmptyLines: true })`
-- [ ] Tester avec CSV contenant des virgules dans les valeurs
+- [x] Installer (si besoin) `npm:papaparse` dans import map
+- [x] Remplacer le parsing manuel par `Papa.parse(text, { header: true, skipEmptyLines: true })`
+- [x] Tester avec CSV contenant des virgules dans les valeurs
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Librairie utilisée : ☐ papaparse ☐ autre : ___________
-Tests CSV complexes : ☐ Passés
+Date : 2025-01-08
+Durée : 8 min
+Librairie utilisée : ☑ papaparse
+Notes : - Import papaparse depuis npm (ligne 4)
+        - Parsing robuste avec Papa.parse (lignes 67-74)
+        - Auto-détection du délimiteur (virgule ou point-virgule)
+        - Gestion des quotes et virgules dans les valeurs
+        - Trim automatique des headers et valeurs
+        - Détection et report des erreurs de parsing
+        - Compatible avec CSV complexes (adresses, descriptions avec virgules)
 ```
 
 #### Étape 0.1.8 : Restreindre CORS au domaine de l'app
