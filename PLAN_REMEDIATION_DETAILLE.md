@@ -53,17 +53,21 @@ Notes : - Validation stricte avec messages d'erreur clairs
 ```
 
 #### Étape 0.1.3 : Déplacer création client Supabase hors du try
-- [ ] Copier les lignes 18-19 AVANT `Deno.serve(async (req) => {`
-- [ ] Renommer `supa1` → `supabase` (nom constant)
-- [ ] Supprimer l'ancienne déclaration dans le try
-- [ ] Vérifier que `supabase` est accessible dans le catch
+- [x] Copier les lignes 18-19 AVANT `Deno.serve(async (req) => {`
+- [x] Renommer `supa1` → `supabase` (nom constant)
+- [x] Supprimer l'ancienne déclaration dans le try
+- [x] Vérifier que `supabase` est accessible dans le catch
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Client accessible dans catch : ☐ Oui ☐ Non (si non, débugger)
-Ligne déplacée :
+Date : 2025-01-08
+Durée : 7 min
+Client accessible dans catch : ☑ Oui
+Ligne déplacée : Lignes 11-13 (avant Deno.serve)
+Notes : - Client Supabase initialisé en dehors du request handler
+        - Variable renommée de 'supa' à 'supabase' (9 occurrences)
+        - Accessible dans le catch pour update status en cas d'erreur
+        - Conforme aux best practices Edge Functions
 ```
 
 #### Étape 0.1.4 : Créer variable batchId accessible dans catch

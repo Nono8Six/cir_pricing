@@ -7,6 +7,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Initialize Supabase client outside request handler for better error handling
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
+
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -15,19 +20,16 @@ Deno.serve(async (req: Request) => {
 
   try {
     const { batch_id, dataset_type, file_path, mapping } = await req.json();
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-    const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supa = createClient(SUPABASE_URL, SERVICE_ROLE);
 
     // 1) Récupérer le lot, quick guard
-    const { data: batch } = await supa.from('import_batches').select('*').eq('id', batch_id).single();
+    const { data: batch } = await supabase.from('import_batches').select('*').eq('id', batch_id).single();
     if (!batch) return new Response(JSON.stringify({ error: 'batch not found' }), { 
       status: 404,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
     // 2) Télécharger le fichier Storage
-    const { data: blob, error: dlErr } = await supa.storage.from('imports').download(file_path);
+    const { data: blob, error: dlErr } = await supabase.storage.from('imports').download(file_path);
     if (dlErr || !blob) throw dlErr || new Error('download failed');
 
     // 3) Parse
@@ -64,7 +66,7 @@ Deno.serve(async (req: Request) => {
     const chunkSize = 500;
     let created = 0, updated = 0, skipped = 0, processed = 0;
     const upsert = async (table: string, conflict: string, payload: any[]) => {
-      const { error } = await supa.from(table).upsert(payload, { onConflict: conflict, ignoreDuplicates: false });
+      const { error } = await supabase.from(table).upsert(payload, { onConflict: conflict, ignoreDuplicates: false });
       if (error) throw error;
     };
 
@@ -78,11 +80,11 @@ Deno.serve(async (req: Request) => {
         await upsert('cir_classifications', 'combined_code', slice);
       }
       processed += slice.length;
-      await supa.from('import_batches').update({ processed_lines: processed, status: 'processing' }).eq('id', batch_id);
+      await supabase.from('import_batches').update({ processed_lines: processed, status: 'processing' }).eq('id', batch_id);
     }
 
     // 6) Terminer
-    await supa.from('import_batches').update({ status: 'completed' }).eq('id', batch_id);
+    await supabase.from('import_batches').update({ status: 'completed' }).eq('id', batch_id);
     return new Response(JSON.stringify({ ok: true, processed }), { 
       status: 200, 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -92,7 +94,7 @@ Deno.serve(async (req: Request) => {
     // Update batch status to failed
     if (typeof batch_id === 'string') {
       try {
-        await supa.from('import_batches').update({ status: 'failed' }).eq('id', batch_id);
+        await supabase.from('import_batches').update({ status: 'failed' }).eq('id', batch_id);
       } catch (updateErr) {
         console.error('Failed to update batch status:', updateErr);
       }
