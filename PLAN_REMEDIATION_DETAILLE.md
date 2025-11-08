@@ -108,17 +108,23 @@ Notes : - Import ProcessImportRequestSchema ligne 4
 ```
 
 #### Étape 0.1.6 : Valider chaque row projetée avec Zod
-- [ ] Dans le mapping `projected = rows.map(...)`, ajouter validation
-- [ ] Si `dataset_type === 'mapping'`, valider avec `MappingRowSchema.parse(o)`
-- [ ] Sinon, valider avec `ClassificationRowSchema.parse(o)`
-- [ ] Catcher les erreurs Zod et les accumuler dans un tableau `validationErrors`
+- [x] Dans le mapping `projected = rows.map(...)`, ajouter validation
+- [x] Si `dataset_type === 'mapping'`, valider avec `MappingRowSchema.parse(o)`
+- [x] Sinon, valider avec `ClassificationRowSchema.parse(o)`
+- [x] Catcher les erreurs Zod et les accumuler dans un tableau `validationErrors`
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Validation rows active : ☐ Oui
-Erreurs remontées correctement : ☐ Oui
+Date : 2025-01-08
+Durée : 12 min
+Validation rows active : ☑ Oui
+Erreurs remontées correctement : ☑ Oui
+Notes : - Import MappingRowSchema + ClassificationRowSchema (lignes 6-7)
+        - Boucle for avec validation ligne par ligne (lignes 86-105)
+        - Sélection du schéma selon dataset_type (ligne 95)
+        - Accumulation des erreurs avec numéro de ligne + data (lignes 99-104)
+        - Retour HTTP 400 si erreurs détectées (lignes 108-118)
+        - Limite à 10 premières erreurs dans la réponse (lisibilité)
 ```
 
 #### Étape 0.1.7 : Améliorer parsing CSV (gestion quotes)

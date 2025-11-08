@@ -1,7 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'npm:@supabase/supabase-js';
 import * as XLSX from 'npm:xlsx';
-import { ProcessImportRequestSchema } from './schemas.ts';
+import {
+  ProcessImportRequestSchema,
+  MappingRowSchema,
+  ClassificationRowSchema
+} from './schemas.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -74,15 +78,44 @@ Deno.serve(async (req: Request) => {
       rows = XLSX.utils.sheet_to_json(ws, { defval: '' }) as any[];
     }
 
-    // 4) Appliquer mapping de colonnes -> objet attendu
+    // 4) Appliquer mapping de colonnes -> objet attendu + validation Zod
     // mapping: { fieldKey -> headerName } (ex: { marque:'MARQUE', cat_fab:'CAT' ... })
-    const projected = rows.map((r) => {
+    const validationErrors: any[] = [];
+    const projected: any[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
       const o: any = {};
       for (const [field, header] of Object.entries(mapping || {})) {
         o[field] = (r as any)[header as string];
       }
-      return o;
-    });
+
+      // Validate each row with appropriate schema
+      try {
+        const rowSchema = dataset_type === 'mapping' ? MappingRowSchema : ClassificationRowSchema;
+        const validatedRow = rowSchema.parse(o);
+        projected.push(validatedRow);
+      } catch (validationError: any) {
+        validationErrors.push({
+          row: i + 1,
+          data: o,
+          errors: validationError.issues || [{ message: validationError.message }]
+        });
+      }
+    }
+
+    // If validation errors found, return them to user
+    if (validationErrors.length > 0) {
+      return new Response(JSON.stringify({
+        error: 'Row validation failed',
+        message: `${validationErrors.length} row(s) failed validation`,
+        validationErrors: validationErrors.slice(0, 10), // Limit to first 10 errors for readability
+        totalErrors: validationErrors.length
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     // 5) Chunk & apply par dataset_type
     const chunkSize = 500;
