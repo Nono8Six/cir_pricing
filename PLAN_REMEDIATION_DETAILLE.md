@@ -166,16 +166,26 @@ Notes : - Variable ALLOWED_ORIGIN ligne 12
 ```
 
 #### Étape 0.1.9 : Ajouter logging structuré
-- [ ] Remplacer `console.error` par logs structurés JSON
-- [ ] Logger : timestamp, batch_id, error type, stack trace
-- [ ] Ajouter logs de progression (début, chunks processés, fin)
+- [x] Remplacer `console.error` par logs structurés JSON
+- [x] Logger : timestamp, batch_id, error type, stack trace
+- [x] Ajouter logs de progression (début, chunks processés, fin)
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Logs structurés : ☐ JSON ☐ Text
-Facilité debugging : ☐ Améliorée
+Date : 2025-01-08
+Durée : 10 min
+Logs structurés : ☑ JSON
+Facilité debugging : ☑ Améliorée
+Notes : - Fonction log() structurée JSON (lignes 24-34)
+        - Log début traitement (ligne 66)
+        - Log après parsing (ligne 105)
+        - Log validation completed (ligne 133)
+        - Log warnings si erreurs validation (ligne 142)
+        - Log par chunk traité (ligne 177)
+        - Log succès final (ligne 188)
+        - Log erreurs structurées avec stack trace (ligne 198)
+        - Log échec update batch (ligne 211)
+        - Format uniforme : timestamp, level, message, context
 ```
 
 #### Étape 0.1.10 : Déployer la nouvelle version
