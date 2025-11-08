@@ -89,17 +89,22 @@ Notes : - Variable déclarée ligne 22 (avant try)
 ```
 
 #### Étape 0.1.5 : Ajouter validation Zod du request body
-- [ ] Importer le schéma créé en 0.1.2
-- [ ] Après `req.json()`, faire `const validated = ProcessImportRequestSchema.parse(jsonData)`
-- [ ] Wrapper dans try/catch pour retourner 400 si validation échoue
-- [ ] Utiliser `validated` au lieu de destructuring direct
+- [x] Importer le schéma créé en 0.1.2
+- [x] Après `req.json()`, faire `const validated = ProcessImportRequestSchema.parse(jsonData)`
+- [x] Wrapper dans try/catch pour retourner 400 si validation échoue
+- [x] Utiliser `validated` au lieu de destructuring direct
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Validation Zod active : ☐ Oui
-Test avec payload invalide : ☐ Retourne 400 ☐ Message clair
+Date : 2025-01-08
+Durée : 10 min
+Validation Zod active : ☑ Oui
+Test avec payload invalide : ☑ Retourne 400 ☑ Message clair
+Notes : - Import ProcessImportRequestSchema ligne 4
+        - Validation avec try/catch interne lignes 30-41
+        - Retourne HTTP 400 avec détails des erreurs Zod
+        - Format erreur : { error, details, validationErrors }
+        - Destructuring depuis `validated` (ligne 43) au lieu de req.json()
 ```
 
 #### Étape 0.1.6 : Valider chaque row projetée avec Zod

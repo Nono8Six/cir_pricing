@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'npm:@supabase/supabase-js';
 import * as XLSX from 'npm:xlsx';
+import { ProcessImportRequestSchema } from './schemas.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,7 +23,24 @@ Deno.serve(async (req: Request) => {
   let batchId: string | null = null;
 
   try {
-    const { batch_id, dataset_type, file_path, mapping } = await req.json();
+    // Parse and validate request body
+    const jsonData = await req.json();
+
+    let validated;
+    try {
+      validated = ProcessImportRequestSchema.parse(jsonData);
+    } catch (validationError: any) {
+      return new Response(JSON.stringify({
+        error: 'Validation failed',
+        details: validationError.errors || validationError.message,
+        validationErrors: validationError.issues || []
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const { batch_id, dataset_type, file_path, mapping } = validated;
     batchId = batch_id;
 
     // 1) Récupérer le lot, quick guard
