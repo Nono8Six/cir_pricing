@@ -297,19 +297,26 @@ Notes : - Fichier créé dans supabase/migrations/
 ```
 
 #### Étape 0.3.2 : Durcir policies `clients` (4 policies)
-- [ ] DROP POLICY "Authenticated users can insert clients"
-- [ ] CREATE POLICY "Admins and commercial can create clients" USING (private.is_admin() OR private.can_manage_pricing())
-- [ ] DROP POLICY "Authenticated users can update clients"
-- [ ] CREATE POLICY "Admins and commercial can update clients" USING (private.is_admin() OR private.can_manage_pricing())
-- [ ] DROP POLICY "Authenticated users can delete clients"
-- [ ] CREATE POLICY "Only admins can delete clients" USING (private.is_admin())
-- [ ] GARDER "Authenticated users can read clients" (lecture ouverte OK)
+- [x] DROP POLICY "Authenticated users can insert clients"
+- [x] CREATE POLICY "Admins and commercial can create clients" USING (private.is_admin() OR private.can_manage_pricing())
+- [x] DROP POLICY "Authenticated users can update clients"
+- [x] CREATE POLICY "Admins and commercial can update clients" USING (private.is_admin() OR private.can_manage_pricing())
+- [x] DROP POLICY "Authenticated users can delete clients"
+- [x] CREATE POLICY "Only admins can delete clients" USING (private.is_admin())
+- [x] GARDER "Authenticated users can read clients" (lecture ouverte OK)
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Policies clients : ☐ INSERT ☐ UPDATE ☐ DELETE ☐ SELECT (inchangé)
+Date : 2025-11-09
+Durée : 8 min
+Policies clients : ☑ INSERT ☑ UPDATE ☑ DELETE ☑ SELECT (inchangé)
+Notes : - 3 policies DROP ajoutées (INSERT, UPDATE, DELETE)
+        - 3 nouvelles policies CREATE avec restrictions de rôles
+        - INSERT/UPDATE: Admins OU commerciaux (private.can_manage_pricing)
+        - DELETE: Admins uniquement (private.is_admin)
+        - SELECT: Conservée telle quelle (lecture ouverte OK)
+        - Toutes les policies ajoutées dans migration 20251109120000_harden_rls_policies.sql
+        - Migration prête mais NON appliquée (attente étapes 0.3.3 et 0.3.4)
 ```
 
 #### Étape 0.3.3 : Durcir policies `groups` (4 policies)
