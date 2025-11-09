@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 // Helpers
-const asInt = (defaultValue: number = 1, min: number = 1, max: number = 999) => z.preprocess((v) => {
+const asInt = (defaultValue = 1, min = 1, max = 999) => z.preprocess((v) => {
   if (typeof v === 'string') {
     const trimmed = v.trim();
     if (trimmed === '') return defaultValue; // Default pour cellules vides
@@ -29,17 +29,17 @@ export const mappingRowSchema = z.object({
   segment: asTrimmed,
   marque: asTrimmed,
   cat_fab: z.preprocess((v) => (typeof v === 'string' ? v.trim().toUpperCase() : v), z.string().min(1)),
-  cat_fab_l: z.preprocess((v) => (v == null ? undefined : typeof v === 'string' ? v.trim() : v), z.string()).optional(),
+  cat_fab_l: z.preprocess((v) => (v === null || v === undefined ? undefined : typeof v === 'string' ? v.trim() : v), z.string()).optional(),
   strategiq: as01.default(0),
   fsmega: asInt(1, 1, 999),
-  fsfam: asInt(99, 0, 999), 
+  fsfam: asInt(99, 0, 999),
   fssfa: asInt(99, 0, 999),
-  codif_fair: z.preprocess((v) => (v == null ? undefined : typeof v === 'string' ? v.trim() : v), z.string()).optional(),
+  codif_fair: z.preprocess((v) => (v === null || v === undefined ? undefined : typeof v === 'string' ? v.trim() : v), z.string()).optional(),
 });
 
 export type MappingRow = z.infer<typeof mappingRowSchema>;
 
-export const requiredMappingFields: Array<{ key: keyof MappingRow; label: string; hint?: string }> = [
+export const requiredMappingFields: { key: keyof MappingRow; label: string; hint?: string }[] = [
   { key: 'segment', label: 'segment', hint: 'Texte (ex: Automation)' },
   { key: 'marque', label: 'marque', hint: 'Texte (ex: SKF)' },
   { key: 'cat_fab', label: 'cat_fab', hint: 'Texte (code catégorie fabricant)' },
@@ -49,7 +49,7 @@ export const requiredMappingFields: Array<{ key: keyof MappingRow; label: string
   { key: 'fssfa', label: 'fssfa', hint: 'Entier' },
 ];
 
-export const optionalMappingFields: Array<{ key: keyof MappingRow; label: string; hint?: string }>= [
+export const optionalMappingFields: { key: keyof MappingRow; label: string; hint?: string }[]= [
   { key: 'cat_fab_l', label: 'cat_fab_l', hint: 'Description (optionnel)' },
   { key: 'codif_fair', label: 'codif_fair', hint: 'Optionnel' },
 ];
