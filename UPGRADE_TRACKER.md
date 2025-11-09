@@ -397,6 +397,14 @@ eqeqeq errors: v == null → v === null || v === undefined
 → RÉSULTAT: 38 problems (0 errors, 38 warnings)
 ```
 
+### Vite Cache Issue (Dev Mode) ✅
+```
+[plugin:vite:css] [postcss] PostCSS plugin has moved to separate package
+→ CAUSE: Cache Vite contenait l'ancienne config postcss.config.js
+→ FIXÉ: rm -rf node_modules/.vite .vite dist
+→ RÉSULTAT: Vite ready in 240ms (sans erreur)
+```
+
 ---
 
 ## ✅ CHECKLIST FINALE
