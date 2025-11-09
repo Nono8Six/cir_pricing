@@ -241,16 +241,22 @@ Notes : - Schéma Zod créé dans supabase/functions/create-profile/schemas.ts
 ```
 
 #### Étape 0.2.2 : Restreindre l'accès (ne devrait pas être appelé en HTTP direct)
-- [ ] Documenter dans un commentaire : "Cette fonction doit être appelée uniquement par Auth Hooks, pas en HTTP direct"
-- [ ] Ajouter vérification `const authHeader = req.headers.get('authorization')`
-- [ ] Retourner 403 si pas de header Auth valide
+- [x] Documenter dans un commentaire : "Cette fonction doit être appelée uniquement par Auth Hooks, pas en HTTP direct"
+- [x] Ajouter vérification `const authHeader = req.headers.get('authorization')`
+- [x] Retourner 403 si pas de header Auth valide
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Protection ajoutée : ☐ Oui
-Comportement : ☐ 403 sans auth
+Date : 2025-01-09
+Durée : 6 min
+Protection ajoutée : ✓ Oui
+Comportement : ✓ 403 sans auth
+Notes : - Commentaire JSDoc ajouté en en-tête de fichier (lignes 5-11)
+        - Vérification authHeader ligne 15
+        - Retour HTTP 403 si header Authorization absent (lignes 17-27)
+        - Message clair : "This function can only be called via Supabase Auth Hooks"
+        - Protection contre appels HTTP directs non autorisés
+        - Auth Hooks de Supabase incluent automatiquement le header Authorization
 ```
 
 #### Étape 0.2.3 : Déployer
