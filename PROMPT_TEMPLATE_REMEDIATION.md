@@ -3,11 +3,11 @@
 ## Template à Copier-Coller
 
 ```
-Exécute l'étape 0.1.10 du fichier PLAN_REMEDIATION_DETAILLE.md.
+Exécute l'étape 0.3.5 du fichier PLAN_REMEDIATION_DETAILLE.md.
 
 Instructions :
 1. Lis attentivement l'étape et ses sous-tâches
-2. Exécute TOUTES les actions demandées (code, migrations SQL, configurations, tests)
+2. Exécute TOUTES les actions demandées (code, migrations SQL, configurations, tests) (n'hésite pas a utiliser tous tes outils et MCP pour réaliser cet étape.)
 3. Coche la case [ ] → [x] dans le fichier PLAN_REMEDIATION_DETAILLE.md
 4. Remplis le compte rendu avec :
    - Date du jour

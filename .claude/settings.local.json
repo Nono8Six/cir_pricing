@@ -44,7 +44,9 @@
       "Bash(npm update:*)",
       "Bash(npm audit:*)",
       "Bash(npm run lint:fix:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
