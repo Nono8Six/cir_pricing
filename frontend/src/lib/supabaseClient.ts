@@ -312,7 +312,7 @@ export const mappingApi = {
     let from = 0;
     let allData: BrandMapping[] = [];
 
-    // eslint-disable-next-line no-constant-condition
+     
     while (true) {
       const { data, error } = await supabase
         .from('brand_category_mappings')

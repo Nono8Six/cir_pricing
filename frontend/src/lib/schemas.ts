@@ -121,9 +121,7 @@ export interface CirParseResult {
 }
 
 // Configuration pour le mapping des colonnes
-export interface ColumnMapping {
-  [key: string]: string; // key = nom de colonne détecté, value = nom de champ dans le schéma
-}
+export type ColumnMapping = Record<string, string>;
 
 export const DEFAULT_COLUMN_MAPPINGS: Record<string, string[]> = {
   segment: ['SEGMENT', 'Segment', 'segment', 'SEG'],

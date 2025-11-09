@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ChevronRight, FolderOpen, AlertCircle } from 'lucide-react';
-import { CirMegaFamily, CirFamily } from '../../utils/cirDataTransformer';
+import type { CirMegaFamily, CirFamily } from '../../utils/cirDataTransformer';
 
 interface FamilyListProps {
   selectedMegaFamily: CirMegaFamily | null;

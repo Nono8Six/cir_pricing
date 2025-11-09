@@ -4,7 +4,7 @@ import { ChevronDown, Search, X } from 'lucide-react';
 interface SearchableSelectProps {
   value: string;
   onValueChange: (value: string) => void;
-  options: Array<{ value: string; label: string }>;
+  options: { value: string; label: string }[];
   placeholder: string;
   allOptionLabel?: string;
   loading?: boolean;

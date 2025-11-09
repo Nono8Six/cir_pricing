@@ -7,11 +7,13 @@ import { MegaFamilyList } from './MegaFamilyList';
 import { FamilyList } from './FamilyList';
 import { SubFamilyList } from './SubFamilyList';
 import { cirClassificationApi } from '../../lib/supabaseClient';
-import { 
-  transformCirClassificationsToHierarchy, 
-  getHierarchyStats,
+import type {
   CirMegaFamily, 
   CirFamily 
+} from '../../utils/cirDataTransformer';
+import { 
+  transformCirClassificationsToHierarchy, 
+  getHierarchyStats 
 } from '../../utils/cirDataTransformer';
 import { toast } from 'sonner';
 

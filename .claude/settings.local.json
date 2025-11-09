@@ -35,7 +35,16 @@
       "Bash(tee:*)",
       "Bash(npx eslint:*)",
       "Bash(xargs sed:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(supabase functions deploy:*)",
+      "Bash(supabase projects:*)",
+      "Bash(npm install:*)",
+      "Bash(supabase secrets set:*)",
+      "Bash(supabase functions logs:*)",
+      "Bash(npm update:*)",
+      "Bash(npm audit:*)",
+      "Bash(npm run lint:fix:*)",
+      "Bash(npm run build:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

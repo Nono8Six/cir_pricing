@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { FileText, AlertCircle, Tag, Hash } from 'lucide-react';
-import { CirMegaFamily, CirFamily } from '../../utils/cirDataTransformer';
+import type { CirMegaFamily, CirFamily } from '../../utils/cirDataTransformer';
 
 interface SubFamilyListProps {
   selectedMegaFamily: CirMegaFamily | null;

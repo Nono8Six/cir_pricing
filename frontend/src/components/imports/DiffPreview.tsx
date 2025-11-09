@@ -193,13 +193,13 @@ export const DiffPreview: React.FC<Props> = ({ diff, onSetDiff, items = [], data
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
                         <label className="inline-flex items-center gap-1 text-xs">
-                          <input type="radio" name={`res-${it.key}`} checked={res.action==='keep'} onChange={() => onResolveChange && onResolveChange(it.key, { action: 'keep' })} /> Garder
+                          <input type="radio" name={`res-${it.key}`} checked={res.action==='keep'} onChange={() => onResolveChange?.(it.key, { action: 'keep' })} /> Garder
                         </label>
                         <label className="inline-flex items-center gap-1 text-xs">
-                          <input type="radio" name={`res-${it.key}`} checked={res.action==='replace'} onChange={() => onResolveChange && onResolveChange(it.key, { action: 'replace' })} /> Remplacer
+                          <input type="radio" name={`res-${it.key}`} checked={res.action==='replace'} onChange={() => onResolveChange?.(it.key, { action: 'replace' })} /> Remplacer
                         </label>
                         <label className="inline-flex items-center gap-1 text-xs">
-                          <input type="radio" name={`res-${it.key}`} checked={res.action==='merge'} onChange={() => onResolveChange && onResolveChange(it.key, { action: 'merge', fieldChoices: res.fieldChoices || {} })} /> Fusionner
+                          <input type="radio" name={`res-${it.key}`} checked={res.action==='merge'} onChange={() => onResolveChange?.(it.key, { action: 'merge', fieldChoices: res.fieldChoices || {} })} /> Fusionner
                         </label>
                       </div>
                       {res.action === 'merge' && (
@@ -211,10 +211,10 @@ export const DiffPreview: React.FC<Props> = ({ diff, onSetDiff, items = [], data
                               <div className="text-[11px] text-gray-500 mb-2">Après: {String(it.after?.[f] ?? '—')}</div>
                               <div className="flex items-center gap-2 text-xs">
                                 <label className="inline-flex items-center gap-1">
-                                  <input type="radio" name={`merge-${it.key}-${f}`} checked={(res.fieldChoices||{})[f] !== 'import'} onChange={() => onResolveChange && onResolveChange(it.key, { action: 'merge', fieldChoices: { ...(res.fieldChoices||{}), [f]: 'existing' } })} /> Existant
+                                  <input type="radio" name={`merge-${it.key}-${f}`} checked={(res.fieldChoices||{})[f] !== 'import'} onChange={() => onResolveChange?.(it.key, { action: 'merge', fieldChoices: { ...(res.fieldChoices||{}), [f]: 'existing' } })} /> Existant
                                 </label>
                                 <label className="inline-flex items-center gap-1">
-                                  <input type="radio" name={`merge-${it.key}-${f}`} checked={(res.fieldChoices||{})[f] === 'import'} onChange={() => onResolveChange && onResolveChange(it.key, { action: 'merge', fieldChoices: { ...(res.fieldChoices||{}), [f]: 'import' } })} /> Import
+                                  <input type="radio" name={`merge-${it.key}-${f}`} checked={(res.fieldChoices||{})[f] === 'import'} onChange={() => onResolveChange?.(it.key, { action: 'merge', fieldChoices: { ...(res.fieldChoices||{}), [f]: 'import' } })} /> Import
                                 </label>
                               </div>
                             </div>

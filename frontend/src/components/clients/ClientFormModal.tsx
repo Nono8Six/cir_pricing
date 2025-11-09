@@ -144,7 +144,7 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
       return false;
     }
 
-    if (formData.siret && formData.siret.trim() && !/^\d{14}$/.test(formData.siret.trim())) {
+    if (formData.siret?.trim() && !/^\d{14}$/.test(formData.siret.trim())) {
       toast.error('Le SIRET doit contenir exactement 14 chiffres');
       return false;
     }

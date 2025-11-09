@@ -33,7 +33,7 @@ interface DiffRowData {
   sensitiveChanged?: boolean | undefined;
 }
 
-type Draft = {
+interface Draft {
   datasetType?: DatasetType | undefined;
   fileName?: string | undefined;
   fileSize?: number | undefined;
@@ -43,7 +43,7 @@ type Draft = {
   validation?: { errors: number; warnings: number } | undefined;
   diff?: { unchanged: number; create: number; update: number; conflict: number } | undefined;
   step?: WizardStep;
-};
+}
 
 const DRAFT_KEY = 'import-wizard-draft';
 
@@ -243,7 +243,7 @@ export const FileImportWizard: React.FC = () => {
                     const ws = wb.Sheets[sheetName];
                     // Extract headers from first row for robustness
                     const rowsArray = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as unknown[][];
-                    const hdrRow = (rowsArray[0] || []).map((x) => String(x ?? '').trim()).filter(Boolean);
+                    const hdrRow = (rowsArray[0] || []).map((x: unknown) => String(x ?? '').trim()).filter(Boolean);
                     const json = XLSX.utils.sheet_to_json(ws, { defval: '' }) as RawRowData[];
                     setRawRows(json);
                     setHeaders(hdrRow);
@@ -556,7 +556,7 @@ export const FileImportWizard: React.FC = () => {
                 });
                 return o;
               });
-              const failures: Array<{ row: number; field: string; message: string; value: unknown }> = [];
+              const failures: { row: number; field: string; message: string; value: unknown }[] = [];
               mapped.forEach((row, idx) => {
                 const res = schema.safeParse(row);
                 if (!res.success) {
@@ -602,7 +602,7 @@ export const FileImportWizard: React.FC = () => {
                   // Create natural keys
                   const keys = Array.from(new Set(valid.map(v => `${String(v.marque).toLowerCase()}|${String(v.cat_fab).toUpperCase()}`)));
                   const batchSize = 1000;
-                  const existing: Array<Record<string, unknown>> = [];
+                  const existing: Record<string, unknown>[] = [];
                   for (let i = 0; i < keys.length; i += batchSize) {
                     const slice = keys.slice(i, i + batchSize);
                     const part = await mappingApi.getMappingsByKeys(slice);
@@ -644,7 +644,7 @@ export const FileImportWizard: React.FC = () => {
                 } else if (datasetType === 'classification') {
                   const codes = Array.from(new Set(valid.map(v => String(v.combined_code))));
                   const batchSize = 1000;
-                  const existing: Array<Record<string, unknown>> = [];
+                  const existing: Record<string, unknown>[] = [];
                   for (let i = 0; i < codes.length; i += batchSize) {
                     const slice = codes.slice(i, i + batchSize);
                     const part = await cirClassificationApi.getByCodes(slice);

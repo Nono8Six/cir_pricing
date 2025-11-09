@@ -6,7 +6,7 @@ import { Button } from '../ui/Button';
 import { ExcelUploadZone } from '../mapping/ExcelUploadZone';
 import { ParseResultSummary } from '../mapping/ParseResultSummary';
 import { cirClassificationApi } from '../../lib/supabaseClient';
-import { ParseResult, CirParseResult, CirClassificationOutput } from '../../lib/schemas';
+import type { ParseResult, CirParseResult, CirClassificationOutput } from '../../lib/schemas';
 import { toast } from 'sonner';
 
 export const CirClassificationUploadTab: React.FC = () => {

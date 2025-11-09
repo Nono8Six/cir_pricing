@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { CheckCircle, Info, FileSpreadsheet, ArrowRight, RotateCcw } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
-import { ParseResult, CirParseResult } from '../../lib/schemas';
+import type { ParseResult, CirParseResult } from '../../lib/schemas';
 
 interface ParseResultSummaryProps {
   result: ParseResult | CirParseResult;

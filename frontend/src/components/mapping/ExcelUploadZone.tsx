@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Upload, FileSpreadsheet, AlertCircle } from 'lucide-react';
 import { parseExcelFile, parseCirClassificationExcelFile } from '../../lib/excelParser';
-import { ParseResult, CirParseResult } from '../../lib/schemas';
+import type { ParseResult, CirParseResult } from '../../lib/schemas';
 
 interface ExcelUploadZoneProps {
   onParseComplete: (result: ParseResult | CirParseResult, file: File) => void;
@@ -49,7 +49,7 @@ export function ExcelUploadZone({
 
   const handleFile = async (file: File) => {
     // Validation du fichier
-    if (!file.name.match(/\.(xlsx|xls)$/i)) {
+    if (!(/\.(xlsx|xls)$/i.exec(file.name))) {
       onParseError('Veuillez sélectionner un fichier Excel (.xlsx ou .xls)');
       return;
     }
