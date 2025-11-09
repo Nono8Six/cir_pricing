@@ -345,17 +345,27 @@ Notes : - 3 policies DROP ajoutées (INSERT, UPDATE, DELETE)
 ```
 
 #### Étape 0.3.4 : Durcir policies `cir_classifications` (4 policies)
-- [ ] DROP les 4 policies existantes (toutes sont USING (true))
-- [ ] CREATE POLICY "Authenticated users can read classifications" FOR SELECT USING (true)
-- [ ] CREATE POLICY "Admins can insert classifications" FOR INSERT USING (private.is_admin())
-- [ ] CREATE POLICY "Admins can update classifications" FOR UPDATE USING (private.is_admin())
-- [ ] CREATE POLICY "Admins can delete classifications" FOR DELETE USING (private.is_admin())
+- [x] DROP les 4 policies existantes (toutes sont USING (true))
+- [x] CREATE POLICY "Authenticated users can read classifications" FOR SELECT USING (true)
+- [x] CREATE POLICY "Admins can insert classifications" FOR INSERT USING (private.is_admin())
+- [x] CREATE POLICY "Admins can update classifications" FOR UPDATE USING (private.is_admin())
+- [x] CREATE POLICY "Admins can delete classifications" FOR DELETE USING (private.is_admin())
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Policies cir_classifications : ☐ 4/4 créées
+Date : 2025-11-09
+Durée : 9 min
+Policies cir_classifications : ☑ 4/4 créées
+Notes : - 4 policies DROP ajoutées (toutes étaient USING true)
+        - 4 nouvelles policies CREATE avec rôles appropriés
+        - SELECT: Lecture ouverte CONSERVÉE (référentiel métier partagé)
+        - INSERT: Admins seulement (private.is_admin)
+        - UPDATE: Admins seulement (private.is_admin)
+        - DELETE: Admins seulement (private.is_admin)
+        - Table analysée via MCP : 11 colonnes, codes CIR hiérarchiques
+        - Justification lecture ouverte : table de référence nécessaire pour tous
+        - Toutes les policies ajoutées dans migration 20251109120000_harden_rls_policies.sql
+        - Migration COMPLÈTE, prête pour application (étape 0.3.5)
 ```
 
 #### Étape 0.3.5 : Appliquer la migration

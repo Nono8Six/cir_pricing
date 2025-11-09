@@ -81,5 +81,45 @@ USING (private.is_admin());
 
 -- ============================================================================
 -- ÉTAPE 0.3.4 : Durcissement RLS Policies - Table CIR_CLASSIFICATIONS
--- (À compléter dans l'étape suivante)
 -- ============================================================================
+
+-- DROP toutes les policies existantes (toutes sont USING (true))
+DROP POLICY IF EXISTS "Authenticated users can read classifications" ON public.cir_classifications;
+DROP POLICY IF EXISTS "Authenticated users can insert classifications" ON public.cir_classifications;
+DROP POLICY IF EXISTS "Authenticated users can update classifications" ON public.cir_classifications;
+DROP POLICY IF EXISTS "Authenticated users can delete classifications" ON public.cir_classifications;
+
+-- CREATE policies restrictives basées sur les rôles
+
+-- SELECT : Lecture ouverte pour tous les utilisateurs authentifiés (référentiel partagé)
+CREATE POLICY "Authenticated users can read classifications"
+ON public.cir_classifications
+FOR SELECT
+TO authenticated
+USING (true);
+
+-- INSERT : Seuls les admins peuvent créer des classifications
+CREATE POLICY "Admins can insert classifications"
+ON public.cir_classifications
+FOR INSERT
+TO authenticated
+WITH CHECK (private.is_admin());
+
+-- UPDATE : Seuls les admins peuvent modifier des classifications
+CREATE POLICY "Admins can update classifications"
+ON public.cir_classifications
+FOR UPDATE
+TO authenticated
+USING (private.is_admin())
+WITH CHECK (private.is_admin());
+
+-- DELETE : Seuls les admins peuvent supprimer des classifications
+CREATE POLICY "Admins can delete classifications"
+ON public.cir_classifications
+FOR DELETE
+TO authenticated
+USING (private.is_admin());
+
+-- NOTE: Table de référence CIR (codes hiérarchiques FSMEGA > FSFAM > FSSFA)
+--       Lecture ouverte pour tous car c'est un référentiel métier partagé
+--       Seuls les admins peuvent modifier pour garantir l'intégrité des données
