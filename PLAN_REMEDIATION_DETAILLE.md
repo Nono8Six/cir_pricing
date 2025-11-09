@@ -260,14 +260,21 @@ Notes : - Commentaire JSDoc ajouté en en-tête de fichier (lignes 5-11)
 ```
 
 #### Étape 0.2.3 : Déployer
-- [ ] Déployer : `supabase functions deploy create-profile`
-- [ ] Vérifier version active
+- [x] Déployer : `supabase functions deploy create-profile`
+- [x] Vérifier version active
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Déployé : ☐ Oui, version : _____
+Date : 2025-01-09
+Durée : 5 min
+Déployé : ✓ Oui, version : 5
+Notes : - Projet lié avec succès : supabase link --project-ref zribcjrdrblajrhigwxd
+        - Déploiement réussi : supabase functions deploy create-profile
+        - Version active : v5 (ID: aee1c17f-b37d-4389-ac1f-4a820a674195)
+        - Status : ACTIVE
+        - Fichiers uploadés : index.ts + schemas.ts
+        - Dashboard : https://supabase.com/dashboard/project/zribcjrdrblajrhigwxd/functions
+        - Fonction prête pour utilisation via Auth Hooks
 ```
 
 ---
