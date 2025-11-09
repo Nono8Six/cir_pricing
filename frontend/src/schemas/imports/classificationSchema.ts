@@ -3,7 +3,7 @@ import { z } from 'zod';
 const asInt = z.preprocess((v) => {
   if (typeof v === 'string') return v.trim() === '' ? undefined : Number(v);
   return v;
-}, z.number({ invalid_type_error: 'Nombre requis' }).int('Doit être entier'));
+}, z.number({ message: 'Nombre requis' }).int({ message: 'Doit être entier' }));
 
 const asTrim = z.preprocess((v) => (typeof v === 'string' ? v.trim() : v), z.string().min(1));
 

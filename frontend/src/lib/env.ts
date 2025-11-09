@@ -37,8 +37,8 @@ function validateEnv(): Env {
     console.error('❌ Invalid environment variables:');
     console.error(result.error.format());
     throw new Error(
-      `Environment validation failed: ${result.error.errors
-        .map((e) => `${e.path.join('.')}: ${e.message}`)
+      `Environment validation failed: ${result.error.issues
+        .map((e) => `${String(e.path.join('.'))}:  ${e.message}`)
         .join(', ')}`
     );
   }

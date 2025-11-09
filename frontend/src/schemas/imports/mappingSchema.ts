@@ -9,7 +9,7 @@ const asInt = (defaultValue: number = 1, min: number = 1, max: number = 999) => 
     return Number.isFinite(num) ? num : v;
   }
   return v;
-}, z.number({ invalid_type_error: 'Nombre requis' }).int('Doit être entier').min(min).max(max).default(defaultValue));
+}, z.number({ message: 'Nombre requis' }).int({ message: 'Doit être entier' }).min(min).max(max).default(defaultValue));
 
 const as01 = z.preprocess((v) => {
   if (typeof v === 'string') {
