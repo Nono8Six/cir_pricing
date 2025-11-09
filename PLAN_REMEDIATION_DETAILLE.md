@@ -320,19 +320,28 @@ Notes : - 3 policies DROP ajoutées (INSERT, UPDATE, DELETE)
 ```
 
 #### Étape 0.3.3 : Durcir policies `groups` (4 policies)
-- [ ] DROP POLICY "authenticated_users_can_insert_groups"
-- [ ] CREATE POLICY "Admins can create groups" USING (private.is_admin())
-- [ ] DROP POLICY "authenticated_users_can_update_groups"
-- [ ] CREATE POLICY "Admins can update groups" USING (private.is_admin())
-- [ ] DROP POLICY "authenticated_users_can_delete_groups"
-- [ ] CREATE POLICY "Admins can delete groups" USING (private.is_admin())
-- [ ] GARDER "authenticated_users_can_read_groups" (lecture OK)
+- [x] DROP POLICY "authenticated_users_can_insert_groups"
+- [x] CREATE POLICY "Admins can create groups" USING (private.is_admin())
+- [x] DROP POLICY "authenticated_users_can_update_groups"
+- [x] CREATE POLICY "Admins can update groups" USING (private.is_admin())
+- [x] DROP POLICY "authenticated_users_can_delete_groups"
+- [x] CREATE POLICY "Admins can delete groups" USING (private.is_admin())
+- [x] GARDER "authenticated_users_can_read_groups" (lecture OK)
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Policies groups : ☐ 4/4 durcies
+Date : 2025-11-09
+Durée : 7 min
+Policies groups : ☑ 4/4 durcies
+Notes : - 3 policies DROP ajoutées (INSERT, UPDATE, DELETE)
+        - 3 nouvelles policies CREATE admin-only (private.is_admin)
+        - INSERT: Admins seulement
+        - UPDATE: Admins seulement
+        - DELETE: Admins seulement
+        - SELECT: Conservée telle quelle (lecture ouverte OK)
+        - Policies vérifiées via MCP Supabase avant modification
+        - Toutes les policies ajoutées dans migration 20251109120000_harden_rls_policies.sql
+        - Migration prête mais NON appliquée (attente étape 0.3.4)
 ```
 
 #### Étape 0.3.4 : Durcir policies `cir_classifications` (4 policies)

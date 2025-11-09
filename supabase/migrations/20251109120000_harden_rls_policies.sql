@@ -46,8 +46,38 @@ USING (private.is_admin());
 
 -- ============================================================================
 -- ÉTAPE 0.3.3 : Durcissement RLS Policies - Table GROUPS
--- (À compléter dans l'étape suivante)
 -- ============================================================================
+
+-- DROP les policies permissives existantes (USING true)
+DROP POLICY IF EXISTS "authenticated_users_can_insert_groups" ON public.groups;
+DROP POLICY IF EXISTS "authenticated_users_can_update_groups" ON public.groups;
+DROP POLICY IF EXISTS "authenticated_users_can_delete_groups" ON public.groups;
+
+-- CREATE policies restrictives basées sur les rôles (admin-only)
+
+-- INSERT : Seuls les admins peuvent créer des groupes
+CREATE POLICY "Admins can create groups"
+ON public.groups
+FOR INSERT
+TO authenticated
+WITH CHECK (private.is_admin());
+
+-- UPDATE : Seuls les admins peuvent modifier des groupes
+CREATE POLICY "Admins can update groups"
+ON public.groups
+FOR UPDATE
+TO authenticated
+USING (private.is_admin())
+WITH CHECK (private.is_admin());
+
+-- DELETE : Seuls les admins peuvent supprimer des groupes
+CREATE POLICY "Admins can delete groups"
+ON public.groups
+FOR DELETE
+TO authenticated
+USING (private.is_admin());
+
+-- NOTE: La policy SELECT "authenticated_users_can_read_groups" est conservée (lecture ouverte OK)
 
 -- ============================================================================
 -- ÉTAPE 0.3.4 : Durcissement RLS Policies - Table CIR_CLASSIFICATIONS
