@@ -223,15 +223,21 @@ Tests post-déploiement recommandés:
 ### 0.2 Correction Edge Function `create-profile`
 
 #### Étape 0.2.1 : Ajouter validation Zod
-- [ ] Créer `supabase/functions/create-profile/schemas.ts`
-- [ ] Définir `CreateProfileRequestSchema` (id UUID, email email, first_name/last_name strings optionnels)
-- [ ] Valider le request body avec `.parse()`
+- [x] Créer `supabase/functions/create-profile/schemas.ts`
+- [x] Définir `CreateProfileRequestSchema` (id UUID, email email, first_name/last_name strings optionnels)
+- [x] Valider le request body avec `.parse()`
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Validation ajoutée : ☐ Oui
+Date : 2025-01-09
+Durée : 8 min
+Validation ajoutée : ✓ Oui
+Notes : - Schéma Zod créé dans supabase/functions/create-profile/schemas.ts
+        - Validation stricte : id (UUID), email (email), first_name/last_name (optionnels)
+        - Mode strict (.strict()) pour rejeter champs inconnus
+        - Validation avec try/catch dans index.ts
+        - Retourne HTTP 400 avec détails des erreurs Zod si validation échoue
+        - Type TypeScript exporté pour réutilisation
 ```
 
 #### Étape 0.2.2 : Restreindre l'accès (ne devrait pas être appelé en HTTP direct)
