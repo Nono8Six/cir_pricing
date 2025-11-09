@@ -282,13 +282,18 @@ Notes : - Projet lié avec succès : supabase link --project-ref zribcjrdrblajrh
 ### 0.3 Durcissement RLS Policies
 
 #### Étape 0.3.1 : Créer fichier migration pour RLS policies
-- [ ] Créer `supabase/migrations/YYYYMMDDHHMMSS_harden_rls_policies.sql`
-- [ ] Ajouter commentaire en en-tête : "Remplace toutes les policies USING (true) par policies basées sur roles"
+- [x] Créer `supabase/migrations/YYYYMMDDHHMMSS_harden_rls_policies.sql`
+- [x] Ajouter commentaire en en-tête : "Remplace toutes les policies USING (true) par policies basées sur roles"
 
 **Compte rendu** :
 ```
-Date : _____________
-Nom fichier :
+Date : 2025-11-09
+Nom fichier : 20251109120000_harden_rls_policies.sql
+Durée : 3 min
+Notes : - Fichier créé dans supabase/migrations/
+        - Commentaire en-tête complet avec description
+        - Prêt pour les étapes suivantes (0.3.2, 0.3.3, 0.3.4)
+        - Migration structure les 3 tables concernées : clients, groups, cir_classifications
 ```
 
 #### Étape 0.3.2 : Durcir policies `clients` (4 policies)

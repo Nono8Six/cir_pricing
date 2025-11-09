@@ -1,0 +1,12 @@
+-- Migration: Harden RLS Policies
+-- Date: 2025-11-09
+-- Description: Remplace toutes les policies USING (true) par policies basées sur roles
+--
+-- Cette migration durcit les RLS policies pour les tables suivantes:
+-- - clients: Restreindre INSERT/UPDATE/DELETE aux admins et commercial
+-- - groups: Restreindre toutes les opérations de modification aux admins
+-- - cir_classifications: Restreindre toutes les opérations de modification aux admins
+--
+-- Les policies de lecture (SELECT) restent ouvertes aux utilisateurs authentifiés.
+
+-- Ce fichier sera complété avec les commandes SQL dans les étapes suivantes (0.3.2, 0.3.3, 0.3.4)
