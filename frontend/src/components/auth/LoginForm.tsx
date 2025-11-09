@@ -229,11 +229,38 @@ export const LoginForm: React.FC = () => {
             <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-amber-800 text-center">
                 <span className="font-medium">ℹ️ Première utilisation ?</span><br />
-                {isSignUp 
+                {isSignUp
                   ? 'Créez votre compte pour accéder au système de gestion tarifaire'
                   : 'Créez un compte ou utilisez vos identifiants existants'
                 }
               </p>
+            </div>
+
+            {/* Test credentials bubble - DEV ONLY */}
+            <div className="mt-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-lg shadow-md">
+              <div className="flex items-start gap-2 mb-2">
+                <span className="text-xl">🧪</span>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-amber-900 mb-2">Comptes de test (développement)</p>
+                  <div className="space-y-2 text-xs font-mono">
+                    <div className="bg-white p-2 rounded border border-amber-200">
+                      <p className="font-semibold text-gray-700">👁️ Viewer (lecture seule)</p>
+                      <p className="text-gray-600">test-viewer@example.com</p>
+                      <p className="text-gray-600">TestViewer2025!</p>
+                    </div>
+                    <div className="bg-white p-2 rounded border border-amber-200">
+                      <p className="font-semibold text-gray-700">💼 Commercial (gestion clients)</p>
+                      <p className="text-gray-600">test-commercial@example.com</p>
+                      <p className="text-gray-600">TestCommercial2025!</p>
+                    </div>
+                    <div className="bg-white p-2 rounded border border-amber-200">
+                      <p className="font-semibold text-gray-700">⚡ Admin (tous droits)</p>
+                      <p className="text-gray-600">test-admin@example.com</p>
+                      <p className="text-gray-600">TestAdmin2025!</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
