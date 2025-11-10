@@ -517,7 +517,7 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
                     loading={loading}
                     className="min-w-[120px]"
                   >
-                    {viewOnly ? 'Enregistrer les contacts' : client?.id ? 'Modifier' : 'Créer'}
+                    {viewOnly ? 'Enregistrer' : client?.id ? 'Modifier' : 'Créer'}
                   </Button>
                 </div>
               </form>
