@@ -2,19 +2,33 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { History, RefreshCw, Search } from 'lucide-react';
 import { supabase } from '../lib/api';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { Tables } from '../types/database.types';
+import { useAuth } from '../context/AuthContext';
+import { toast } from 'sonner';
 
 type Batch = Tables<'import_batches'>;
 type TypeFilter = 'all' | 'mapping' | 'classification';
 type StatusFilter = 'all' | 'pending' | 'completed' | 'failed' | 'rolled_back';
 
 export const ImportsHistory: React.FC = () => {
+  const { canManageImports, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+
+  useEffect(() => {
+    // Rediriger si non-admin (une fois le chargement terminé)
+    if (!authLoading && !canManageImports()) {
+      toast.error('Accès non autorisé', {
+        description: 'Vous n\'avez pas les permissions nécessaires pour accéder à cette page.'
+      });
+      navigate('/dashboard', { replace: true });
+    }
+  }, [canManageImports, authLoading, navigate]);
 
   const load = async (): Promise<void> => {
     setLoading(true);
@@ -27,7 +41,11 @@ export const ImportsHistory: React.FC = () => {
     setLoading(false);
   };
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    if (!authLoading && canManageImports()) {
+      void load();
+    }
+  }, [authLoading, canManageImports]);
 
   const filtered = useMemo(() => {
     return batches.filter(b => {
@@ -37,6 +55,20 @@ export const ImportsHistory: React.FC = () => {
       return true;
     });
   }, [batches, typeFilter, statusFilter, query]);
+
+  // Afficher un loader pendant la vérification
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cir-red"></div>
+      </div>
+    );
+  }
+
+  // Ne rien afficher si pas autorisé (la redirection est en cours)
+  if (!canManageImports()) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">

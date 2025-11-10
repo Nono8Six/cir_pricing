@@ -1,18 +1,19 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  Home, 
-  Calculator, 
-  Users, 
+import {
+  Home,
+  Calculator,
+  Users,
   Building,
   FileSpreadsheet,
-  DollarSign, 
+  DollarSign,
   Settings,
   BarChart3,
   FileText,
   Upload
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 interface SidebarProps {
   sidebarOpen: boolean;
@@ -20,20 +21,29 @@ interface SidebarProps {
 }
 
 const menuItems = [
-  { icon: Home, label: 'Dashboard', path: '/dashboard' },
-  { icon: Calculator, label: 'Calculateur', path: '/calculator' },
-  { icon: Users, label: 'Clients', path: '/clients' },
-  { icon: Building, label: 'Groupements', path: '/groups' },
-  { icon: FileSpreadsheet, label: 'Mapping', path: '/mapping' },
-  { icon: Upload, label: 'Imports', path: '/imports/new' },
-  { icon: DollarSign, label: 'Prix', path: '/prices' },
-  { icon: BarChart3, label: 'Analyses', path: '/analytics' },
-  { icon: FileText, label: 'Rapports', path: '/reports' },
-  { icon: Settings, label: 'Paramètres', path: '/settings' },
+  { icon: Home, label: 'Dashboard', path: '/dashboard', requiresAdmin: false },
+  { icon: Calculator, label: 'Calculateur', path: '/calculator', requiresAdmin: false },
+  { icon: Users, label: 'Clients', path: '/clients', requiresAdmin: false },
+  { icon: Building, label: 'Groupements', path: '/groups', requiresAdmin: false },
+  { icon: FileSpreadsheet, label: 'Mapping', path: '/mapping', requiresAdmin: false },
+  { icon: Upload, label: 'Imports', path: '/imports/new', requiresAdmin: true },
+  { icon: DollarSign, label: 'Prix', path: '/prices', requiresAdmin: false },
+  { icon: BarChart3, label: 'Analyses', path: '/analytics', requiresAdmin: false },
+  { icon: FileText, label: 'Rapports', path: '/reports', requiresAdmin: false },
+  { icon: Settings, label: 'Paramètres', path: '/settings', requiresAdmin: false },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
   const location = useLocation();
+  const { canManageImports } = useAuth();
+
+  // Filter menu items based on permissions
+  const visibleMenuItems = menuItems.filter(item => {
+    if (item.requiresAdmin) {
+      return canManageImports(); // Only admins can see imports
+    }
+    return true; // All other items are visible to everyone
+  });
 
   return (
     <>
@@ -62,7 +72,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen })
         <div className="flex flex-col h-full">
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-2">
-            {menuItems.map((item) => {
+            {visibleMenuItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
               

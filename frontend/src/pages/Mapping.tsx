@@ -80,6 +80,17 @@ export const Mapping: React.FC = () => {
     return true; // mappings et cir-browser visibles pour tous
   });
 
+  // Protection contre l'accès programmatique aux tabs admin-only
+  useEffect(() => {
+    const adminOnlyTabs: TabType[] = ['history', 'analytics', 'settings'];
+    if (adminOnlyTabs.includes(activeTab) && !canManageMappings()) {
+      toast.error('Accès non autorisé', {
+        description: 'Vous n\'avez pas les permissions pour accéder à cet onglet.'
+      });
+      setActiveTab('mappings');
+    }
+  }, [activeTab, canManageMappings]);
+
   // Helper function pour traiter les données avec auto-classification (removed - dead code)
 
   // Charger les options de filtre (une seule fois au début)

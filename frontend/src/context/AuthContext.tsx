@@ -23,6 +23,8 @@ interface AuthContextType {
   canDeleteClients: () => boolean;
   canManageGroups: () => boolean;
   canManageClassifications: () => boolean;
+  canManageImports: () => boolean;
+  canManageMappings: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -257,6 +259,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return profile?.role === 'admin';
   };
 
+  const canManageImports = (): boolean => {
+    // Only admin can manage imports
+    return profile?.role === 'admin';
+  };
+
+  const canManageMappings = (): boolean => {
+    // Only admin can create mappings and access settings/history
+    return profile?.role === 'admin';
+  };
+
   const value = {
     user,
     profile,
@@ -268,7 +280,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     canManageClients,
     canDeleteClients,
     canManageGroups,
-    canManageClassifications
+    canManageClassifications,
+    canManageImports,
+    canManageMappings
   };
 
   return (
