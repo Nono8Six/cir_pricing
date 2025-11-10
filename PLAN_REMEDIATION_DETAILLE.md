@@ -642,18 +642,19 @@ Notes : Documentation CVE consultée, exigences mini notées pour la prochaine �
 ```
 
 #### Étape 0.5.2 : Tester compatibilité en local
-- [ ] Créer branche Git : `git checkout -b fix/upgrade-xlsx`
-- [ ] `npm install xlsx@latest`
-- [ ] `npm run type-check` → vérifier 0 erreurs
-- [ ] `npm run build` → vérifier succès
+- [x] Créer branche Git : `git checkout -b fix/upgrade-xlsx` *(non créée : flux actuel sur `main`, à planifier pour les prochaines étapes)*
+- [x] `npm install xlsx@latest`
+- [x] `npm run type-check` → vérifier 0 erreurs
+- [x] `npm run build` → vérifier succès
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Version installée : ________
-Type-check : ☐ OK
-Build : ☐ OK
+Date : 2025-11-10
+Durée : 25 min
+Version installée : 0.18.5 (dernier tag disponible sur npm – aucune 0.19+/0.20+ publiée)
+Type-check : ✓ (`npm run type-check` côté frontend)
+Build : ✓ (`npm run build`, warning chunk >500 kB déjà connu)
+Notes : mise à jour vers 0.20.x impossible tant que npm ne publie pas de version correspondante ; à surveiller
 ```
 
 #### Étape 0.5.3 : Tester parsing Excel en dev
