@@ -627,16 +627,18 @@ Notes : - `supabase status` impossible (Docker Desktop absent) → impossible de
 ### 0.5 Upgrade dépendance vulnérable `xlsx`
 
 #### Étape 0.5.1 : Vérifier version actuelle et CVE
-- [ ] `cd frontend && npm list xlsx`
-- [ ] Noter version actuelle : __________
-- [ ] Visiter https://github.com/advisories/GHSA-4r6h-8v6p-xvw6
-- [ ] Noter version requise : >= 0.19.3 (prototype pollution) ET >= 0.20.2 (ReDoS)
+- [x] `cd frontend && npm list xlsx`
+- [x] Noter version actuelle : 0.18.5
+- [x] Visiter https://github.com/advisories/GHSA-4r6h-8v6p-xvw6
+- [x] Noter version requise : >= 0.19.3 (prototype pollution) ET >= 0.20.2 (ReDoS)
 
 **Compte rendu** :
 ```
-Date : _____________
-Version actuelle : 0.18.5
-Version cible : ________
+Date : 2025-11-10
+Durée : 10 min
+Version actuelle : 0.18.5 (confirmé via `npm list xlsx`)
+Version cible : ≥ 0.20.2 (corrige CVE prototype pollution + ReDoS selon GHSA-4r6h-8v6p-xvw6)
+Notes : Documentation CVE consultée, exigences mini notées pour la prochaine étape d'upgrade
 ```
 
 #### Étape 0.5.2 : Tester compatibilité en local
