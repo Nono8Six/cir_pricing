@@ -410,18 +410,16 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-medium text-gray-900">Contacts</h3>
-                    {!viewOnly && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={addContact}
-                        className="flex items-center space-x-2"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>Ajouter un contact</span>
-                      </Button>
-                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addContact}
+                      className="flex items-center space-x-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Ajouter un contact</span>
+                    </Button>
                   </div>
 
                   {formData.contacts && formData.contacts.length > 0 && (
@@ -437,15 +435,13 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
                             <h4 className="text-sm font-medium text-gray-700">
                               Contact {index + 1}
                             </h4>
-                            {!viewOnly && (
-                              <button
-                                type="button"
-                                onClick={() => removeContact(index)}
-                                className="p-1 text-red-500 hover:bg-red-50 rounded"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => removeContact(index)}
+                              className="p-1 text-red-500 hover:bg-red-50 rounded"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -455,9 +451,8 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
                                 type="text"
                                 value={contact.name}
                                 onChange={(e) => handleContactChange(index, 'name', e.target.value)}
-                                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
+                                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
                                 placeholder="Nom du contact"
-                                disabled={viewOnly}
                               />
                             </div>
 
@@ -467,9 +462,8 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
                                 type="email"
                                 value={contact.email}
                                 onChange={(e) => handleContactChange(index, 'email', e.target.value)}
-                                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
+                                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
                                 placeholder="email@exemple.com"
-                                disabled={viewOnly}
                               />
                             </div>
 
@@ -479,9 +473,8 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
                                 type="tel"
                                 value={contact.phone}
                                 onChange={(e) => handleContactChange(index, 'phone', e.target.value)}
-                                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
+                                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
                                 placeholder="01.23.45.67.89"
-                                disabled={viewOnly}
                               />
                             </div>
                           </div>
@@ -501,32 +494,21 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
 
                 {/* Boutons d'action */}
                 <div className="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200">
-                  {viewOnly ? (
-                    <Button
-                      type="button"
-                      onClick={onClose}
-                    >
-                      Fermer
-                    </Button>
-                  ) : (
-                    <>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={onClose}
-                        disabled={loading}
-                      >
-                        Annuler
-                      </Button>
-                      <Button
-                        type="submit"
-                        loading={loading}
-                        className="min-w-[120px]"
-                      >
-                        {client?.id ? 'Modifier' : 'Créer'}
-                      </Button>
-                    </>
-                  )}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={onClose}
+                    disabled={loading}
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    type="submit"
+                    loading={loading}
+                    className="min-w-[120px]"
+                  >
+                    {viewOnly ? 'Enregistrer les contacts' : client?.id ? 'Modifier' : 'Créer'}
+                  </Button>
                 </div>
               </form>
             </CardContent>
