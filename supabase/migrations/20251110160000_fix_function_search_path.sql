@@ -57,11 +57,24 @@ ALTER FUNCTION public.get_total_strategiques_count()
 -- 0.4.4 - Fonctions de récupération (2)
 --   * public.get_mappings_by_keys()
 --   * public.get_classifications_by_codes()
+ALTER FUNCTION public.get_mappings_by_keys()
+  SET search_path = 'public, pg_temp';
+
+ALTER FUNCTION public.get_classifications_by_codes()
+  SET search_path = 'public, pg_temp';
 --
 -- 0.4.5 - Fonctions de contexte import (3)
 --   * public.set_current_batch_id()
 --   * public.set_change_reason()
 --   * public.clear_audit_context()
+ALTER FUNCTION public.set_current_batch_id()
+  SET search_path = 'public, pg_temp';
+
+ALTER FUNCTION public.set_change_reason()
+  SET search_path = 'public, pg_temp';
+
+ALTER FUNCTION public.clear_audit_context()
+  SET search_path = 'public, pg_temp';
 --
 -- 0.4.6 - Fonctions de références hiérarchiques (5)
 --   * public.get_all_unique_segments()
@@ -69,11 +82,33 @@ ALTER FUNCTION public.get_total_strategiques_count()
 --   * public.get_all_unique_fsmegas()
 --   * public.get_all_unique_fsfams()
 --   * public.get_all_unique_fssfas()
+ALTER FUNCTION public.get_all_unique_segments()
+  SET search_path = 'public, pg_temp';
+
+ALTER FUNCTION public.get_all_unique_marques()
+  SET search_path = 'public, pg_temp';
+
+ALTER FUNCTION public.get_all_unique_fsmegas()
+  SET search_path = 'public, pg_temp';
+
+ALTER FUNCTION public.get_all_unique_fsfams()
+  SET search_path = 'public, pg_temp';
+
+ALTER FUNCTION public.get_all_unique_fssfas()
+  SET search_path = 'public, pg_temp';
 --
 -- 0.4.7 - Fonctions utilitaires / triggers (3)
 --   * public.update_updated_at_column()
 --   * public.audit_brand_mapping_changes()
 --   * public.audit_brand_mapping_insert()
+ALTER FUNCTION public.update_updated_at_column()
+  SET search_path = 'public, pg_temp';
+
+ALTER FUNCTION public.audit_brand_mapping_changes()
+  SET search_path = 'public, pg_temp';
+
+ALTER FUNCTION public.audit_brand_mapping_insert()
+  SET search_path = 'public, pg_temp';
 --
 -- Chaque bloc appliquera : ALTER FUNCTION ... SECURITY DEFINER SET search_path = public, pg_temp;
 

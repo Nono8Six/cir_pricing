@@ -545,52 +545,64 @@ Notes : - Ajout des ALTER FUNCTION dans la section 0.4.3 du fichier de migration
 ```
 
 #### Étape 0.4.4 : Fixer fonctions de récupération (2 fonctions)
-- [ ] ALTER FUNCTION public.get_mappings_by_keys() ...
-- [ ] ALTER FUNCTION public.get_classifications_by_codes() ...
+- [x] ALTER FUNCTION public.get_mappings_by_keys() SECURITY DEFINER SET search_path = public, pg_temp;
+- [x] ALTER FUNCTION public.get_classifications_by_codes() SECURITY DEFINER SET search_path = public, pg_temp;
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Fonctions get : ☐ 2/2
+Date : 2025-11-10
+Durée : 15 min
+Résultat : 2/2 fonctions de récupération sécurisées dans la migration 20251110160000
+Notes : - Ajout explicite des ALTER FUNCTION dans la section 0.4.4
+        - Application SQL directe refusée (mode read-only/ownership) → à exécuter via interface lors du déploiement
+        - Vérifier Advisors après exécution réelle
 ```
 
 #### Étape 0.4.5 : Fixer fonctions d'audit (3 fonctions)
-- [ ] ALTER FUNCTION public.set_current_batch_id() ...
-- [ ] ALTER FUNCTION public.set_change_reason() ...
-- [ ] ALTER FUNCTION public.clear_audit_context() ...
+- [x] ALTER FUNCTION public.set_current_batch_id() SECURITY DEFINER SET search_path = public, pg_temp;
+- [x] ALTER FUNCTION public.set_change_reason() SECURITY DEFINER SET search_path = public, pg_temp;
+- [x] ALTER FUNCTION public.clear_audit_context() SECURITY DEFINER SET search_path = public, pg_temp;
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Fonctions audit : ☐ 3/3
+Date : 2025-11-10
+Durée : 20 min
+Résultat : 3/3 fonctions d'audit sécurisées dans la migration 20251110160000
+Notes : - Mise à jour de la section 0.4.5 avec les trois ALTER FUNCTION
+        - Toujours pas appliqué côté base (restrictions MCP)
+        - À exécuter via interface avant relecture Advisors
 ```
 
 #### Étape 0.4.6 : Fixer fonctions get_all_unique (5 fonctions)
-- [ ] ALTER FUNCTION public.get_all_unique_segments() ...
-- [ ] ALTER FUNCTION public.get_all_unique_marques() ...
-- [ ] ALTER FUNCTION public.get_all_unique_fsfams() ...
-- [ ] ALTER FUNCTION public.get_all_unique_fsmegas() ...
-- [ ] ALTER FUNCTION public.get_all_unique_fssfas() ...
+- [x] ALTER FUNCTION public.get_all_unique_segments() SECURITY DEFINER SET search_path = public, pg_temp;
+- [x] ALTER FUNCTION public.get_all_unique_marques() SECURITY DEFINER SET search_path = public, pg_temp;
+- [x] ALTER FUNCTION public.get_all_unique_fsmegas() SECURITY DEFINER SET search_path = public, pg_temp;
+- [x] ALTER FUNCTION public.get_all_unique_fsfams() SECURITY DEFINER SET search_path = public, pg_temp;
+- [x] ALTER FUNCTION public.get_all_unique_fssfas() SECURITY DEFINER SET search_path = public, pg_temp;
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Fonctions unique : ☐ 5/5
+Date : 2025-11-10
+Durée : 25 min
+Résultat : 5/5 fonctions get_all_unique sécurisées dans la migration 20251110160000
+Notes : - Ajouts regroupés dans la section 0.4.6
+        - Même contrainte : application SQL différée via l'interface
+        - Vérifier Advisors après exécution
 ```
 
 #### Étape 0.4.7 : Fixer fonctions triggers (3 fonctions)
-- [ ] ALTER FUNCTION public.update_updated_at_column() ...
-- [ ] ALTER FUNCTION public.audit_brand_mapping_changes() ...
-- [ ] ALTER FUNCTION public.audit_brand_mapping_insert() ...
+- [x] ALTER FUNCTION public.update_updated_at_column() SECURITY DEFINER SET search_path = public, pg_temp;
+- [x] ALTER FUNCTION public.audit_brand_mapping_changes() SECURITY DEFINER SET search_path = public, pg_temp;
+- [x] ALTER FUNCTION public.audit_brand_mapping_insert() SECURITY DEFINER SET search_path = public, pg_temp;
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Fonctions triggers : ☐ 3/3
+Date : 2025-11-10
+Durée : 15 min
+Résultat : 3/3 fonctions triggers sécurisées dans la migration 20251110160000
+Notes : - Dernier bloc d'ALTER FUNCTION ajouté (section 0.4.7)
+        - Migration toujours à appliquer via interface Supabase
+        - Une fois poussé, relancer Advisors pour confirmer la résolution
 ```
 
 #### Étape 0.4.8 : Appliquer la migration
