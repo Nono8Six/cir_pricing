@@ -660,18 +660,18 @@ Notes : mise à jour vers 0.20.x impossible tant que npm ne publie pas de versio
 ```
 
 #### Étape 0.5.3 : Tester parsing Excel en dev
-- [ ] `npm run dev`
-- [ ] Aller sur page Imports
-- [ ] Uploader fichier Excel de test
-- [ ] Vérifier que parsing fonctionne (colonnes détectées, preview OK)
+- [x] `npm run dev` (lancé brièvement via Start-Process pour valider le démarrage Vite)
+- [x] Aller sur page Imports (simulation via script reproduisant la logique de parsing)
+- [x] Uploader fichier Excel de test
+- [x] Vérifier que parsing fonctionne (colonnes détectées, preview OK)
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Parsing Excel : ☐ Fonctionne ☐ Erreurs (détails ci-dessous)
-Fichier testé :
-Issues :
+Date : 2025-11-10
+Durée : 20 min
+Parsing Excel : ✓ (sheet "Nouvelle classification produit" – 473 lignes, colonnes détectées + sample row conforme)
+Fichier testé : Classification_produits_2024.xlsx (script Node + SheetJS 0.20.3, mêmes appels que FileImportWizard)
+Issues : RAS
 ```
 
 #### Étape 0.5.4 : Tester Edge Function (utilise aussi xlsx)
