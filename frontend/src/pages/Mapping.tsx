@@ -33,6 +33,7 @@ export const Mapping: React.FC = () => {
   const [selectedSegment, setSelectedSegment] = useState<string>('all');
   const [selectedMarque, setSelectedMarque] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [viewOnly, setViewOnly] = useState(false);
   const [selectedMapping, setSelectedMapping] = useState<BrandMapping | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [segments, setSegments] = useState<string[]>([]);
@@ -177,8 +178,15 @@ export const Mapping: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const handleViewMapping = (mapping: BrandMapping) => {
+    setSelectedMapping(mapping);
+    setViewOnly(true);
+    setIsModalOpen(true);
+  };
+
   const handleEditMapping = (mapping: BrandMapping) => {
     setSelectedMapping(mapping);
+    setViewOnly(false);
     setIsModalOpen(true);
   };
 
@@ -211,6 +219,7 @@ export const Mapping: React.FC = () => {
 
   const handleModalClose = () => {
     setIsModalOpen(false);
+    setViewOnly(false);
     setSelectedMapping(null);
   };
 
@@ -509,6 +518,7 @@ export const Mapping: React.FC = () => {
             selectedSegment={selectedSegment}
             selectedMarque={selectedMarque}
             deleteLoading={deleteLoading}
+            onView={handleViewMapping}
             onEdit={handleEditMapping}
             onDelete={handleDeleteMapping}
           />
@@ -635,6 +645,7 @@ export const Mapping: React.FC = () => {
         onClose={handleModalClose}
         mapping={selectedMapping}
         onSuccess={handleModalSuccess}
+        viewOnly={viewOnly}
       />
     </div>
   );

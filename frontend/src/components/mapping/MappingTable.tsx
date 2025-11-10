@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FileSpreadsheet, Edit, Trash2 } from 'lucide-react';
+import { FileSpreadsheet, Edit, Trash2, Eye } from 'lucide-react';
 import { type BrandMapping } from '../../lib/supabaseClient';
+import { useAuth } from '../../context/AuthContext';
 
 interface MappingTableProps {
   mappings: BrandMapping[];
@@ -10,6 +11,7 @@ interface MappingTableProps {
   selectedSegment: string;
   selectedMarque: string;
   deleteLoading: string | null;
+  onView: (mapping: BrandMapping) => void;
   onEdit: (mapping: BrandMapping) => void;
   onDelete: (mapping: BrandMapping) => void;
 }
@@ -21,9 +23,11 @@ export const MappingTable: React.FC<MappingTableProps> = ({
   selectedSegment,
   selectedMarque,
   deleteLoading,
+  onView,
   onEdit,
   onDelete
 }) => {
+  const { canManageMappings } = useAuth();
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -128,25 +132,39 @@ export const MappingTable: React.FC<MappingTableProps> = ({
               </td>
               <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div className="flex items-center justify-end space-x-2">
+                  {/* Bouton Voir (toujours visible) */}
                   <button
-                    onClick={() => onEdit(mapping)}
-                    className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
-                    title="Modifier"
+                    onClick={() => onView(mapping)}
+                    className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-50 transition-colors"
+                    title="Voir les détails"
                   >
-                    <Edit className="w-4 h-4" />
+                    <Eye className="w-4 h-4" />
                   </button>
-                  <button
-                    onClick={() => onDelete(mapping)}
-                    disabled={deleteLoading === mapping.id}
-                    className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors disabled:opacity-50"
-                    title="Supprimer"
-                  >
-                    {deleteLoading === mapping.id ? (
-                      <div className="w-4 h-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
-                    ) : (
-                      <Trash2 className="w-4 h-4" />
-                    )}
-                  </button>
+
+                  {/* Boutons Modifier et Supprimer (admin uniquement) */}
+                  {canManageMappings() && (
+                    <>
+                      <button
+                        onClick={() => onEdit(mapping)}
+                        className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
+                        title="Modifier"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => onDelete(mapping)}
+                        disabled={deleteLoading === mapping.id}
+                        className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors disabled:opacity-50"
+                        title="Supprimer"
+                      >
+                        {deleteLoading === mapping.id ? (
+                          <div className="w-4 h-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </button>
+                    </>
+                  )}
                 </div>
               </td>
             </motion.tr>

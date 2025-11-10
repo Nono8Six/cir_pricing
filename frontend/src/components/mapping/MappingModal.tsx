@@ -13,13 +13,15 @@ interface MappingModalProps {
   onClose: () => void;
   mapping?: BrandMapping | null;
   onSuccess: () => void;
+  viewOnly?: boolean;
 }
 
 export const MappingModal: React.FC<MappingModalProps> = ({
   isOpen,
   onClose,
   mapping,
-  onSuccess
+  onSuccess,
+  viewOnly: _viewOnly = false // TODO: Implement viewOnly logic (disable fields, hide save button)
 }) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<MappingFormData>({
