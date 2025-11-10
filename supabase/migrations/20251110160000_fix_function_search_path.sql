@@ -45,6 +45,14 @@ ALTER FUNCTION private.can_manage_pricing()
 --   * public.get_total_segments_count()
 --   * public.get_total_marques_count()
 --   * public.get_total_strategiques_count()
+ALTER FUNCTION public.get_total_segments_count()
+  SET search_path = 'public, pg_temp';
+
+ALTER FUNCTION public.get_total_marques_count()
+  SET search_path = 'public, pg_temp';
+
+ALTER FUNCTION public.get_total_strategiques_count()
+  SET search_path = 'public, pg_temp';
 --
 -- 0.4.4 - Fonctions de récupération (2)
 --   * public.get_mappings_by_keys()

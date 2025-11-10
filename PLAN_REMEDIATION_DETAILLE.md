@@ -530,15 +530,18 @@ Notes : - Ajout des ALTER FUNCTION dans le fichier de migration (section 0.4.2)
 ```
 
 #### Étape 0.4.3 : Fixer fonctions de comptage (3 fonctions)
-- [ ] ALTER FUNCTION public.get_total_segments_count() ...
-- [ ] ALTER FUNCTION public.get_total_marques_count() ...
-- [ ] ALTER FUNCTION public.get_total_strategiques_count() ...
+- [x] ALTER FUNCTION public.get_total_segments_count() SECURITY DEFINER SET search_path = public, pg_temp;
+- [x] ALTER FUNCTION public.get_total_marques_count() SECURITY DEFINER SET search_path = public, pg_temp;
+- [x] ALTER FUNCTION public.get_total_strategiques_count() SECURITY DEFINER SET search_path = public, pg_temp;
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Fonctions comptage : ☐ 3/3
+Date : 2025-11-10
+Durée : 25 min
+Résultat : 3/3 fonctions de comptage mises à jour dans la migration 20251110160000
+Notes : - Ajout des ALTER FUNCTION dans la section 0.4.3 du fichier de migration
+        - Exécution SQL directe toujours bloquée (read-only / ownership) -> appliquer via interface lors du déploiement
+        - Re-vérifier les alertes Advisors une fois la migration exécutée côté base
 ```
 
 #### Étape 0.4.4 : Fixer fonctions de récupération (2 fonctions)
