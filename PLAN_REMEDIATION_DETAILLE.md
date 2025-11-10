@@ -516,14 +516,17 @@ Notes : - Vérification via Supabase Advisors : 18 fonctions toujours flaggées 
 ```
 
 #### Étape 0.4.2 : Fixer fonctions `private` (2 fonctions)
-- [ ] ALTER FUNCTION private.is_admin() SECURITY DEFINER SET search_path = public, pg_temp;
-- [ ] ALTER FUNCTION private.can_manage_pricing() SECURITY DEFINER SET search_path = public, pg_temp;
+- [x] ALTER FUNCTION private.is_admin() SECURITY DEFINER SET search_path = public, pg_temp;
+- [x] ALTER FUNCTION private.can_manage_pricing() SECURITY DEFINER SET search_path = public, pg_temp;
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Fonctions private : ☐ 2/2
+Date : 2025-11-10
+Durée : 20 min
+Résultat : 2/2 fonctions private mises à jour dans la migration 20251110160000
+Notes : - Ajout des ALTER FUNCTION dans le fichier de migration (section 0.4.2)
+        - Tentative d'application directe via MCP bloquée (read-only / ownership) -> à appliquer lors du déploiement des migrations
+        - Vérifier advisors après exécution des prochaines étapes pour confirmer la disparition des alertes
 ```
 
 #### Étape 0.4.3 : Fixer fonctions de comptage (3 fonctions)
@@ -2279,3 +2282,5 @@ Violations restantes :
 ---
 
 **Signature équipe** : _____________
+
+

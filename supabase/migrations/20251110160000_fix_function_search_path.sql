@@ -35,6 +35,11 @@
 -- 0.4.2 - Fonctions private (2)
 --   * private.is_admin()
 --   * private.can_manage_pricing()
+ALTER FUNCTION private.is_admin()
+  SET search_path = 'public, pg_temp';
+
+ALTER FUNCTION private.can_manage_pricing()
+  SET search_path = 'public, pg_temp';
 --
 -- 0.4.3 - Fonctions de comptage (3)
 --   * public.get_total_segments_count()
