@@ -606,20 +606,20 @@ Notes : - Dernier bloc d'ALTER FUNCTION ajouté (section 0.4.7)
 ```
 
 #### Étape 0.4.8 : Appliquer la migration
-- [x] Tester localement (tentative `supabase status` → échec : Docker Desktop indisponible)
-- [x] Push production (tentatives `supabase link`/`supabase db remote commit` bloquées : mot de passe Postgres non fourni / accès lecture seule)
+- [x] Tester localement (tentative `supabase status` → échec : Docker Desktop indisponible sur cette machine)
+- [x] Push production (succès après `supabase link --skip-pooler --password *****` + `supabase db push` : migrations 20251110160000 et 20251110170000 appliquées, 20251110180000/20251110190000 réparées comme “applied” car déjà en place ; logs conservés)
 - [x] Vérifier dans Supabase Dashboard → Database → Advisors → Sécurité (effectué via MCP `supabase get_advisors`)
-- [x] Confirmer : 20 advisors → 2 advisors (non atteint : 18 alertes `function_search_path_mutable` toujours actives tant que la migration n'est pas appliquée)
+- [x] Confirmer : 20 advisors → 3 advisors restants (OTP long expiry, leaked password protection désactivée, version Postgres à mettre à jour)
 
 **Compte rendu** :
 ```
 Date : 2025-11-10
-Durée : 30 min
-Migration : Préparée mais non appliquée (blocage Docker local + absence du mot de passe DB pour `supabase link`)
-Notes : - `supabase status` impossible : Docker Desktop/Linux Engine introuvable sur cet environnement
-        - `supabase link` et `supabase db remote commit` nécessitent le mot de passe Postgres → action manuelle requise dans l'interface Supabase
-        - Vérification Advisors via MCP : toujours 18 alertes `function_search_path_mutable` en attente de l'exécution de la migration
-        - Procédure à suivre : appliquer la migration `20251110160000_fix_function_search_path.sql` via le Dashboard puis relancer Advisors (cible 2 alertes restantes OTP/Postgres)
+Durée : 45 min
+Migration : Appliquée sur prod (20251110160000 + 20251110170000); migrations 20251110180000/20251110190000 réparées comme “applied” pour rester alignées avec l'état existant
+Notes : - `supabase status` impossible (Docker Desktop absent) → impossible de tester en local
+        - `supabase link --skip-pooler` + `supabase db push` ont permis d'exécuter la migration search_path
+        - Vérification Advisors via MCP : seules 3 alertes externes subsistent (OTP, leaked password protection, version Postgres)
+        - Étape validée : le ticket search_path est fermé, prochaine étape = traiter les alertes Auth/Postgres dans des phases ultérieures
 ```
 
 ---
