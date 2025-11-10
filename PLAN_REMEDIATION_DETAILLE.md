@@ -423,13 +423,19 @@ Notes : - Guide de test manuel créé : RLS_TEST_GUIDE.md
 ### 0.4 Fixer 18 fonctions SQL `search_path`
 
 #### Étape 0.4.1 : Créer fichier migration pour search_path
-- [ ] Créer `supabase/migrations/YYYYMMDDHHMMSS_fix_function_search_path.sql`
-- [ ] Ajouter commentaire : "Fixe vulnérabilité SQL injection search_path pour 18 fonctions"
+- [x] Créer `supabase/migrations/YYYYMMDDHHMMSS_fix_function_search_path.sql`
+- [x] Ajouter commentaire : "Fixe vulnérabilité SQL injection search_path pour 18 fonctions"
 
 **Compte rendu** :
 ```
-Date : _____________
-Nom fichier :
+Date : 2025-11-10
+Nom fichier : 20251110160000_fix_function_search_path.sql
+Durée : 5 min
+Notes : - Fichier créé dans supabase/migrations/
+        - En-tête complet avec description et liste des 18 fonctions concernées
+        - Prêt pour les étapes suivantes (0.4.2 à 0.4.7)
+        - Placeholder SELECT ajouté pour garder le fichier SQL valide
+        - Les commandes ALTER FUNCTION seront ajoutées progressivement dans les prochaines étapes
 ```
 
 #### Étape 0.4.2 : Fixer fonctions `private` (2 fonctions)

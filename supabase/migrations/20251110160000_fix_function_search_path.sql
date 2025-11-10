@@ -1,0 +1,36 @@
+-- Migration: Fix Function search_path Vulnerability
+-- Date: 2025-11-10
+-- Description: Fixe vulnérabilité SQL injection search_path pour 18 fonctions
+--
+-- Cette migration corrige la vulnérabilité de sécurité liée au search_path
+-- dans 18 fonctions de la base de données en ajoutant explicitement
+-- "SECURITY DEFINER SET search_path = public, pg_temp" à chaque fonction.
+--
+-- Fonctions concernées:
+-- - private.is_admin() (1)
+-- - private.can_manage_pricing() (1)
+-- - public.get_total_segments_count() (1)
+-- - public.get_total_marques_count() (1)
+-- - public.get_total_strategiques_count() (1)
+-- - public.get_mappings_by_keys() (1)
+-- - public.get_classifications_by_codes() (1)
+-- - public.set_current_batch_id() (1)
+-- - public.set_change_reason() (1)
+-- - public.clear_audit_context() (1)
+-- - public.get_all_unique_segments() (1)
+-- - public.get_all_unique_marques() (1)
+-- - public.get_all_unique_fsfams() (1)
+-- - public.get_all_unique_fsmegas() (1)
+-- - public.get_all_unique_fssfas() (1)
+-- - public.update_updated_at_column() (1)
+-- - public.audit_brand_mapping_changes() (1)
+-- - public.audit_brand_mapping_insert() (1)
+-- Total: 18 fonctions
+--
+-- Les étapes suivantes (0.4.2 à 0.4.7) ajouteront les ALTER FUNCTION correspondants.
+
+-- Ce fichier sert de squelette pour les étapes suivantes.
+-- Les commandes ALTER FUNCTION seront ajoutées dans les étapes 0.4.2 à 0.4.7.
+
+-- Placeholder pour garder le fichier valide SQL
+SELECT 'Migration 0.4.1: Fichier de migration créé - Les ALTER FUNCTION seront ajoutés dans les étapes suivantes' AS status;
