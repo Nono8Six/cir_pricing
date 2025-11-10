@@ -15,6 +15,7 @@ import { Button } from '../components/ui/Button';
 import { ClientFormModal } from '../components/clients/ClientFormModal';
 import { toast } from 'sonner';
 import { api } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 
 interface Contact {
   name: string;
@@ -45,6 +46,7 @@ interface Client {
 }
 
 export const Clients: React.FC = () => {
+  const { canManageClients, canDeleteClients } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
@@ -171,13 +173,15 @@ export const Clients: React.FC = () => {
             Gérez vos clients et leurs informations commerciales
           </p>
         </div>
-        <Button
-          onClick={handleCreateClient}
-          className="flex items-center space-x-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Nouveau client</span>
-        </Button>
+        {canManageClients() && (
+          <Button
+            onClick={handleCreateClient}
+            className="flex items-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nouveau client</span>
+          </Button>
+        )}
       </div>
 
       {/* Statistiques */}
@@ -273,12 +277,12 @@ export const Clients: React.FC = () => {
             <div className="text-center py-12">
               <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500 mb-2">
-                {searchTerm || selectedGroup !== 'all' 
+                {searchTerm || selectedGroup !== 'all'
                   ? 'Aucun client ne correspond aux critères de recherche'
                   : 'Aucun client enregistré'
                 }
               </p>
-              {!searchTerm && selectedGroup === 'all' && (
+              {!searchTerm && selectedGroup === 'all' && canManageClients() && (
                 <Button onClick={handleCreateClient} variant="outline">
                   <Plus className="w-4 h-4 mr-2" />
                   Créer le premier client
@@ -374,25 +378,32 @@ export const Clients: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end space-x-2">
-                          <button
-                            onClick={() => handleEditClient(client)}
-                            className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
-                            title="Modifier"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteClient(client)}
-                            disabled={deleteLoading === client.id}
-                            className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors disabled:opacity-50"
-                            title="Supprimer"
-                          >
-                            {deleteLoading === client.id ? (
-                              <div className="w-4 h-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
-                          </button>
+                          {canManageClients() && (
+                            <button
+                              onClick={() => handleEditClient(client)}
+                              className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
+                              title="Modifier"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                          )}
+                          {canDeleteClients() && (
+                            <button
+                              onClick={() => handleDeleteClient(client)}
+                              disabled={deleteLoading === client.id}
+                              className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors disabled:opacity-50"
+                              title="Supprimer"
+                            >
+                              {deleteLoading === client.id ? (
+                                <div className="w-4 h-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
+                            </button>
+                          )}
+                          {!canManageClients() && !canDeleteClients() && (
+                            <span className="text-xs text-gray-400">Lecture seule</span>
+                          )}
                         </div>
                       </td>
                     </motion.tr>

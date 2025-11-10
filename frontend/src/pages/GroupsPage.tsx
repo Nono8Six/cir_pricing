@@ -14,6 +14,7 @@ import { GroupFormModal } from '../components/groups/GroupFormModal';
 import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { formatDate } from '../lib/utils';
+import { useAuth } from '../context/AuthContext';
 
 interface Group {
   id: string;
@@ -23,6 +24,7 @@ interface Group {
 }
 
 export const GroupsPage: React.FC = () => {
+  const { canManageGroups } = useAuth();
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -125,13 +127,15 @@ export const GroupsPage: React.FC = () => {
             Gérez les groupements de clients et leurs associations
           </p>
         </div>
-        <Button
-          onClick={handleCreateGroup}
-          className="flex items-center space-x-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Nouveau groupement</span>
-        </Button>
+        {canManageGroups() && (
+          <Button
+            onClick={handleCreateGroup}
+            className="flex items-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nouveau groupement</span>
+          </Button>
+        )}
       </div>
 
       {/* Statistiques */}
@@ -194,12 +198,12 @@ export const GroupsPage: React.FC = () => {
             <div className="text-center py-12">
               <Building className="w-12 h-12 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500 mb-2">
-                {searchTerm 
+                {searchTerm
                   ? 'Aucun groupement ne correspond à votre recherche'
                   : 'Aucun groupement enregistré'
                 }
               </p>
-              {!searchTerm && (
+              {!searchTerm && canManageGroups() && (
                 <Button onClick={handleCreateGroup} variant="outline">
                   <Plus className="w-4 h-4 mr-2" />
                   Créer le premier groupement
@@ -262,25 +266,32 @@ export const GroupsPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end space-x-2">
-                          <button
-                            onClick={() => handleEditGroup(group)}
-                            className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
-                            title="Modifier"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteGroup(group)}
-                            disabled={deleteLoading === group.id}
-                            className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors disabled:opacity-50"
-                            title="Supprimer"
-                          >
-                            {deleteLoading === group.id ? (
-                              <div className="w-4 h-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
-                          </button>
+                          {canManageGroups() && (
+                            <>
+                              <button
+                                onClick={() => handleEditGroup(group)}
+                                className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
+                                title="Modifier"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteGroup(group)}
+                                disabled={deleteLoading === group.id}
+                                className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors disabled:opacity-50"
+                                title="Supprimer"
+                              >
+                                {deleteLoading === group.id ? (
+                                  <div className="w-4 h-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4" />
+                                )}
+                              </button>
+                            </>
+                          )}
+                          {!canManageGroups() && (
+                            <span className="text-xs text-gray-400">Lecture seule</span>
+                          )}
                         </div>
                       </td>
                     </motion.tr>

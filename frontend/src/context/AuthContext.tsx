@@ -2,43 +2,85 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/api';
 import type { User } from '@supabase/supabase-js';
 
+interface UserProfile {
+  id: string;
+  email: string;
+  role: 'admin' | 'commercial' | null;
+  first_name: string | null;
+  last_name: string | null;
+}
+
 interface AuthContextType {
   user: User | null;
+  profile: UserProfile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, firstName?: string, lastName?: string) => Promise<void>;
   signOut: () => Promise<void>;
+  // Permission helpers
+  isAdmin: () => boolean;
+  canManageClients: () => boolean;
+  canDeleteClients: () => boolean;
+  canManageGroups: () => boolean;
+  canManageClassifications: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Helper function to fetch user profile
+  const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, email, role, first_name, last_name')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.warn('Failed to fetch user profile:', error);
+        return null;
+      }
+
+      return data as UserProfile;
+    } catch (error) {
+      console.warn('Error fetching profile:', error);
+      return null;
+    }
+  };
 
   useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
-        
+
         if (error) {
          console.warn('Session error:', error);
          setUser(null);
+         setProfile(null);
           setLoading(false);
           return;
         }
 
         if (session?.user) {
           setUser(session.user);
+          const userProfile = await fetchUserProfile(session.user.id);
+          setProfile(userProfile);
        } else {
          setUser(null);
+         setProfile(null);
         }
-        
+
         setLoading(false);
       } catch (error) {
        console.warn('Failed to get initial session:', error);
        setUser(null);
+       setProfile(null);
         setLoading(false);
       }
     };
@@ -49,12 +91,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         setUser(session.user);
+        const userProfile = await fetchUserProfile(session.user.id);
+        setProfile(userProfile);
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
+        setProfile(null);
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
         setUser(session.user);
+        const userProfile = await fetchUserProfile(session.user.id);
+        setProfile(userProfile);
       }
-      
+
       setLoading(false);
     });
 
@@ -146,10 +193,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     setLoading(true);
-    
+
     try {
       const { error } = await supabase.auth.signOut();
-      
+
       if (error) {
         throw error;
       }
@@ -159,12 +206,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Permission helper functions
+  const isAdmin = (): boolean => {
+    return profile?.role === 'admin';
+  };
+
+  const canManageClients = (): boolean => {
+    // Admin or commercial can manage clients (create/update)
+    return profile?.role === 'admin' || profile?.role === 'commercial';
+  };
+
+  const canDeleteClients = (): boolean => {
+    // Only admin can delete clients
+    return profile?.role === 'admin';
+  };
+
+  const canManageGroups = (): boolean => {
+    // Only admin can manage groups
+    return profile?.role === 'admin';
+  };
+
+  const canManageClassifications = (): boolean => {
+    // Only admin can manage classifications
+    return profile?.role === 'admin';
+  };
+
   const value = {
     user,
+    profile,
     loading,
     signIn,
     signUp,
-    signOut
+    signOut,
+    isAdmin,
+    canManageClients,
+    canDeleteClients,
+    canManageGroups,
+    canManageClassifications
   };
 
   return (
