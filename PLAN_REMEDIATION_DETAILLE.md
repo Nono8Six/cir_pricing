@@ -440,20 +440,27 @@ Notes : - Migration créée dans supabase/migrations/20251110170000_uniformize_r
 ```
 
 #### Étape 0.3.8 : Ajouter contrainte CHECK sur profiles.role
-- [ ] Créer `supabase/migrations/20251110180000_add_role_check_constraint.sql`
-- [ ] Vérifier les données existantes (aucune valeur invalide)
-- [ ] Ajouter contrainte CHECK : `role IS NULL OR role IN ('admin', 'commercial')`
-- [ ] Appliquer la migration
-- [ ] Tester insert avec valeur invalide (devrait être rejeté)
+- [x] Créer `supabase/migrations/20251110180000_add_role_check_constraint.sql`
+- [x] Vérifier les données existantes (aucune valeur invalide)
+- [x] Ajouter contrainte CHECK : `role IS NULL OR role IN ('admin', 'commercial')`
+- [x] Appliquer la migration
+- [x] Tester insert avec valeur invalide (devrait être rejeté)
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Contrainte ajoutée : ☐ Oui
-Valeurs existantes valides : ☐ Oui
-Test rejet valeur invalide : ☐ Passé
-Notes :
+Date : 2025-11-10
+Durée : 8 min
+Contrainte ajoutée : ☑ Oui
+Valeurs existantes valides : ☑ Oui (2 admin, 1 commercial, 1 NULL)
+Test rejet valeur invalide : ☑ Passé (erreur CHECK constraint comme attendu)
+Notes : - Migration créée dans supabase/migrations/20251110180000_add_role_check_constraint.sql
+        - Contrainte existante était INCORRECTE (n'acceptait pas NULL)
+        - Contrainte DROP puis recréée avec la bonne définition
+        - Nouvelle contrainte : CHECK ((role IS NULL) OR (role IN ('admin', 'commercial')))
+        - Commentaire ajouté sur la colonne pour documenter les rôles
+        - Test valeur invalide 'invalid_role' : ✅ REJETÉ (CHECK constraint violation)
+        - Rôles valides documentés : 'admin' (tous droits), 'commercial' (pricing/clients), NULL (viewer lecture seule)
+        - Prévention des typos et valeurs arbitraires garantie au niveau DB
 ```
 
 ---
