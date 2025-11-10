@@ -418,9 +418,52 @@ Notes : - Guide de test manuel créé : RLS_TEST_GUIDE.md
         - IMPORTANT : Ne pas créer users test en production sans backup
 ```
 
+#### Étape 0.3.7 : Uniformiser RLS policies restantes
+- [x] Créer `supabase/migrations/20251110170000_uniformize_remaining_rls_policies.sql`
+- [x] Remplacer policy "Admins can delete mapping history" sur brand_mapping_history par private.is_admin()
+- [x] Remplacer policy "Admins can manage all import batches" sur import_batches par private.is_admin()
+- [x] Appliquer la migration
+- [x] Vérifier que toutes les policies utilisent désormais private.* functions
+
+**Compte rendu** :
+```
+Date : 2025-11-10
+Durée : 10 min
+Policies uniformisées : ☑ brand_mapping_history ☑ import_batches
+Notes : - Migration créée dans supabase/migrations/20251110170000_uniformize_remaining_rls_policies.sql
+        - Migration appliquée en production via MCP execute_sql_query
+        - Policy "Admins can delete mapping history" : qual = private.is_admin() ✅
+        - Policy "Admins can manage all import batches" : qual = private.is_admin() ✅
+        - Vérification SQL : Toutes les policies admin utilisent maintenant private.is_admin()
+        - Cohérence totale avec étape 0.3 (clients, groups, cir_classifications)
+        - Plus aucune requête inline vers la table profiles dans les policies admin
+```
+
+#### Étape 0.3.8 : Ajouter contrainte CHECK sur profiles.role
+- [ ] Créer `supabase/migrations/20251110180000_add_role_check_constraint.sql`
+- [ ] Vérifier les données existantes (aucune valeur invalide)
+- [ ] Ajouter contrainte CHECK : `role IS NULL OR role IN ('admin', 'commercial')`
+- [ ] Appliquer la migration
+- [ ] Tester insert avec valeur invalide (devrait être rejeté)
+
+**Compte rendu** :
+```
+Date : _____________
+Durée : ______ min
+Contrainte ajoutée : ☐ Oui
+Valeurs existantes valides : ☐ Oui
+Test rejet valeur invalide : ☐ Passé
+Notes :
+```
+
 ---
 
 ### 0.4 Fixer 18 fonctions SQL `search_path`
+
+**⚠️ Note Importante** :
+- Total fonctions dans la base : 20
+- Déjà corrigées (search_path défini) : 2 (rollback_import_batch, update_client_contacts)
+- À corriger dans cette étape : 18 fonctions
 
 #### Étape 0.4.1 : Créer fichier migration pour search_path
 - [x] Créer `supabase/migrations/YYYYMMDDHHMMSS_fix_function_search_path.sql`
