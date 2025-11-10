@@ -44,6 +44,17 @@ export const api = {
     return data;
   },
 
+  async updateClientContacts(id: string, contacts: unknown) {
+    const { data, error } = await supabase
+      .rpc('update_client_contacts', {
+        client_id: id,
+        new_contacts: contacts
+      });
+
+    if (error) throw error;
+    return data;
+  },
+
   async deleteClient(id: string): Promise<void> {
     const { error } = await supabase
       .from('clients')

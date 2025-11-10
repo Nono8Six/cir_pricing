@@ -174,7 +174,7 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     setLoading(true);
@@ -185,6 +185,16 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
         contact.name.trim() !== '' || contact.email.trim() !== '' || contact.phone.trim() !== ''
       ) || [];
 
+      // Si viewOnly, on met à jour uniquement les contacts via RPC
+      if (viewOnly && client?.id) {
+        await api.updateClientContacts(client.id, cleanedContacts);
+        toast.success('Contacts mis à jour avec succès');
+        onSuccess();
+        onClose();
+        return;
+      }
+
+      // Sinon, mise à jour complète ou création
       const clientData = {
         name: formData.name,
         contacts: cleanedContacts as unknown as Json,
