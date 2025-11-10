@@ -643,7 +643,7 @@ Notes : Documentation CVE consultée, exigences mini notées pour la prochaine �
 
 #### Étape 0.5.2 : Tester compatibilité en local
 - [x] Créer branche Git : `git checkout -b fix/upgrade-xlsx` *(non créée : flux actuel sur `main`, à planifier pour les prochaines étapes)*
-- [x] `npm install xlsx@latest`
+  - [x] `npm install --workspace=frontend https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`
 - [x] `npm run type-check` → vérifier 0 erreurs
 - [x] `npm run build` → vérifier succès
 
@@ -651,9 +651,11 @@ Notes : Documentation CVE consultée, exigences mini notées pour la prochaine �
 ```
 Date : 2025-11-10
 Durée : 25 min
-Version installée : 0.18.5 (dernier tag disponible sur npm – aucune 0.19+/0.20+ publiée)
-Type-check : ✓ (`npm run type-check` côté frontend)
-Build : ✓ (`npm run build`, warning chunk >500 kB déjà connu)
+  Version installée : 0.20.3 (distribution officielle SheetJS via CDN)
+  Type-check : ✓ (`npm run type-check` côté frontend)
+  Build : ✓ (`npm run build`, warning chunk >500 kB déjà connu)
+  Notes : - Passage au package CDN résout les CVE (Prototype Pollution / ReDoS) en attendant une publication npm
+          - `npm fund` / `npm audit` → 0 vulnérabilités restantes
 Notes : mise à jour vers 0.20.x impossible tant que npm ne publie pas de version correspondante ; à surveiller
 ```
 

@@ -57,20 +57,20 @@ ALTER FUNCTION public.get_total_strategiques_count()
 -- 0.4.4 - Fonctions de récupération (2)
 --   * public.get_mappings_by_keys()
 --   * public.get_classifications_by_codes()
-ALTER FUNCTION public.get_mappings_by_keys()
+ALTER FUNCTION public.get_mappings_by_keys(text[])
   SET search_path = 'public, pg_temp';
 
-ALTER FUNCTION public.get_classifications_by_codes()
+ALTER FUNCTION public.get_classifications_by_codes(text[])
   SET search_path = 'public, pg_temp';
 --
 -- 0.4.5 - Fonctions de contexte import (3)
 --   * public.set_current_batch_id()
 --   * public.set_change_reason()
 --   * public.clear_audit_context()
-ALTER FUNCTION public.set_current_batch_id()
+ALTER FUNCTION public.set_current_batch_id(uuid)
   SET search_path = 'public, pg_temp';
 
-ALTER FUNCTION public.set_change_reason()
+ALTER FUNCTION public.set_change_reason(text)
   SET search_path = 'public, pg_temp';
 
 ALTER FUNCTION public.clear_audit_context()
