@@ -8,7 +8,8 @@ import {
   Trash2,
   Building,
   MapPin,
-  Filter
+  Filter,
+  Eye
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -55,6 +56,7 @@ export const Clients: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
+  const [viewOnly, setViewOnly] = useState(false);
 
   // Charger les données
   const fetchData = async () => {
@@ -94,12 +96,21 @@ export const Clients: React.FC = () => {
   // Ouvrir le modal pour créer un client
   const handleCreateClient = () => {
     setSelectedClient(null);
+    setViewOnly(false);
     setIsModalOpen(true);
   };
 
   // Ouvrir le modal pour modifier un client
   const handleEditClient = (client: Client) => {
     setSelectedClient(client);
+    setViewOnly(false);
+    setIsModalOpen(true);
+  };
+
+  // Ouvrir le modal pour voir les détails d'un client (lecture seule)
+  const handleViewClient = (client: Client) => {
+    setSelectedClient(client);
+    setViewOnly(true);
     setIsModalOpen(true);
   };
 
@@ -378,6 +389,13 @@ export const Clients: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end space-x-2">
+                          <button
+                            onClick={() => handleViewClient(client)}
+                            className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-50 transition-colors"
+                            title="Voir les détails"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
                           {canManageClients() && (
                             <button
                               onClick={() => handleEditClient(client)}
@@ -401,9 +419,6 @@ export const Clients: React.FC = () => {
                               )}
                             </button>
                           )}
-                          {!canManageClients() && !canDeleteClients() && (
-                            <span className="text-xs text-gray-400">Lecture seule</span>
-                          )}
                         </div>
                       </td>
                     </motion.tr>
@@ -415,12 +430,13 @@ export const Clients: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Modal de création/modification */}
+      {/* Modal de création/modification/visualisation */}
       <ClientFormModal
         isOpen={isModalOpen}
         onClose={handleModalClose}
         client={selectedClient}
         onSuccess={handleModalSuccess}
+        viewOnly={viewOnly}
       />
 
       {/* Commentaire pour évolutivité future */}

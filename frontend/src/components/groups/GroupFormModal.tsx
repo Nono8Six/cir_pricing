@@ -16,13 +16,15 @@ interface GroupFormModalProps {
   onClose: () => void;
   group?: Group | null;
   onSuccess: () => void;
+  viewOnly?: boolean;
 }
 
 export const GroupFormModal: React.FC<GroupFormModalProps> = ({
   isOpen,
   onClose,
   group,
-  onSuccess
+  onSuccess,
+  viewOnly = false
 }) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<Group>({
@@ -124,7 +126,7 @@ export const GroupFormModal: React.FC<GroupFormModalProps> = ({
                   <Building className="w-5 h-5 text-blue-600" />
                 </div>
                 <h2 className="text-xl font-semibold text-gray-900">
-                  {group?.id ? 'Modifier le groupement' : 'Nouveau groupement'}
+                  {viewOnly ? 'Détails du groupement' : group?.id ? 'Modifier le groupement' : 'Nouveau groupement'}
                 </h2>
               </div>
               <button
@@ -146,10 +148,11 @@ export const GroupFormModal: React.FC<GroupFormModalProps> = ({
                     type="text"
                     value={formData.name}
                     onChange={(e) => handleInputChange(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                     placeholder="Ex: Groupement Nord, Réseau Sud-Est..."
                     required
                     maxLength={100}
+                    disabled={viewOnly}
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Le nom doit être unique et contenir au moins 2 caractères
@@ -158,21 +161,32 @@ export const GroupFormModal: React.FC<GroupFormModalProps> = ({
 
                 {/* Boutons d'action */}
                 <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={onClose}
-                    disabled={loading}
-                  >
-                    Annuler
-                  </Button>
-                  <Button
-                    type="submit"
-                    loading={loading}
-                    className="min-w-[120px]"
-                  >
-                    {group?.id ? 'Modifier' : 'Créer'}
-                  </Button>
+                  {viewOnly ? (
+                    <Button
+                      type="button"
+                      onClick={onClose}
+                    >
+                      Fermer
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={onClose}
+                        disabled={loading}
+                      >
+                        Annuler
+                      </Button>
+                      <Button
+                        type="submit"
+                        loading={loading}
+                        className="min-w-[120px]"
+                      >
+                        {group?.id ? 'Modifier' : 'Créer'}
+                      </Button>
+                    </>
+                  )}
                 </div>
               </form>
             </CardContent>

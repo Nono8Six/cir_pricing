@@ -6,7 +6,8 @@ import {
   Search,
   Edit,
   Trash2,
-  Calendar
+  Calendar,
+  Eye
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -31,6 +32,7 @@ export const GroupsPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
+  const [viewOnly, setViewOnly] = useState(false);
 
   // Charger les groupes
   const fetchGroups = async () => {
@@ -60,12 +62,21 @@ export const GroupsPage: React.FC = () => {
   // Ouvrir le modal pour créer un groupe
   const handleCreateGroup = () => {
     setSelectedGroup(null);
+    setViewOnly(false);
     setIsModalOpen(true);
   };
 
   // Ouvrir le modal pour modifier un groupe
   const handleEditGroup = (group: Group) => {
     setSelectedGroup(group);
+    setViewOnly(false);
+    setIsModalOpen(true);
+  };
+
+  // Ouvrir le modal pour voir les détails d'un groupe (lecture seule)
+  const handleViewGroup = (group: Group) => {
+    setSelectedGroup(group);
+    setViewOnly(true);
     setIsModalOpen(true);
   };
 
@@ -266,6 +277,13 @@ export const GroupsPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end space-x-2">
+                          <button
+                            onClick={() => handleViewGroup(group)}
+                            className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-50 transition-colors"
+                            title="Voir les détails"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
                           {canManageGroups() && (
                             <>
                               <button
@@ -289,9 +307,6 @@ export const GroupsPage: React.FC = () => {
                               </button>
                             </>
                           )}
-                          {!canManageGroups() && (
-                            <span className="text-xs text-gray-400">Lecture seule</span>
-                          )}
                         </div>
                       </td>
                     </motion.tr>
@@ -303,12 +318,13 @@ export const GroupsPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Modal de création/modification */}
+      {/* Modal de création/modification/visualisation */}
       <GroupFormModal
         isOpen={isModalOpen}
         onClose={handleModalClose}
         group={selectedGroup}
         onSuccess={handleModalSuccess}
+        viewOnly={viewOnly}
       />
     </div>
   );

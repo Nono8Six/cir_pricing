@@ -37,13 +37,15 @@ interface ClientFormModalProps {
   onClose: () => void;
   client?: Client | null;
   onSuccess: () => void;
+  viewOnly?: boolean;
 }
 
 export const ClientFormModal: React.FC<ClientFormModalProps> = ({
   isOpen,
   onClose,
   client,
-  onSuccess
+  onSuccess,
+  viewOnly = false
 }) => {
   const [loading, setLoading] = useState(false);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -242,7 +244,7 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
           <Card className="shadow-2xl">
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <h2 className="text-xl font-semibold text-gray-900">
-                {client?.id ? 'Modifier le client' : 'Nouveau client'}
+                {viewOnly ? 'Détails du client' : client?.id ? 'Modifier le client' : 'Nouveau client'}
               </h2>
               <button
                 onClick={onClose}
@@ -264,9 +266,10 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
                       type="text"
                       value={formData.name}
                       onChange={(e) => handleInputChange('name', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                       placeholder="Nom de l'entreprise"
                       required
+                      disabled={viewOnly}
                     />
                   </div>
 
@@ -277,7 +280,8 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
                     <select
                       value={formData.group_id || ''}
                       onChange={(e) => handleInputChange('group_id', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
+                      disabled={viewOnly}
                     >
                       <option value="">Aucun groupement</option>
                       {groups.map(group => (
@@ -301,8 +305,9 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
                       type="text"
                       value={formData.address || ''}
                       onChange={(e) => handleInputChange('address', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                       placeholder="123 Rue de la Paix"
+                      disabled={viewOnly}
                     />
                   </div>
 
@@ -315,8 +320,9 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
                         type="text"
                         value={formData.city || ''}
                         onChange={(e) => handleInputChange('city', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                         placeholder="Paris"
+                        disabled={viewOnly}
                       />
                     </div>
 
@@ -328,8 +334,9 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
                         type="text"
                         value={formData.zip || ''}
                         onChange={(e) => handleInputChange('zip', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                         placeholder="75001"
+                        disabled={viewOnly}
                       />
                     </div>
 
@@ -341,8 +348,9 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
                         type="text"
                         value={formData.country || ''}
                         onChange={(e) => handleInputChange('country', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                         placeholder="France"
+                        disabled={viewOnly}
                       />
                     </div>
                   </div>
@@ -361,9 +369,10 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
                         type="text"
                         value={formData.siret || ''}
                         onChange={(e) => handleInputChange('siret', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                         placeholder="12345678901234"
                         maxLength={14}
+                        disabled={viewOnly}
                       />
                     </div>
 
@@ -375,8 +384,9 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
                         type="text"
                         value={formData.cir_account_number || ''}
                         onChange={(e) => handleInputChange('cir_account_number', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                         placeholder="CIR001"
+                        disabled={viewOnly}
                       />
                     </div>
 
@@ -388,8 +398,9 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
                         type="text"
                         value={formData.agency || ''}
                         onChange={(e) => handleInputChange('agency', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                         placeholder="Paris"
+                        disabled={viewOnly}
                       />
                     </div>
                   </div>
@@ -399,16 +410,18 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-medium text-gray-900">Contacts</h3>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={addContact}
-                      className="flex items-center space-x-2"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>Ajouter un contact</span>
-                    </Button>
+                    {!viewOnly && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addContact}
+                        className="flex items-center space-x-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Ajouter un contact</span>
+                      </Button>
+                    )}
                   </div>
 
                   {formData.contacts && formData.contacts.length > 0 && (
@@ -424,13 +437,15 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
                             <h4 className="text-sm font-medium text-gray-700">
                               Contact {index + 1}
                             </h4>
-                            <button
-                              type="button"
-                              onClick={() => removeContact(index)}
-                              className="p-1 text-red-500 hover:bg-red-50 rounded"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {!viewOnly && (
+                              <button
+                                type="button"
+                                onClick={() => removeContact(index)}
+                                className="p-1 text-red-500 hover:bg-red-50 rounded"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -440,8 +455,9 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
                                 type="text"
                                 value={contact.name}
                                 onChange={(e) => handleContactChange(index, 'name', e.target.value)}
-                                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                                 placeholder="Nom du contact"
+                                disabled={viewOnly}
                               />
                             </div>
 
@@ -451,8 +467,9 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
                                 type="email"
                                 value={contact.email}
                                 onChange={(e) => handleContactChange(index, 'email', e.target.value)}
-                                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                                 placeholder="email@exemple.com"
+                                disabled={viewOnly}
                               />
                             </div>
 
@@ -462,8 +479,9 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
                                 type="tel"
                                 value={contact.phone}
                                 onChange={(e) => handleContactChange(index, 'phone', e.target.value)}
-                                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                                 placeholder="01.23.45.67.89"
+                                disabled={viewOnly}
                               />
                             </div>
                           </div>
@@ -483,21 +501,32 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
 
                 {/* Boutons d'action */}
                 <div className="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={onClose}
-                    disabled={loading}
-                  >
-                    Annuler
-                  </Button>
-                  <Button
-                    type="submit"
-                    loading={loading}
-                    className="min-w-[120px]"
-                  >
-                    {client?.id ? 'Modifier' : 'Créer'}
-                  </Button>
+                  {viewOnly ? (
+                    <Button
+                      type="button"
+                      onClick={onClose}
+                    >
+                      Fermer
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={onClose}
+                        disabled={loading}
+                      >
+                        Annuler
+                      </Button>
+                      <Button
+                        type="submit"
+                        loading={loading}
+                        className="min-w-[120px]"
+                      >
+                        {client?.id ? 'Modifier' : 'Créer'}
+                      </Button>
+                    </>
+                  )}
                 </div>
               </form>
             </CardContent>
