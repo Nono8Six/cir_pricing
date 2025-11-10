@@ -14,13 +14,14 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { mappingApi, type BrandMapping } from '../lib/supabaseClient';
 import { useDebounce } from '../hooks/useDebounce';
-// Removed unused imports: ParseResult, BrandMappingOutput, useAuth
+import { useAuth } from '../context/AuthContext';
 
 // BrandMapping interface imported from supabaseClient.ts
 
 type TabType = 'mappings' | 'history' | 'analytics' | 'settings' | 'cir-browser';
 
 export const Mapping: React.FC = () => {
+  const { canManageMappings } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('mappings');
 
   // États pour les mappings
@@ -68,6 +69,15 @@ export const Mapping: React.FC = () => {
     { id: 'analytics' as TabType, label: 'Analyses', icon: BarChart3 },
     { id: 'settings' as TabType, label: 'Paramètres', icon: Settings }
   ];
+
+  // Filtrer les tabs selon les permissions (seuls les admins voient history, analytics, settings)
+  const visibleTabs = tabs.filter(tab => {
+    // Admin-only tabs
+    if (['history', 'analytics', 'settings'].includes(tab.id)) {
+      return canManageMappings();
+    }
+    return true; // mappings et cir-browser visibles pour tous
+  });
 
   // Helper function pour traiter les données avec auto-classification (removed - dead code)
 
@@ -480,13 +490,15 @@ export const Mapping: React.FC = () => {
               <FileSpreadsheet className="w-5 h-5" />
               <span>Mappings Segments ({totalCount})</span>
             </CardTitle>
-            <Button
-              onClick={handleCreateMapping}
-              className="flex items-center space-x-2"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Nouveau mapping</span>
-            </Button>
+            {canManageMappings() && (
+              <Button
+                onClick={handleCreateMapping}
+                className="flex items-center space-x-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Nouveau mapping</span>
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -577,7 +589,7 @@ export const Mapping: React.FC = () => {
         <CardContent className="p-0">
           <div className="border-b border-gray-200">
             <nav className="flex space-x-8 px-6" aria-label="Tabs">
-              {tabs.map((tab) => {
+              {visibleTabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (
