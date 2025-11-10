@@ -32,32 +32,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Helper function to fetch user profile
-  const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, email, role, first_name, last_name')
-        .eq('id', userId)
-        .single();
+  useEffect(() => {
+    let isMounted = true;
 
-      if (error) {
-        console.warn('Failed to fetch user profile:', error);
+    // Helper function to fetch user profile with timeout
+    const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
+      try {
+        // Add timeout to prevent infinite waiting (React Strict Mode race condition)
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Profile fetch timeout')), 5000);
+        });
+
+        const queryPromise = supabase
+          .from('profiles')
+          .select('id, email, role, first_name, last_name')
+          .eq('id', userId)
+          .single();
+
+        const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
+
+        if (error) {
+          console.warn('Failed to fetch user profile:', error);
+          return null;
+        }
+
+        return data as UserProfile;
+      } catch (error) {
+        console.warn('Error fetching profile:', error);
         return null;
       }
+    };
 
-      return data as UserProfile;
-    } catch (error) {
-      console.warn('Error fetching profile:', error);
-      return null;
-    }
-  };
-
-  useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (!isMounted) return;
 
         if (error) {
          console.warn('Session error:', error);
@@ -70,18 +81,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (session?.user) {
           setUser(session.user);
           const userProfile = await fetchUserProfile(session.user.id);
-          setProfile(userProfile);
+          if (isMounted) {
+            setProfile(userProfile);
+          }
        } else {
          setUser(null);
          setProfile(null);
         }
 
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       } catch (error) {
        console.warn('Failed to get initial session:', error);
-       setUser(null);
-       setProfile(null);
-        setLoading(false);
+       if (isMounted) {
+         setUser(null);
+         setProfile(null);
+          setLoading(false);
+        }
       }
     };
 
@@ -89,23 +106,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+
       if (event === 'SIGNED_IN' && session?.user) {
         setUser(session.user);
         const userProfile = await fetchUserProfile(session.user.id);
-        setProfile(userProfile);
+        if (isMounted) {
+          setProfile(userProfile);
+        }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setProfile(null);
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
         setUser(session.user);
         const userProfile = await fetchUserProfile(session.user.id);
-        setProfile(userProfile);
+        if (isMounted) {
+          setProfile(userProfile);
+        }
       }
 
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     });
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
   }, []);
