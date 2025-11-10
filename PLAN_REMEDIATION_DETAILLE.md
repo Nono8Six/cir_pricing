@@ -507,13 +507,12 @@ Notes : - Migration créée dans supabase/migrations/20251110190000_refactor_rol
 **Compte rendu** :
 ```
 Date : 2025-11-10
-Nom fichier : 20251110160000_fix_function_search_path.sql
-Durée : 5 min
-Notes : - Fichier créé dans supabase/migrations/
-        - En-tête complet avec description et liste des 18 fonctions concernées
-        - Prêt pour les étapes suivantes (0.4.2 à 0.4.7)
-        - Placeholder SELECT ajouté pour garder le fichier SQL valide
-        - Les commandes ALTER FUNCTION seront ajoutées progressivement dans les prochaines étapes
+Durée : 15 min
+Résultat : Fichier 20251110160000_fix_function_search_path.sql prêt, avec plan détaillé par sous-étape
+Notes : - Vérification via Supabase Advisors : 18 fonctions toujours flaggées (baseline avant correctifs)
+        - Ajout d'une section par sous-étape (0.4.2 → 0.4.7) listant les fonctions attendues
+        - Placeholder SELECT conservé pour garder le fichier valide tant que les ALTER FUNCTION ne sont pas appliqués
+        - Servira de support unique pour les futures sous-étapes search_path
 ```
 
 #### Étape 0.4.2 : Fixer fonctions `private` (2 fonctions)

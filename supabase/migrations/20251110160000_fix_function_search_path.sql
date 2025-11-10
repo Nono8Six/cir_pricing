@@ -28,6 +28,41 @@
 -- Total: 18 fonctions
 --
 -- Les étapes suivantes (0.4.2 à 0.4.7) ajouteront les ALTER FUNCTION correspondants.
+--
+-- ---------------------------------------------------------------------------
+-- Plan d'exécution détaillé (à compléter dans les sous-étapes suivantes)
+-- ---------------------------------------------------------------------------
+-- 0.4.2 - Fonctions private (2)
+--   * private.is_admin()
+--   * private.can_manage_pricing()
+--
+-- 0.4.3 - Fonctions de comptage (3)
+--   * public.get_total_segments_count()
+--   * public.get_total_marques_count()
+--   * public.get_total_strategiques_count()
+--
+-- 0.4.4 - Fonctions de récupération (2)
+--   * public.get_mappings_by_keys()
+--   * public.get_classifications_by_codes()
+--
+-- 0.4.5 - Fonctions de contexte import (3)
+--   * public.set_current_batch_id()
+--   * public.set_change_reason()
+--   * public.clear_audit_context()
+--
+-- 0.4.6 - Fonctions de références hiérarchiques (5)
+--   * public.get_all_unique_segments()
+--   * public.get_all_unique_marques()
+--   * public.get_all_unique_fsmegas()
+--   * public.get_all_unique_fsfams()
+--   * public.get_all_unique_fssfas()
+--
+-- 0.4.7 - Fonctions utilitaires / triggers (3)
+--   * public.update_updated_at_column()
+--   * public.audit_brand_mapping_changes()
+--   * public.audit_brand_mapping_insert()
+--
+-- Chaque bloc appliquera : ALTER FUNCTION ... SECURITY DEFINER SET search_path = public, pg_temp;
 
 -- Ce fichier sert de squelette pour les étapes suivantes.
 -- Les commandes ALTER FUNCTION seront ajoutées dans les étapes 0.4.2 à 0.4.7.
