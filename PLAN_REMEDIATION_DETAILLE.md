@@ -463,6 +463,34 @@ Notes : - Migration créée dans supabase/migrations/20251110180000_add_role_che
         - Prévention des typos et valeurs arbitraires garantie au niveau DB
 ```
 
+#### Étape 0.3.9 : Refonte des rôles (éliminer NULL)
+- [x] Créer `supabase/migrations/20251110190000_refactor_roles.sql`
+- [x] Migrer données : NULL → 'technico_commercial', 'commercial' → 'responsable'
+- [x] Mettre à jour contrainte CHECK : `role IN ('admin', 'responsable', 'technico_commercial')`
+- [x] Mettre à jour fonction `private.can_manage_pricing()` pour utiliser 'responsable'
+- [x] Mettre à jour commentaires et documentation
+- [x] Vérifier toutes les données migrées correctement
+
+**Compte rendu** :
+```
+Date : 2025-11-10
+Durée : 15 min
+Rôles migrés : ☑ NULL→technico_commercial ☑ commercial→responsable
+Fonction mise à jour : ☑ private.can_manage_pricing() (admin + responsable)
+Contrainte CHECK : ☑ Mise à jour (3 rôles explicites)
+Notes : - Migration créée dans supabase/migrations/20251110190000_refactor_roles.sql
+        - Élimination complète de NULL (dangereux et ambiguë)
+        - Nouvelle structure: 'admin', 'responsable', 'technico_commercial'
+        - Données migrées : 2 admin, 1 responsable (ancien commercial), 1 technico_commercial (ancien NULL)
+        - Colonne role maintenant NOT NULL (obligatoire)
+        - Contrainte CHECK : role IN ('admin', 'responsable', 'technico_commercial')
+        - Fonction can_manage_pricing() mise à jour : admin + responsable
+        - Frontend TypeScript mis à jour (AuthContext.tsx)
+        - Permissions responsable : gestion clients/prices, imports, mappings CIR
+        - Permissions technico_commercial : lecture seule (consultation uniquement)
+        - Alignement métier CIR : administrateurs IT, responsables commerciaux, technico-commerciaux terrain
+```
+
 ---
 
 ### 0.4 Fixer 18 fonctions SQL `search_path`

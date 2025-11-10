@@ -5,7 +5,7 @@ import type { User } from '@supabase/supabase-js';
 interface UserProfile {
   id: string;
   email: string;
-  role: 'admin' | 'commercial' | null;
+  role: 'admin' | 'responsable' | 'technico_commercial';
   first_name: string | null;
   last_name: string | null;
 }
@@ -240,8 +240,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const canManageClients = (): boolean => {
-    // Admin or commercial can manage clients (create/update)
-    return profile?.role === 'admin' || profile?.role === 'commercial';
+    // Admin or responsable can manage clients (create/update)
+    return profile?.role === 'admin' || profile?.role === 'responsable';
   };
 
   const canDeleteClients = (): boolean => {
@@ -260,13 +260,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const canManageImports = (): boolean => {
-    // Only admin can manage imports
-    return profile?.role === 'admin';
+    // Admin and responsable can manage imports
+    return profile?.role === 'admin' || profile?.role === 'responsable';
   };
 
   const canManageMappings = (): boolean => {
-    // Only admin can create mappings and access settings/history
-    return profile?.role === 'admin';
+    // Admin and responsable can create mappings and access settings/history
+    return profile?.role === 'admin' || profile?.role === 'responsable';
   };
 
   const value = {
