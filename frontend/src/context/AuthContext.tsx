@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/api';
-import type { User } from '@supabase/supabase-js';
+import type { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 
 interface UserProfile {
   id: string;
@@ -33,104 +33,77 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const activeProfileUserId = useRef<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
-    // Helper function to fetch user profile with timeout
-    const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
-      try {
-        // Add timeout to prevent infinite waiting (React Strict Mode race condition)
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Profile fetch timeout')), 5000);
-        });
+    const loadUserProfile = async (userId: string): Promise<void> => {
+      activeProfileUserId.current = userId;
 
-        const queryPromise = supabase
+      try {
+        const { data, error } = await supabase
           .from('profiles')
           .select('id, email, role, first_name, last_name')
           .eq('id', userId)
           .single();
 
-        const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
-
         if (error) {
-          console.warn('Failed to fetch user profile:', error);
-          return null;
-        }
-
-        return data as UserProfile;
-      } catch (error) {
-        console.warn('Error fetching profile:', error);
-        return null;
-      }
-    };
-
-    // Get initial session
-    const getInitialSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-
-        if (!isMounted) return;
-
-        if (error) {
-         console.warn('Session error:', error);
-         setUser(null);
-         setProfile(null);
-          setLoading(false);
+          console.error('Failed to fetch user profile:', error);
+          if (isMounted && activeProfileUserId.current === userId) {
+            setProfile(null);
+          }
           return;
         }
 
-        if (session?.user) {
-          setUser(session.user);
-          const userProfile = await fetchUserProfile(session.user.id);
-          if (isMounted) {
-            setProfile(userProfile);
-          }
-       } else {
-         setUser(null);
-         setProfile(null);
-        }
-
-        if (isMounted) {
-          setLoading(false);
+        if (isMounted && activeProfileUserId.current === userId) {
+          setProfile(data as UserProfile);
         }
       } catch (error) {
-       console.warn('Failed to get initial session:', error);
-       if (isMounted) {
-         setUser(null);
-         setProfile(null);
+        console.error('Error fetching profile:', error);
+        if (isMounted && activeProfileUserId.current === userId) {
+          setProfile(null);
+        }
+      }
+    };
+
+    const applySessionState = (session: Session | null): void => {
+      if (!isMounted) return;
+
+      if (session?.user) {
+        setUser(session.user);
+        void loadUserProfile(session.user.id);
+      } else {
+        activeProfileUserId.current = null;
+        setUser(null);
+        setProfile(null);
+      }
+
+      setLoading(false);
+    };
+
+    const bootstrapSession = async (): Promise<void> => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          throw error;
+        }
+        applySessionState(data.session);
+      } catch (error) {
+        console.error('Error checking initial session:', error);
+        if (isMounted) {
           setLoading(false);
         }
       }
     };
 
-    getInitialSession();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!isMounted) return;
-
-      if (event === 'SIGNED_IN' && session?.user) {
-        setUser(session.user);
-        const userProfile = await fetchUserProfile(session.user.id);
-        if (isMounted) {
-          setProfile(userProfile);
-        }
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setProfile(null);
-      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-        setUser(session.user);
-        const userProfile = await fetchUserProfile(session.user.id);
-        if (isMounted) {
-          setProfile(userProfile);
-        }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event: AuthChangeEvent, session: Session | null) => {
+        applySessionState(session);
       }
+    );
 
-      if (isMounted) {
-        setLoading(false);
-      }
-    });
+    void bootstrapSession();
 
     return () => {
       isMounted = false;
