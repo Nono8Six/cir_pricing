@@ -21,7 +21,7 @@ export const MappingModal: React.FC<MappingModalProps> = ({
   onClose,
   mapping,
   onSuccess,
-  viewOnly: _viewOnly = false // TODO: Implement viewOnly logic (disable fields, hide save button)
+  viewOnly = false
 }) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<MappingFormData>({
@@ -200,7 +200,7 @@ export const MappingModal: React.FC<MappingModalProps> = ({
                   <FileSpreadsheet className="w-5 h-5 text-blue-600" />
                 </div>
                 <h2 className="text-xl font-semibold text-gray-900">
-                  {mapping?.id ? 'Modifier le mapping' : 'Nouveau mapping'}
+                  {viewOnly ? 'Détails du mapping' : (mapping?.id ? 'Modifier le mapping' : 'Nouveau mapping')}
                 </h2>
               </div>
               <button
@@ -223,9 +223,10 @@ export const MappingModal: React.FC<MappingModalProps> = ({
                       type="text"
                       value={formData.segment}
                       onChange={(e) => handleInputChange('segment', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                       placeholder="007"
                       required
+                      disabled={viewOnly}
                     />
                   </div>
 
@@ -237,9 +238,10 @@ export const MappingModal: React.FC<MappingModalProps> = ({
                       type="text"
                       value={formData.marque}
                       onChange={(e) => handleInputChange('marque', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                       placeholder="SKF"
                       required
+                      disabled={viewOnly}
                     />
                   </div>
                 </div>
@@ -254,9 +256,10 @@ export const MappingModal: React.FC<MappingModalProps> = ({
                       type="text"
                       value={formData.cat_fab}
                       onChange={(e) => handleInputChange('cat_fab', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                       placeholder="Z16"
                       required
+                      disabled={viewOnly}
                     />
                   </div>
 
@@ -268,8 +271,9 @@ export const MappingModal: React.FC<MappingModalProps> = ({
                       type="text"
                       value={formData.cat_fab_l || ''}
                       onChange={(e) => handleInputChange('cat_fab_l', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                       placeholder="CARB (ex MSERV - MSERV)"
+                      disabled={viewOnly}
                     />
                   </div>
                 </div>
@@ -283,7 +287,8 @@ export const MappingModal: React.FC<MappingModalProps> = ({
                     <select
                       value={formData.strategiq}
                       onChange={(e) => handleInputChange('strategiq', parseInt(e.target.value))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
+                      disabled={viewOnly}
                     >
                       <option value={0}>Non (0)</option>
                       <option value={1}>Oui (1)</option>
@@ -298,8 +303,9 @@ export const MappingModal: React.FC<MappingModalProps> = ({
                       type="text"
                       value={formData.codif_fair || ''}
                       onChange={(e) => handleInputChange('codif_fair', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                       placeholder="SKF_16"
+                      disabled={viewOnly}
                     />
                   </div>
                 </div>
@@ -319,8 +325,9 @@ export const MappingModal: React.FC<MappingModalProps> = ({
                         max="999"
                         value={formData.fsmega}
                         onChange={(e) => handleInputChange('fsmega', parseInt(e.target.value) || 1)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                         required
+                        disabled={viewOnly}
                       />
                     </div>
 
@@ -334,8 +341,9 @@ export const MappingModal: React.FC<MappingModalProps> = ({
                         max="999"
                         value={formData.fsfam}
                         onChange={(e) => handleInputChange('fsfam', parseInt(e.target.value) || 99)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                         required
+                        disabled={viewOnly}
                       />
                     </div>
 
@@ -349,8 +357,9 @@ export const MappingModal: React.FC<MappingModalProps> = ({
                         max="999"
                         value={formData.fssfa}
                         onChange={(e) => handleInputChange('fssfa', parseInt(e.target.value) || 99)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                         required
+                        disabled={viewOnly}
                       />
                     </div>
                   </div>
@@ -379,15 +388,17 @@ export const MappingModal: React.FC<MappingModalProps> = ({
                     onClick={onClose}
                     disabled={loading}
                   >
-                    Annuler
+                    {viewOnly ? 'Fermer' : 'Annuler'}
                   </Button>
-                  <Button
-                    type="submit"
-                    loading={loading}
-                    className="min-w-[120px]"
-                  >
-                    {mapping?.id ? 'Modifier' : 'Créer'}
-                  </Button>
+                  {!viewOnly && (
+                    <Button
+                      type="submit"
+                      loading={loading}
+                      className="min-w-[120px]"
+                    >
+                      {mapping?.id ? 'Modifier' : 'Créer'}
+                    </Button>
+                  )}
                 </div>
               </form>
             </CardContent>
