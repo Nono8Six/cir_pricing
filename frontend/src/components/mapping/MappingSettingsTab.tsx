@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Settings,
@@ -13,11 +13,13 @@ import {
   Lock,
   Unlock
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { toast } from 'sonner';
-import { supabase } from '../../lib/api';
 import { mappingApi } from '../../lib/supabaseClient';
+import type { BrandMapping } from '../../lib/supabaseClient';
+import { mappingAdminToolsApi } from '../../lib/api/mappingAdminTools';
+import { useAuth } from '../../context/AuthContext';
 
 interface SystemSettings {
   autoClassificationEnabled: boolean;
@@ -35,7 +37,58 @@ interface DatabaseStats {
   lastBackup: string;
 }
 
+type AdminAction = 'saveSettings' | 'cleanupHistory' | 'purgeHistory' | 'purgeAllData' | 'exportData';
+
+const DEFAULT_DB_STATS: DatabaseStats = {
+  totalMappings: 0,
+  totalBatches: 0,
+  totalHistoryRecords: 0,
+  databaseSize: '0 MB',
+  lastBackup: 'Jamais'
+};
+
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return 'Une erreur inconnue est survenue';
+};
+
+interface ConfirmActionOptions {
+  title: string;
+  description: string;
+  actionLabel: string;
+  onConfirm: () => Promise<void>;
+}
+
+const confirmDestructiveAction = ({ title, description, actionLabel, onConfirm }: ConfirmActionOptions): void => {
+  toast(title, {
+    description,
+    action: {
+      label: actionLabel,
+      onClick: () => {
+        void onConfirm();
+      }
+    },
+    cancel: {
+      label: 'Annuler',
+      onClick: () => undefined
+    }
+  });
+};
+
+const formatDateTime = (isoString: string | null): string => {
+  if (!isoString) {
+    return 'Non renseigné';
+  }
+
+  return new Date(isoString).toLocaleString('fr-FR');
+};
+
 export const MappingSettingsTab: React.FC = () => {
+  const { isAdmin } = useAuth();
+  const isAdminUser = isAdmin();
+
   const [settings, setSettings] = useState<SystemSettings>({
     autoClassificationEnabled: true,
     batchSizeLimit: 10000,
@@ -44,164 +97,183 @@ export const MappingSettingsTab: React.FC = () => {
     requireApprovalForBulkChanges: true
   });
 
-  const [dbStats, setDbStats] = useState<DatabaseStats>({
-    totalMappings: 0,
-    totalBatches: 0,
-    totalHistoryRecords: 0,
-    databaseSize: '0 MB',
-    lastBackup: 'Jamais'
-  });
-
-  const [loading, setLoading] = useState(false);
+  const [dbStats, setDbStats] = useState<DatabaseStats>(DEFAULT_DB_STATS);
+  const [statsLoading, setStatsLoading] = useState<boolean>(true);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
 
+  const [actionLoading, setActionLoading] = useState<Record<AdminAction, boolean>>({
+    saveSettings: false,
+    cleanupHistory: false,
+    purgeHistory: false,
+    purgeAllData: false,
+    exportData: false
+  });
+
   useEffect(() => {
-    fetchDatabaseStats();
+    void fetchDatabaseStats();
     loadSettings();
   }, []);
 
-  const loadSettings = () => {
-    // Charger les paramètres depuis le localStorage ou l'API
-    const savedSettings = localStorage.getItem('mappingSettings');
-    if (savedSettings) {
-      setSettings(JSON.parse(savedSettings));
-    }
+  const setActionLoadingState = (action: AdminAction, isLoading: boolean): void => {
+    setActionLoading(prev => ({ ...prev, [action]: isLoading }));
   };
 
-  const saveSettings = async () => {
+  const assertAdminAccess = (): boolean => {
+    if (isAdminUser) {
+      return true;
+    }
+
+    toast.error('Accès refusé', {
+      description: 'Seuls les administrateurs peuvent utiliser ces outils.'
+    });
+    return false;
+  };
+
+  const loadSettings = (): void => {
     try {
-      setLoading(true);
-      
-      // Sauvegarder dans le localStorage (en production, utiliser une API)
-      localStorage.setItem('mappingSettings', JSON.stringify(settings));
-      
-      toast.success('Paramètres sauvegardés avec succès');
+      const savedSettings = localStorage.getItem('mappingSettings');
+      if (savedSettings) {
+        setSettings(JSON.parse(savedSettings) as SystemSettings);
+      }
     } catch (error) {
-      console.error('Erreur sauvegarde paramètres:', error);
-      toast.error('Erreur lors de la sauvegarde');
-    } finally {
-      setLoading(false);
+      toast.error('Impossible de charger les paramètres locaux', {
+        description: getErrorMessage(error)
+      });
     }
   };
 
-  const fetchDatabaseStats = async () => {
+  const saveSettings = (): void => {
+    if (!assertAdminAccess()) return;
+
+    setActionLoadingState('saveSettings', true);
+
     try {
-      const [mappingsResult, batchesResult, historyResult] = await Promise.all([
-        mappingApi.getMappings({}, 1, 1),
-        supabase.from('import_batches').select('*', { count: 'exact', head: true }),
-        supabase.from('brand_mapping_history').select('*', { count: 'exact', head: true })
-      ]);
+      localStorage.setItem('mappingSettings', JSON.stringify(settings));
+      toast.success('Paramètres sauvegardés', {
+        description: 'Les préférences locales ont été mises à jour.'
+      });
+    } catch (error) {
+      toast.error('Erreur lors de la sauvegarde', {
+        description: getErrorMessage(error)
+      });
+    } finally {
+      setActionLoadingState('saveSettings', false);
+    }
+  };
+
+  const fetchDatabaseStats = async (): Promise<void> => {
+    try {
+      setStatsLoading(true);
+      const stats = await mappingAdminToolsApi.fetchDatabaseStats();
 
       setDbStats({
-        totalMappings: mappingsResult.count || 0,
-        totalBatches: batchesResult.count || 0,
-        totalHistoryRecords: historyResult.count || 0,
-        databaseSize: '~' + Math.round((mappingsResult.count || 0) * 0.5) + ' MB', // Estimation
-        lastBackup: new Date().toLocaleDateString('fr-FR')
+        totalMappings: stats.totalMappings,
+        totalBatches: stats.totalImportBatches,
+        totalHistoryRecords: stats.totalHistoryRecords,
+        databaseSize: `~${stats.databaseSizeMb.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} MB`,
+        lastBackup: formatDateTime(stats.lastBackupAt)
       });
-
     } catch (error) {
-      console.error('Erreur chargement stats DB:', error);
+      toast.error('Impossible de charger les statistiques', {
+        description: getErrorMessage(error)
+      });
+      setDbStats(DEFAULT_DB_STATS);
+    } finally {
+      setStatsLoading(false);
     }
   };
 
-  const handleCleanupHistory = async () => {
-    toast(`Nettoyer l'historique de plus de ${settings.auditRetentionDays} jours ?`, {
-      description: "Cette action supprimera définitivement les anciens enregistrements d'audit.",
-      action: {
-        label: "Confirmer",
-        onClick: async () => {
-          try {
-            setLoading(true);
-            
-            const cutoffDate = new Date();
-            cutoffDate.setDate(cutoffDate.getDate() - settings.auditRetentionDays);
-            
-            const { error } = await supabase
-              .from('brand_mapping_history')
-              .delete()
-              .lt('changed_at', cutoffDate.toISOString());
+  const handleCleanupHistory = (): void => {
+    if (!assertAdminAccess()) return;
 
-            if (error) throw error;
-
-            toast.success('Historique ancien nettoyé avec succès');
-            fetchDatabaseStats();
-          } catch (error) {
-            console.error('Erreur nettoyage historique:', error);
-            toast.error('Erreur lors du nettoyage de l\'historique');
-          } finally {
-            setLoading(false);
-          }
-        },
-      },
-      cancel: {
-        label: "Annuler",
-        onClick: () => {},
-      },
+    confirmDestructiveAction({
+      title: `Nettoyer l'historique de plus de ${settings.auditRetentionDays} jours ?`,
+      description: 'Cette action supprimera définitivement les enregistrements obsolètes.',
+      actionLabel: 'Confirmer',
+      onConfirm: async () => {
+        try {
+          setActionLoadingState('cleanupHistory', true);
+          const result = await mappingAdminToolsApi.cleanupHistory(settings.auditRetentionDays);
+          toast.success('Historique nettoyé', {
+            description: `${result.deletedRows.toLocaleString('fr-FR')} lignes supprimées.`
+          });
+          await fetchDatabaseStats();
+        } catch (error) {
+          toast.error('Échec du nettoyage de l’historique', {
+            description: getErrorMessage(error)
+          });
+        } finally {
+          setActionLoadingState('cleanupHistory', false);
+        }
+      }
     });
   };
 
-  const handlePurgeHistory = async () => {
-    toast('⚠️ Supprimer TOUT l\'historique des modifications ?', {
-      description: "Cette action supprimera définitivement TOUS les enregistrements d'historique. Cette action est IRRÉVERSIBLE.",
-      action: {
-        label: "CONFIRMER LA SUPPRESSION",
-        onClick: async () => {
-          try {
-            setLoading(true);
-            
-            // Supprimer TOUS les enregistrements sans condition
-            const { error } = await supabase
-              .from('brand_mapping_history')
-              .delete()
-              .neq('history_id', '');
+  const handlePurgeHistory = (): void => {
+    if (!assertAdminAccess()) return;
 
-            if (error) throw error;
-
-            toast.success(`🗑️ TOUS les enregistrements d'historique ont été supprimés`);
-            fetchDatabaseStats();
-          } catch (error) {
-            console.error('Erreur suppression historique:', error);
-            toast.error('Erreur lors de la suppression de l\'historique');
-          } finally {
-            setLoading(false);
-          }
-        },
-      },
-      cancel: {
-        label: "Annuler",
-        onClick: () => {},
-      },
+    confirmDestructiveAction({
+      title: 'Supprimer TOUT l’historique des modifications ?',
+      description: 'Cette action est irréversible.',
+      actionLabel: 'Confirmer la suppression',
+      onConfirm: async () => {
+        try {
+          setActionLoadingState('purgeHistory', true);
+          const result = await mappingAdminToolsApi.purgeHistory();
+          toast.success('Historique purgé', {
+            description: `${result.deletedRows.toLocaleString('fr-FR')} lignes supprimées.`
+          });
+          await fetchDatabaseStats();
+        } catch (error) {
+          toast.error('Échec de la purge de l’historique', {
+            description: getErrorMessage(error)
+          });
+        } finally {
+          setActionLoadingState('purgeHistory', false);
+        }
+      }
     });
   };
 
-  const handleExportData = async () => {
+  const handleExportData = async (): Promise<void> => {
+    if (!assertAdminAccess()) return;
+
     try {
-      setLoading(true);
-      
-      // Récupérer toutes les données
+      setActionLoadingState('exportData', true);
       const allMappings = await mappingApi.getAllBrandCategoryMappings();
-      
-      // Créer le fichier CSV
-      const headers = [
-        'segment', 'marque', 'cat_fab', 'cat_fab_l', 'strategiq', 
-        'codif_fair', 'fsmega', 'fsfam', 'fssfa', 'classif_cir',
-        'source_type', 'created_at'
+
+      const headers: (keyof BrandMapping)[] = [
+        'segment',
+        'marque',
+        'cat_fab',
+        'cat_fab_l',
+        'strategiq',
+        'codif_fair',
+        'fsmega',
+        'fsfam',
+        'fssfa',
+        'classif_cir',
+        'source_type',
+        'created_at'
       ];
-      
+
       const csvContent = [
         headers.join(','),
-        ...allMappings.map(mapping => 
-          headers.map(header => {
-            const value = mapping[header as keyof typeof mapping];
-            return typeof value === 'string' && value.includes(',') 
-              ? `"${value}"` 
-              : value || '';
-          }).join(',')
+        ...allMappings.map(mapping =>
+          headers
+            .map(header => {
+              const value = mapping[header];
+              if (value === null || value === undefined) {
+                return '';
+              }
+              return typeof value === 'string' && value.includes(',')
+                ? `"${value}"`
+                : `${value}`;
+            })
+            .join(',')
         )
       ].join('\n');
 
-      // Télécharger le fichier
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
@@ -212,83 +284,113 @@ export const MappingSettingsTab: React.FC = () => {
       link.click();
       document.body.removeChild(link);
 
-      toast.success('Export terminé avec succès');
+      toast.success('Export terminé', {
+        description: `${allMappings.length.toLocaleString('fr-FR')} lignes exportées.`
+      });
     } catch (error) {
-      console.error('Erreur export:', error);
-      toast.error('Erreur lors de l\'export');
+      toast.error('Erreur lors de l’export', {
+        description: getErrorMessage(error)
+      });
     } finally {
-      setLoading(false);
+      setActionLoadingState('exportData', false);
     }
   };
 
-  const handlePurgeAllData = async () => {
-    toast('⚠️ ATTENTION : Supprimer TOUTES les données de mapping ?', {
-      description: "Cette action supprimera définitivement tous les mappings, l'historique et les imports. Cette action est IRRÉVERSIBLE.",
-      action: {
-        label: "CONFIRMER LA SUPPRESSION",
-        onClick: async () => {
-          try {
-            setLoading(true);
-            
-            // Supprimer dans l'ordre pour respecter les contraintes de clés étrangères
-            await supabase.from('brand_mapping_history').delete().neq('history_id', '00000000-0000-0000-0000-000000000000');
-            await supabase.from('brand_category_mappings').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-            await supabase.from('import_batches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-            
-            toast.success('🗑️ Toutes les données ont été supprimées');
-            
-            // Recharger les statistiques
-            fetchDatabaseStats();
-          } catch (error) {
-            console.error('Erreur suppression données:', error);
-            toast.error('Erreur lors de la suppression des données');
-          } finally {
-            setLoading(false);
-          }
-        },
-      },
-      cancel: {
-        label: "Annuler",
-        onClick: () => {},
-      },
+  const handlePurgeAllData = (): void => {
+    if (!assertAdminAccess()) return;
+
+    confirmDestructiveAction({
+      title: 'Supprimer TOUTES les données de mapping ?',
+      description: 'Cette opération supprimera les mappings, l’historique et les imports.',
+      actionLabel: 'CONFIRMER',
+      onConfirm: async () => {
+        try {
+          setActionLoadingState('purgeAllData', true);
+          const result = await mappingAdminToolsApi.purgeAllData();
+          toast.success('Base de données purgée', {
+            description: [
+              `${result.deletedMappingRows.toLocaleString('fr-FR')} mappings`,
+              `${result.deletedHistoryRows.toLocaleString('fr-FR')} historiques`,
+              `${result.deletedImportBatches.toLocaleString('fr-FR')} imports`
+            ].join(' · ')
+          });
+          await fetchDatabaseStats();
+        } catch (error) {
+          toast.error('Échec de la purge des données', {
+            description: getErrorMessage(error)
+          });
+        } finally {
+          setActionLoadingState('purgeAllData', false);
+        }
+      }
     });
   };
 
+  const statCards = [
+    {
+      label: 'Mappings',
+      value: dbStats.totalMappings.toLocaleString('fr-FR'),
+      icon: FileSpreadsheet,
+      bgClass: 'bg-blue-50',
+      textClass: 'text-blue-600'
+    },
+    {
+      label: 'Imports',
+      value: dbStats.totalBatches.toLocaleString('fr-FR'),
+      icon: Upload,
+      bgClass: 'bg-green-50',
+      textClass: 'text-green-600'
+    },
+    {
+      label: 'Historique',
+      value: dbStats.totalHistoryRecords.toLocaleString('fr-FR'),
+      icon: Shield,
+      bgClass: 'bg-purple-50',
+      textClass: 'text-purple-600'
+    },
+    {
+      label: 'Taille DB',
+      value: dbStats.databaseSize,
+      icon: Database,
+      bgClass: 'bg-orange-50',
+      textClass: 'text-orange-600'
+    }
+  ];
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">
-            Paramètres et Administration
-          </h2>
-          <p className="text-gray-600">
-            Configuration système et outils d'administration
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Paramètres et Administration</h2>
+          <p className="text-gray-600">Configuration système et outils d'administration</p>
+        </div>
+
+        {isAdminUser ? (
+          <div className="flex items-center space-x-3">
+            <Button
+              onClick={() => {
+                if (!assertAdminAccess()) return;
+                setMaintenanceMode(prev => !prev);
+              }}
+              variant={maintenanceMode ? 'outline' : 'secondary'}
+              className="flex items-center space-x-2"
+            >
+              {maintenanceMode ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+              <span>{maintenanceMode ? 'Désactiver' : 'Activer'} maintenance</span>
+            </Button>
+
+            <Button onClick={saveSettings} loading={actionLoading.saveSettings} className="flex items-center space-x-2">
+              <CheckCircle className="w-4 h-4" />
+              <span>Sauvegarder</span>
+            </Button>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500 italic">
+            Les actions sensibles sont réservées aux administrateurs.
           </p>
-        </div>
-        
-        <div className="flex items-center space-x-3">
-          <Button
-            onClick={() => setMaintenanceMode(!maintenanceMode)}
-            variant={maintenanceMode ? "outline" : "secondary"}
-            className="flex items-center space-x-2"
-          >
-            {maintenanceMode ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-            <span>{maintenanceMode ? 'Désactiver' : 'Activer'} maintenance</span>
-          </Button>
-          
-          <Button
-            onClick={saveSettings}
-            loading={loading}
-            className="flex items-center space-x-2"
-          >
-            <CheckCircle className="w-4 h-4" />
-            <span>Sauvegarder</span>
-          </Button>
-        </div>
+        )}
       </div>
 
-      {/* Mode maintenance */}
       {maintenanceMode && (
         <Card className="border-orange-200 bg-orange-50">
           <CardContent className="p-4">
@@ -305,60 +407,40 @@ export const MappingSettingsTab: React.FC = () => {
         </Card>
       )}
 
-      {/* Statistiques de la base de données */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center space-x-2">
             <Database className="w-5 h-5" />
             <span>Statistiques de la base de données</span>
           </CardTitle>
+          <Button variant="ghost" size="sm" onClick={() => void fetchDatabaseStats()} loading={statsLoading}>
+            Rafraîchir
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-blue-50 rounded-lg p-4">
-              <div className="flex items-center space-x-3">
-                <FileSpreadsheet className="w-5 h-5 text-blue-600" />
-                <div>
-                  <p className="text-sm text-blue-600">Mappings</p>
-                  <p className="text-xl font-bold text-blue-800">{dbStats.totalMappings.toLocaleString()}</p>
+            {statCards.map(card => (
+              <div key={card.label} className={`${card.bgClass} rounded-lg p-4`}>
+                <div className="flex items-center space-x-3">
+                  <card.icon className={`w-5 h-5 ${card.textClass}`} />
+                  <div>
+                    <p className={`text-sm ${card.textClass}`}>{card.label}</p>
+                    {statsLoading ? (
+                      <div className="h-6 w-20 bg-white/60 rounded animate-pulse" />
+                    ) : (
+                      <p className={`text-xl font-bold ${card.textClass}`}>{card.value}</p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-
-            <div className="bg-green-50 rounded-lg p-4">
-              <div className="flex items-center space-x-3">
-                <Upload className="w-5 h-5 text-green-600" />
-                <div>
-                  <p className="text-sm text-green-600">Imports</p>
-                  <p className="text-xl font-bold text-green-800">{dbStats.totalBatches}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-purple-50 rounded-lg p-4">
-              <div className="flex items-center space-x-3">
-                <Shield className="w-5 h-5 text-purple-600" />
-                <div>
-                  <p className="text-sm text-purple-600">Historique</p>
-                  <p className="text-xl font-bold text-purple-800">{dbStats.totalHistoryRecords.toLocaleString()}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-orange-50 rounded-lg p-4">
-              <div className="flex items-center space-x-3">
-                <Database className="w-5 h-5 text-orange-600" />
-                <div>
-                  <p className="text-sm text-orange-600">Taille DB</p>
-                  <p className="text-xl font-bold text-orange-800">{dbStats.databaseSize}</p>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
+          <p className="text-xs text-gray-500 mt-3">
+            Dernière sauvegarde connue : {statsLoading ? 'Chargement...' : dbStats.lastBackup}
+          </p>
         </CardContent>
       </Card>
 
-      {/* Paramètres système */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -376,10 +458,13 @@ export const MappingSettingsTab: React.FC = () => {
                 </p>
               </div>
               <button
-                onClick={() => setSettings(prev => ({ ...prev, autoClassificationEnabled: !prev.autoClassificationEnabled }))}
+                onClick={() =>
+                  setSettings(prev => ({ ...prev, autoClassificationEnabled: !prev.autoClassificationEnabled }))
+                }
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                   settings.autoClassificationEnabled ? 'bg-cir-red' : 'bg-gray-200'
                 }`}
+                disabled={!isAdminUser}
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -397,10 +482,13 @@ export const MappingSettingsTab: React.FC = () => {
                 </p>
               </div>
               <button
-                onClick={() => setSettings(prev => ({ ...prev, allowDuplicateMarqueCatFab: !prev.allowDuplicateMarqueCatFab }))}
+                onClick={() =>
+                  setSettings(prev => ({ ...prev, allowDuplicateMarqueCatFab: !prev.allowDuplicateMarqueCatFab }))
+                }
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                   settings.allowDuplicateMarqueCatFab ? 'bg-cir-red' : 'bg-gray-200'
                 }`}
+                disabled={!isAdminUser}
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -418,10 +506,13 @@ export const MappingSettingsTab: React.FC = () => {
                 </p>
               </div>
               <button
-                onClick={() => setSettings(prev => ({ ...prev, requireApprovalForBulkChanges: !prev.requireApprovalForBulkChanges }))}
+                onClick={() =>
+                  setSettings(prev => ({ ...prev, requireApprovalForBulkChanges: !prev.requireApprovalForBulkChanges }))
+                }
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                   settings.requireApprovalForBulkChanges ? 'bg-cir-red' : 'bg-gray-200'
                 }`}
+                disabled={!isAdminUser}
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -432,35 +523,43 @@ export const MappingSettingsTab: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Limite de taille de batch
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Limite de taille de batch</label>
               <input
                 type="number"
                 value={settings.batchSizeLimit}
-                onChange={(e) => setSettings(prev => ({ ...prev, batchSizeLimit: parseInt(e.target.value) }))}
+                onChange={event => {
+                  const nextValue = parseInt(event.target.value, 10);
+                  setSettings(prev => ({
+                    ...prev,
+                    batchSizeLimit: Number.isNaN(nextValue) ? prev.batchSizeLimit : nextValue
+                  }));
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-                min="100"
-                max="50000"
-                step="100"
+                min={100}
+                max={50000}
+                step={100}
+                disabled={!isAdminUser}
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Nombre maximum de lignes par import (100-50000)
-              </p>
+              <p className="text-xs text-gray-500 mt-1">Nombre maximum de lignes par import (100-50000)</p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Rétention de l'audit (jours)
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Rétention de l'audit (jours)</label>
               <input
                 type="number"
                 value={settings.auditRetentionDays}
-                onChange={(e) => setSettings(prev => ({ ...prev, auditRetentionDays: parseInt(e.target.value) }))}
+                onChange={event => {
+                  const nextValue = parseInt(event.target.value, 10);
+                  setSettings(prev => ({
+                    ...prev,
+                    auditRetentionDays: Number.isNaN(nextValue) ? prev.auditRetentionDays : nextValue
+                  }));
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cir-red focus:border-transparent"
-                min="30"
-                max="3650"
-                step="30"
+                min={30}
+                max={3650}
+                step={30}
+                disabled={!isAdminUser}
               />
               <p className="text-xs text-gray-500 mt-1">
                 Durée de conservation des logs d'audit (30-3650 jours)
@@ -469,7 +568,6 @@ export const MappingSettingsTab: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Outils d'administration */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -478,73 +576,80 @@ export const MappingSettingsTab: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-3">
-              <Button
-                onClick={handleExportData}
-                loading={loading}
-                variant="outline"
-                className="w-full flex items-center justify-center space-x-2"
-              >
-                <Download className="w-4 h-4" />
-                <span>Exporter toutes les données</span>
-              </Button>
+            {isAdminUser ? (
+              <>
+                <div className="space-y-3">
+                  <Button
+                    onClick={() => void handleExportData()}
+                    loading={actionLoading.exportData}
+                    variant="outline"
+                    className="w-full flex items-center justify-center space-x-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Exporter toutes les données</span>
+                  </Button>
 
-              <Button
-                onClick={handleCleanupHistory}
-                loading={loading}
-                variant="outline"
-                className="w-full flex items-center justify-center space-x-2 text-yellow-600 border-yellow-300 hover:bg-yellow-50"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Nettoyer l'historique ancien ({settings.auditRetentionDays}j+)</span>
-              </Button>
+                  <Button
+                    onClick={handleCleanupHistory}
+                    loading={actionLoading.cleanupHistory}
+                    variant="outline"
+                    className="w-full flex items-center justify-center space-x-2 text-yellow-600 border-yellow-300 hover:bg-yellow-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Nettoyer l'historique ancien ({settings.auditRetentionDays}j+)</span>
+                  </Button>
 
-              <Button
-                onClick={handlePurgeHistory}
-                loading={loading}
-                variant="outline"
-                className="w-full flex items-center justify-center space-x-2 text-orange-600 border-orange-300 hover:bg-orange-50"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>🗑️ Purger TOUT l'historique</span>
-              </Button>
-              
-              <Button 
-                onClick={handlePurgeAllData}
-                loading={loading}
-                className="w-full flex items-center justify-center space-x-2 bg-red-600 text-white hover:bg-red-700"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>🗑️ Purger toutes les données</span>
-              </Button>
-            </div>
+                  <Button
+                    onClick={handlePurgeHistory}
+                    loading={actionLoading.purgeHistory}
+                    variant="outline"
+                    className="w-full flex items-center justify-center space-x-2 text-orange-600 border-orange-300 hover:bg-orange-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Purger TOUT l'historique</span>
+                  </Button>
 
-            <div className="border-t pt-4">
-              <h4 className="font-medium text-gray-900 mb-3">Informations système</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Dernière sauvegarde:</span>
-                  <span className="font-medium">{dbStats.lastBackup}</span>
+                  <Button
+                    onClick={handlePurgeAllData}
+                    loading={actionLoading.purgeAllData}
+                    className="w-full flex items-center justify-center space-x-2 bg-red-600 text-white hover:bg-red-700"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Purger toutes les données</span>
+                  </Button>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Version du schéma:</span>
-                  <span className="font-medium">v2.1.0</span>
+
+                <div className="border-t pt-4">
+                  <h4 className="font-medium text-gray-900 mb-3">Informations système</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Dernière sauvegarde:</span>
+                      <span className="font-medium">{statsLoading ? '---' : dbStats.lastBackup}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Version du schéma:</span>
+                      <span className="font-medium">v2.1.0</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Statut RLS:</span>
+                      <span className="font-medium text-green-600">Activé</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Rétention audit:</span>
+                      <span className="font-medium">{settings.auditRetentionDays} jours</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Statut RLS:</span>
-                  <span className="font-medium text-green-600">Activé</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Rétention audit:</span>
-                  <span className="font-medium">{settings.auditRetentionDays} jours</span>
-                </div>
+              </>
+            ) : (
+              <div className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-600 bg-gray-50">
+                Accès restreint. Contactez un administrateur pour exécuter les opérations de maintenance sensibles.
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Logs système récents */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
@@ -562,22 +667,28 @@ export const MappingSettingsTab: React.FC = () => {
               { time: '13:30', level: 'INFO', message: 'User authentication successful' }
             ].map((log, index) => (
               <motion.div
-                key={index}
+                key={`${log.time}-${log.level}-${index}`}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.1 }}
                 className={`flex items-center space-x-3 p-2 rounded text-sm ${
-                  log.level === 'ERROR' ? 'bg-red-50 text-red-800' :
-                  log.level === 'WARN' ? 'bg-yellow-50 text-yellow-800' :
-                  'bg-gray-50 text-gray-800'
+                  log.level === 'ERROR'
+                    ? 'bg-red-50 text-red-800'
+                    : log.level === 'WARN'
+                      ? 'bg-yellow-50 text-yellow-800'
+                      : 'bg-gray-50 text-gray-800'
                 }`}
               >
                 <span className="font-mono text-xs text-gray-500 w-12">{log.time}</span>
-                <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                  log.level === 'ERROR' ? 'bg-red-200 text-red-800' :
-                  log.level === 'WARN' ? 'bg-yellow-200 text-yellow-800' :
-                  'bg-blue-200 text-blue-800'
-                }`}>
+                <span
+                  className={`px-2 py-0.5 rounded text-xs font-medium ${
+                    log.level === 'ERROR'
+                      ? 'bg-red-200 text-red-800'
+                      : log.level === 'WARN'
+                        ? 'bg-yellow-200 text-yellow-800'
+                        : 'bg-blue-200 text-blue-800'
+                  }`}
+                >
                   {log.level}
                 </span>
                 <span className="flex-1">{log.message}</span>

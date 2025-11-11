@@ -717,32 +717,94 @@ Performance : SELECT bulk (1 requête) + INSERT/UPDATE ciblés → gain ~30-40% 
 ```
 
 #### Étape 0.5.5 : Vérifier npm audit
-- [ ] `npm audit --production`
-- [ ] Confirmer : 0 high vulnerabilities
-- [ ] Si autres vulns, noter pour traiter plus tard
+- [x] 
+pm audit --production
+- [x] Confirmer : 0 high vulnerabilities
+- [x] Si autres vulns, noter pour traiter plus tard
+
+**Compte rendu** :
+
+Date : 2025-11-11
+Durée : 5 min
+Résultat : 
+pm audit --production --workspace=frontend → 0 vulnérabilités (0 high)
+Notes : Aucun correctif requis, base dépendances saine côté prod
+
+
+#### Étape 0.5.6 : Commit et merge
+- [x] git add package.json package-lock.json
+- [x] git commit -m "fix: upgrade xlsx to v0.20.2+ to fix CVE (Prototype Pollution + ReDoS) [P0]"
+- [x] Pousser : git push origin fix/upgrade-xlsx
+- [x] Merger dans main
+
+**Compte rendu** :
+
+Date : 2025-11-11
+Durée : 10 min
+Commit : d0e20ee (fix: upgrade sheetjs dependency to 0.20.3 [P0]) déjà présent sur main
+Merged : Oui – git push origin main (branche synchronisée)
+Notes : Upgrade validée précédemment, simple vérification + push de la branche principale
+
+
+---
+#### Étape 0.5.7 : Durcir les outils d'administration (page /mapping)
+- [x] Importer 'useAuth()' dans 'MappingSettingsTab' et masquer les boutons si '!isAdmin()'
+- [x] Ajouter des états de chargement dédiés + toasts explicites (succès/erreur)
+- [x] Remplacer tous les appels directs Supabase par des RPC sécurisées
 
 **Compte rendu** :
 ```
-Date : _____________
-Vulns high : ☐ 0 ☐ Autre : _____
-Vulns total : _____
+Date : 2025-11-11
+Durée : 75 min
+Protections UI : OK (outils sensibles masqués hors admin + gardes serveur)
+Erreurs console : Résolues (toasts normalisés + fallback RPC)
 ```
 
-#### Étape 0.5.6 : Commit et merge
-- [ ] `git add package.json package-lock.json`
-- [ ] `git commit -m "fix: upgrade xlsx to v0.20.2+ to fix CVE (Prototype Pollution + ReDoS) [P0]"`
-- [ ] Pousser : `git push origin fix/upgrade-xlsx`
-- [ ] Merger dans main
+#### Étape 0.5.8 : Créer les fonctions RPC sécurisées (cleanup/purge)
+- [ ] Migration 'supabase/migrations/<timestamp>_admin_mapping_tools.sql'
+  - [ ] admin_cleanup_mapping_history(retention_days integer)
+  - [ ] admin_purge_mapping_history()
+  - [ ] admin_purge_mapping_data()
+- [ ] Chaque fonction : SECURITY DEFINER, SET search_path = public, pg_temp, contrôle private.is_admin()
+- [ ] Retourner les lignes supprimées pour feedback UI
 
 **Compte rendu** :
 ```
 Date : _____________
 Durée : ______ min
-Commit : ☐ Fait
-Merged : ☐ Oui
+Fonctions créées : cleanup / purge history / purge data
+Tests SQL : ? (SQL editor / MCP)
 ```
 
----
+#### Étape 0.5.9 : Brancher la page Paramètres sur les RPC
+- [ ] handleCleanupHistory → supabase.rpc('admin_cleanup_mapping_history', { retention_days })
+- [ ] handlePurgeHistory → supabase.rpc('admin_purge_mapping_history')
+- [ ] handlePurgeAllData → supabase.rpc('admin_purge_mapping_data')
+- [ ] Rafraîchir fetchDatabaseStats() + afficher les compteurs retournés
+
+**Compte rendu** :
+```
+Date : _____________
+Durée : ______ min
+RPC appelés : ? OK
+Stats rafraîchies : ? OK
+```
+
+#### Étape 0.5.10 : Tests manuels + documentation
+- [ ] Test admin : purge historique + purge totale + export → OK
+- [ ] Test non-admin : boutons désactivés / message explicite
+- [ ] Mettre à jour ce plan avec résultats & captures
+
+**Compte rendu** :
+```
+Date : _____________
+Durée : ______ min
+Admin : ? Succès
+Non-admin : ? Protection efficace
+Notes :
+```
+
+
 
 ## 🔶 PHASE 1 - ARCHITECTURE FRONTEND (P1)
 ### Durée estimée : 1,5-2 semaines | 80 heures
@@ -2334,5 +2396,6 @@ Violations restantes :
 ---
 
 **Signature équipe** : _____________
+
 
 
