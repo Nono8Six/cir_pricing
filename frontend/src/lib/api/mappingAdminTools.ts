@@ -154,7 +154,10 @@ const purgeHistoryFallback = async (): Promise<PurgeHistoryResult> => {
     throw new Error(`history purge preview failed: ${error.message}`);
   }
 
-  const { error: deleteError } = await supabase.from('brand_mapping_history').delete();
+  const { error: deleteError } = await supabase
+    .from('brand_mapping_history')
+    .delete()
+    .not('history_id', 'is', null);
 
   if (deleteError) {
     throw new Error(`history purge failed: ${deleteError.message}`);
@@ -184,17 +187,26 @@ const purgeAllDataFallback = async (): Promise<PurgeAllDataResult> => {
     throw new Error(`batch purge preview failed: ${batchError.message}`);
   }
 
-  const historyDeletion = await supabase.from('brand_mapping_history').delete();
+  const historyDeletion = await supabase
+    .from('brand_mapping_history')
+    .delete()
+    .not('history_id', 'is', null);
   if (historyDeletion.error) {
     throw new Error(`history purge failed: ${historyDeletion.error.message}`);
   }
 
-  const mappingDeletion = await supabase.from('brand_category_mappings').delete();
+  const mappingDeletion = await supabase
+    .from('brand_category_mappings')
+    .delete()
+    .not('id', 'is', null);
   if (mappingDeletion.error) {
     throw new Error(`mapping purge failed: ${mappingDeletion.error.message}`);
   }
 
-  const batchDeletion = await supabase.from('import_batches').delete();
+  const batchDeletion = await supabase
+    .from('import_batches')
+    .delete()
+    .not('id', 'is', null);
   if (batchDeletion.error) {
     throw new Error(`batch purge failed: ${batchDeletion.error.message}`);
   }
