@@ -1,7 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'npm:@supabase/supabase-js';
-// @deno-types="https://cdn.sheetjs.com/xlsx-0.20.3/package/types/index.d.ts"
-import * as XLSX from 'https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs';
+import * as XLSX from 'npm:xlsx';
 import Papa from 'npm:papaparse';
 import {
   ProcessImportRequestSchema,
@@ -32,6 +31,48 @@ function log(level: 'info' | 'error' | 'warn', message: string, context?: Record
     ...context
   };
   console.log(JSON.stringify(logEntry));
+}
+
+/**
+ * Compare deux enregistrements pour détecter des changements réels
+ * @param newRow - Nouvel enregistrement validé par Zod
+ * @param existingRow - Enregistrement existant depuis la DB
+ * @param datasetType - Type de dataset ('mapping' | 'classification')
+ * @returns true si au moins un champ comparable a changé
+ */
+function hasChanges(newRow: any, existingRow: any, datasetType: 'mapping' | 'classification'): boolean {
+  if (datasetType === 'mapping') {
+    // Champs à comparer (excluant id, created_at, classif_cir généré, natural_key, version, batch_id, created_by, source_type)
+    const fields = ['segment', 'cat_fab_l', 'strategiq', 'codif_fair', 'fsmega', 'fsfam', 'fssfa'];
+
+    for (const field of fields) {
+      const newVal = newRow[field] ?? null;
+      const existingVal = existingRow[field] ?? null;
+
+      // Normaliser les valeurs pour comparaison
+      if (newVal !== existingVal) {
+        return true;
+      }
+    }
+
+    return false;
+  } else {
+    // Champs à comparer pour classifications (excluant id, created_at, updated_at)
+    const fields = [
+      'fsmega_code', 'fsmega_designation',
+      'fsfam_code', 'fsfam_designation',
+      'fssfa_code', 'fssfa_designation',
+      'combined_designation'
+    ];
+
+    for (const field of fields) {
+      if (newRow[field] !== existingRow[field]) {
+        return true;
+      }
+    }
+
+    return false;
+  }
 }
 
 Deno.serve(async (req: Request) => {
@@ -155,41 +196,136 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // 5) Chunk & apply par dataset_type
+    // 5) Bulk fetch des enregistrements existants pour comparaison (une seule fois avant la boucle)
+    const existingRecordsMap = new Map<string, any>();
+
+    if (dataset_type === 'mapping') {
+      // Utiliser natural_key pour mappings
+      const naturalKeys = projected.map(row => `${row.marque.toLowerCase()}|${row.cat_fab.toUpperCase()}`);
+      const { data: existingMappings, error: fetchError } = await supabase
+        .from('brand_category_mappings')
+        .select('*')
+        .in('natural_key', naturalKeys);
+
+      if (fetchError) throw fetchError;
+
+      for (const record of existingMappings || []) {
+        existingRecordsMap.set(record.natural_key, record);
+      }
+    } else {
+      // Utiliser combined_code pour classifications
+      const combinedCodes = projected.map(row => row.combined_code);
+      const { data: existingClassifications, error: fetchError } = await supabase
+        .from('cir_classifications')
+        .select('*')
+        .in('combined_code', combinedCodes);
+
+      if (fetchError) throw fetchError;
+
+      for (const record of existingClassifications || []) {
+        existingRecordsMap.set(record.combined_code, record);
+      }
+    }
+
+    log('info', 'Existing records fetched for comparison', {
+      batch_id,
+      existing_count: existingRecordsMap.size,
+      total_incoming: projected.length
+    });
+
+    // 6) Chunk & apply avec distinction INSERT/UPDATE/SKIP
     const chunkSize = 500;
     let created = 0, updated = 0, skipped = 0, processed = 0;
-    const upsert = async (table: string, conflict: string, payload: any[]) => {
-      const { error } = await supabase.from(table).upsert(payload, { onConflict: conflict, ignoreDuplicates: false });
-      if (error) throw error;
-    };
 
     for (let i = 0; i < projected.length; i += chunkSize) {
       const slice = projected.slice(i, i + chunkSize);
-      // stats mini: ici on fait un upsert direct (remplace), pour une première version asynchrone
-      if (dataset_type === 'mapping') {
-        await upsert('brand_category_mappings', 'marque,cat_fab', slice);
-        // Option: compter created/updated via retour (non trivial en v1); on maj processed
-      } else {
-        await upsert('cir_classifications', 'combined_code', slice);
+      const toInsert: any[] = [];
+      const toUpdate: any[] = [];
+      const toSkip: string[] = [];
+
+      for (const row of slice) {
+        const naturalKey = dataset_type === 'mapping'
+          ? `${row.marque.toLowerCase()}|${row.cat_fab.toUpperCase()}`
+          : row.combined_code;
+
+        const existingRecord = existingRecordsMap.get(naturalKey);
+
+        if (!existingRecord) {
+          // Nouvelle ligne
+          toInsert.push(row);
+        } else if (hasChanges(row, existingRecord, dataset_type)) {
+          // Ligne modifiée
+          toUpdate.push(row);
+        } else {
+          // Aucun changement
+          toSkip.push(naturalKey);
+        }
       }
+
+      // Insert nouveaux enregistrements
+      if (toInsert.length > 0) {
+        const table = dataset_type === 'mapping' ? 'brand_category_mappings' : 'cir_classifications';
+        const { error: insertError } = await supabase.from(table).insert(toInsert);
+        if (insertError) throw insertError;
+        created += toInsert.length;
+      }
+
+      // Update enregistrements modifiés
+      if (toUpdate.length > 0) {
+        const table = dataset_type === 'mapping' ? 'brand_category_mappings' : 'cir_classifications';
+        const conflict = dataset_type === 'mapping' ? 'marque,cat_fab' : 'combined_code';
+        const { error: updateError } = await supabase.from(table).upsert(toUpdate, {
+          onConflict: conflict,
+          ignoreDuplicates: false
+        });
+        if (updateError) throw updateError;
+        updated += toUpdate.length;
+      }
+
+      skipped += toSkip.length;
       processed += slice.length;
-      await supabase.from('import_batches').update({ processed_lines: processed, status: 'processing' }).eq('id', batch_id);
+
+      // Update batch avec TOUS les compteurs
+      await supabase.from('import_batches').update({
+        processed_lines: processed,
+        created_count: created,
+        updated_count: updated,
+        skipped_count: skipped,
+        status: 'processing'
+      }).eq('id', batch_id);
 
       log('info', 'Chunk processed', {
         batch_id,
         chunk_number: Math.floor(i / chunkSize) + 1,
+        total_chunks: Math.ceil(projected.length / chunkSize),
         processed_so_far: processed,
-        total: projected.length
+        total: projected.length,
+        chunk_created: toInsert.length,
+        chunk_updated: toUpdate.length,
+        chunk_skipped: toSkip.length,
+        cumulative_created: created,
+        cumulative_updated: updated,
+        cumulative_skipped: skipped
       });
     }
 
-    // 6) Terminer
-    await supabase.from('import_batches').update({ status: 'completed' }).eq('id', batch_id);
+    // 7) Terminer avec les compteurs finaux
+    await supabase.from('import_batches').update({
+      status: 'completed',
+      processed_lines: processed,
+      created_count: created,
+      updated_count: updated,
+      skipped_count: skipped
+    }).eq('id', batch_id);
 
     log('info', 'Import completed successfully', {
       batch_id,
+      dataset_type,
       total_processed: processed,
-      dataset_type
+      created_count: created,
+      updated_count: updated,
+      skipped_count: skipped,
+      efficiency: skipped > 0 ? `${((skipped / processed) * 100).toFixed(1)}% skipped (no changes)` : 'N/A'
     });
     return new Response(JSON.stringify({ ok: true, processed }), { 
       status: 200, 
