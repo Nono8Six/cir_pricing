@@ -39,12 +39,31 @@ interface DatabaseStats {
 
 type AdminAction = 'saveSettings' | 'cleanupHistory' | 'purgeHistory' | 'purgeAllData' | 'exportData';
 
+interface AdminActionFeedback {
+  action: 'cleanup_history' | 'purge_history' | 'purge_all_data';
+  counts: Record<string, number>;
+  performedAt: string;
+}
+
 const DEFAULT_DB_STATS: DatabaseStats = {
   totalMappings: 0,
   totalBatches: 0,
   totalHistoryRecords: 0,
   databaseSize: '0 MB',
   lastBackup: 'Jamais'
+};
+
+const ACTION_LABELS: Record<AdminActionFeedback['action'], string> = {
+  cleanup_history: 'Nettoyage historique (> rétention)',
+  purge_history: 'Purge complète historique',
+  purge_all_data: 'Purge totale des données mapping'
+};
+
+const COUNT_LABELS: Record<string, string> = {
+  deletedRows: 'Lignes supprimées',
+  deletedHistoryRows: 'Historique supprimé',
+  deletedMappingRows: 'Mappings supprimés',
+  deletedImportBatches: 'Imports supprimés'
 };
 
 const getErrorMessage = (error: unknown): string => {
@@ -85,6 +104,8 @@ const formatDateTime = (isoString: string | null): string => {
   return new Date(isoString).toLocaleString('fr-FR');
 };
 
+const formatCountLabel = (key: string): string => COUNT_LABELS[key] ?? key;
+
 export const MappingSettingsTab: React.FC = () => {
   const { isAdmin } = useAuth();
   const isAdminUser = isAdmin();
@@ -100,6 +121,7 @@ export const MappingSettingsTab: React.FC = () => {
   const [dbStats, setDbStats] = useState<DatabaseStats>(DEFAULT_DB_STATS);
   const [statsLoading, setStatsLoading] = useState<boolean>(true);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [lastActionFeedback, setLastActionFeedback] = useState<AdminActionFeedback | null>(null);
 
   const [actionLoading, setActionLoading] = useState<Record<AdminAction, boolean>>({
     saveSettings: false,
@@ -183,6 +205,17 @@ export const MappingSettingsTab: React.FC = () => {
     }
   };
 
+  const recordAdminActionFeedback = (
+    action: AdminActionFeedback['action'],
+    counts: Record<string, number>
+  ): void => {
+    setLastActionFeedback({
+      action,
+      counts,
+      performedAt: new Date().toISOString()
+    });
+  };
+
   const handleCleanupHistory = (): void => {
     if (!assertAdminAccess()) return;
 
@@ -197,6 +230,7 @@ export const MappingSettingsTab: React.FC = () => {
           toast.success('Historique nettoyé', {
             description: `${result.deletedRows.toLocaleString('fr-FR')} lignes supprimées.`
           });
+          recordAdminActionFeedback('cleanup_history', { deletedRows: result.deletedRows });
           await fetchDatabaseStats();
         } catch (error) {
           toast.error('Échec du nettoyage de l’historique', {
@@ -223,6 +257,7 @@ export const MappingSettingsTab: React.FC = () => {
           toast.success('Historique purgé', {
             description: `${result.deletedRows.toLocaleString('fr-FR')} lignes supprimées.`
           });
+          recordAdminActionFeedback('purge_history', { deletedRows: result.deletedRows });
           await fetchDatabaseStats();
         } catch (error) {
           toast.error('Échec de la purge de l’historique', {
@@ -313,6 +348,11 @@ export const MappingSettingsTab: React.FC = () => {
               `${result.deletedHistoryRows.toLocaleString('fr-FR')} historiques`,
               `${result.deletedImportBatches.toLocaleString('fr-FR')} imports`
             ].join(' · ')
+          });
+          recordAdminActionFeedback('purge_all_data', {
+            deletedHistoryRows: result.deletedHistoryRows,
+            deletedMappingRows: result.deletedMappingRows,
+            deletedImportBatches: result.deletedImportBatches
           });
           await fetchDatabaseStats();
         } catch (error) {
@@ -639,6 +679,24 @@ export const MappingSettingsTab: React.FC = () => {
                       <span className="font-medium">{settings.auditRetentionDays} jours</span>
                     </div>
                   </div>
+                  {lastActionFeedback && (
+                    <div className="mt-4 rounded-lg border border-dashed border-gray-300 p-3 bg-white/60">
+                      <p className="text-sm font-medium text-gray-900 mb-1">
+                        Dernière action : {ACTION_LABELS[lastActionFeedback.action]}
+                      </p>
+                      <p className="text-xs text-gray-500 mb-2">
+                        {formatDateTime(lastActionFeedback.performedAt)}
+                      </p>
+                      <div className="space-y-1">
+                        {Object.entries(lastActionFeedback.counts).map(([key, value]) => (
+                          <div key={key} className="flex justify-between text-sm text-gray-700">
+                            <span>{formatCountLabel(key)}</span>
+                            <span className="font-semibold">{value.toLocaleString('fr-FR')}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             ) : (

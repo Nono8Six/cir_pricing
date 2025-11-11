@@ -778,17 +778,18 @@ Notes : RPCs sécurisées prêtes, grant à anon/authenticated pour usage UI
 ```
 
 #### Étape 0.5.9 : Brancher la page Paramètres sur les RPC
-- [ ] handleCleanupHistory → supabase.rpc('admin_cleanup_mapping_history', { retention_days })
-- [ ] handlePurgeHistory → supabase.rpc('admin_purge_mapping_history')
-- [ ] handlePurgeAllData → supabase.rpc('admin_purge_mapping_data')
-- [ ] Rafraîchir fetchDatabaseStats() + afficher les compteurs retournés
+- [x] handleCleanupHistory → supabase.rpc('admin_cleanup_mapping_history', { retention_days })
+- [x] handlePurgeHistory → supabase.rpc('admin_purge_mapping_history')
+- [x] handlePurgeAllData → supabase.rpc('admin_purge_mapping_data')
+- [x] Rafraîchir fetchDatabaseStats() + afficher les compteurs retournés
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-RPC appelés : ? OK
-Stats rafraîchies : ? OK
+Date : 2025-11-11
+Durée : 45 min
+RPC appelés : OK (cleanup/purge history/data via admin_* RPC + feedback JSON)
+Stats rafraîchies : OK (rafraîchissement + widget compteur affiché)
+Notes : Ajout tracing UI de la dernière action (counts + horodatage)
 ```
 
 #### Étape 0.5.10 : Tests manuels + documentation
