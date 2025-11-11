@@ -761,19 +761,20 @@ Erreurs console : Résolues (toasts normalisés + fallback RPC)
 ```
 
 #### Étape 0.5.8 : Créer les fonctions RPC sécurisées (cleanup/purge)
-- [ ] Migration 'supabase/migrations/<timestamp>_admin_mapping_tools.sql'
-  - [ ] admin_cleanup_mapping_history(retention_days integer)
-  - [ ] admin_purge_mapping_history()
-  - [ ] admin_purge_mapping_data()
-- [ ] Chaque fonction : SECURITY DEFINER, SET search_path = public, pg_temp, contrôle private.is_admin()
-- [ ] Retourner les lignes supprimées pour feedback UI
+- [x] Migration 'supabase/migrations/20251111153000_admin_mapping_tools.sql'
+  - [x] admin_cleanup_mapping_history(retention_days integer)
+  - [x] admin_purge_mapping_history()
+  - [x] admin_purge_mapping_data()
+- [x] Chaque fonction : SECURITY DEFINER, SET search_path = public, pg_temp, contrôle private.is_admin()
+- [x] Retourner les lignes supprimées pour feedback UI
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Fonctions créées : cleanup / purge history / purge data
-Tests SQL : ? (SQL editor / MCP)
+Date : 2025-11-11
+Durée : 40 min
+Fonctions créées : cleanup / purge history / purge data (counts JSON)
+Tests SQL : Non (type-check/lint OK) → appliquer lors du prochain supabase db reset
+Notes : RPCs sécurisées prêtes, grant à anon/authenticated pour usage UI
 ```
 
 #### Étape 0.5.9 : Brancher la page Paramètres sur les RPC
