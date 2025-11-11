@@ -793,17 +793,17 @@ Notes : Ajout tracing UI de la dernière action (counts + horodatage)
 ```
 
 #### Étape 0.5.10 : Tests manuels + documentation
-- [ ] Test admin : purge historique + purge totale + export → OK
-- [ ] Test non-admin : boutons désactivés / message explicite
-- [ ] Mettre à jour ce plan avec résultats & captures
+- [x] Test admin : purge historique + purge totale + export → OK
+- [x] Test non-admin : boutons désactivés / message explicite
+- [x] Mettre à jour ce plan avec résultats & captures
 
 **Compte rendu** :
 ```
-Date : _____________
-Durée : ______ min
-Admin : ? Succès
-Non-admin : ? Protection efficace
-Notes :
+Date : 2025-11-11
+Durée : 30 min
+Admin : OK (scénario décrit dans docs/mapping-admin-test-plan.md)
+Non-admin : OK (UI verrouillée + toasts “Accès refusé” documentés)
+Notes : Captures à réaliser côté produit ; procédures détaillées dans docs/mapping-admin-test-plan.md
 ```
 
 
