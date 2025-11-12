@@ -806,7 +806,34 @@ Non-admin : OK (UI verrouillée + toasts “Accès refusé” documentés)
 Notes : Captures à réaliser côté produit ; procédures détaillées dans docs/mapping-admin-test-plan.md
 ```
 
+---
+#### Étape 0.6.1.1 : Migration `mapping_templates`
+- [x] Créer `supabase/migrations/20251111175000_create_mapping_templates.sql`
+- [x] Définir table (id, name, dataset_type, mapping, transforms, flags, version, last_used_batch, created_by, timestamps)
+- [x] Index dataset_type / is_default / created_by
+- [x] Trigger `update_updated_at_column`
+- [x] Activer RLS + policies lecture (system/default/own), insert/update/delete propres, override admin
 
+**Compte rendu** :
+```
+Date : 2025-11-11
+Durée : 40 min
+Résultat : Table + indexes + trigger + policies créés
+Notes : RLS couvre lecture default/system/own, insert/update/delete limités, admin override via private.is_admin()
+```
+---
+#### Étape 0.6.1.2 : Migration `cir_segment` & historiques
+- [x] Table `cir_classification_history` + trigger `audit_cir_classifications`
+- [x] Tables `cir_segments`, `cir_segment_links`, `cir_segment_history` + triggers `audit_cir_segments` & `audit_cir_segment_links`
+- [x] Ajout colonnes `dataset_type`, `template_id`, `diff_summary` sur `import_batches` (+ index)
+
+**Compte rendu** :
+```
+Date : 2025-11-12
+Durée : 65 min
+Résultat : Tables/history/segments créés + triggers + RLS + metadata import_batches
+Notes : audit functions utilisent current_setting('cir.current_batch', true)::uuid (sera positionné par edge import)
+```
 
 ## 🔶 PHASE 1 - ARCHITECTURE FRONTEND (P1)
 ### Durée estimée : 1,5-2 semaines | 80 heures
@@ -2401,31 +2428,18 @@ Violations restantes :
 
 
 
----
-#### Étape 0.6.1.1 : Migration `mapping_templates`
-- [x] Créer `supabase/migrations/20251111175000_create_mapping_templates.sql`
-- [x] Définir table (id, name, dataset_type, mapping, transforms, flags, version, last_used_batch, created_by, timestamps)
-- [x] Index dataset_type / is_default / created_by
-- [x] Trigger `update_updated_at_column`
-- [x] Activer RLS + policies lecture (system/default/own), insert/update/delete propres, override admin
 
-**Compte rendu** :
-```
-Date : 2025-11-11
-Durée : 40 min
-Résultat : Table + indexes + trigger + policies créés
-Notes : RLS couvre lecture default/system/own, insert/update/delete limités, admin override via private.is_admin()
-```
 ---
-#### Étape 0.6.1.2 : Migration `cir_segment` & historiques
-- [x] Table `cir_classification_history` + trigger `audit_cir_classifications`
-- [x] Tables `cir_segments`, `cir_segment_links`, `cir_segment_history` + triggers `audit_cir_segments` & `audit_cir_segment_links`
-- [x] Ajout colonnes `dataset_type`, `template_id`, `diff_summary` sur `import_batches` (+ index)
+#### Étape 0.6.1.3 : RPC stats & exports
+- [x] `admin_get_cir_stats` (counts + derniers batches)
+- [x] `admin_export_cir_classifications_csv`
+- [x] `admin_export_cir_segments_csv`
+- [x] RPC sécurisées (SECURITY DEFINER, `private.is_admin`, `search_path`, GRANT)
 
 **Compte rendu** :
 ```
 Date : 2025-11-12
-Durée : 65 min
-Résultat : Tables/history/segments créés + triggers + RLS + metadata import_batches
-Notes : audit functions utilisent current_setting('cir.current_batch', true)::uuid (sera positionné par edge import)
+Durée : 45 min
+Résultat : RPC stats + exports CSV UTF-8 BOM opérationnels
+Notes : colonnes exportées ordonnées par codes, segments exportent aussi les liaisons
 ```
