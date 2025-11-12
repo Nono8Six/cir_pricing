@@ -2416,3 +2416,16 @@ Durée : 40 min
 Résultat : Table + indexes + trigger + policies créés
 Notes : RLS couvre lecture default/system/own, insert/update/delete limités, admin override via private.is_admin()
 ```
+---
+#### Étape 0.6.1.2 : Migration `cir_segment` & historiques
+- [x] Table `cir_classification_history` + trigger `audit_cir_classifications`
+- [x] Tables `cir_segments`, `cir_segment_links`, `cir_segment_history` + triggers `audit_cir_segments` & `audit_cir_segment_links`
+- [x] Ajout colonnes `dataset_type`, `template_id`, `diff_summary` sur `import_batches` (+ index)
+
+**Compte rendu** :
+```
+Date : 2025-11-12
+Durée : 65 min
+Résultat : Tables/history/segments créés + triggers + RLS + metadata import_batches
+Notes : audit functions utilisent current_setting('cir.current_batch', true)::uuid (sera positionné par edge import)
+```
