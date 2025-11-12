@@ -2401,3 +2401,18 @@ Violations restantes :
 
 
 
+---
+#### Étape 0.6.1.1 : Migration `mapping_templates`
+- [x] Créer `supabase/migrations/20251111175000_create_mapping_templates.sql`
+- [x] Définir table (id, name, dataset_type, mapping, transforms, flags, version, last_used_batch, created_by, timestamps)
+- [x] Index dataset_type / is_default / created_by
+- [x] Trigger `update_updated_at_column`
+- [x] Activer RLS + policies lecture (system/default/own), insert/update/delete propres, override admin
+
+**Compte rendu** :
+```
+Date : 2025-11-11
+Durée : 40 min
+Résultat : Table + indexes + trigger + policies créés
+Notes : RLS couvre lecture default/system/own, insert/update/delete limités, admin override via private.is_admin()
+```
