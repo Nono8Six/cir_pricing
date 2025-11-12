@@ -942,10 +942,18 @@ Notes : Parsing via XLSX, diff client (computeDiff), appels applyClassificationI
   - Boutons : Exporter segments, Importer segments, Purger historique segments, Purger segments.
   - Journal : 20 derniers événements `brand_mapping_history` + `cir_segment_history`.
 
-### 0.6.3.3 Gestion Templates
-- Page admin listant tous les templates (par dataset).
-- CRUD : créer, dupliquer, archiver, voir dernier batch utilisé.
-- Tag “système” en lecture seule.
+#### Étape 0.6.3.3 : Gestion Templates
+- [x] Page admin listant tous les templates (par dataset).
+- [x] CRUD : créer, dupliquer, archiver, voir dernier batch utilisé.
+- [x] Tag "système" en lecture seule.
+
+**Compte rendu** :
+```
+Date : 2025-11-12
+Durée : 90 min
+Résultat : UI Templates complète + routing/nav + API/migration d’archivage + typage wizard aligné
+Notes : Migration 20251112124500_add_template_archiving.sql créée, npm run type-check ✅
+```
 
 ---
 

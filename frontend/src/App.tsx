@@ -9,6 +9,7 @@ import { CalculatorPage } from './pages/CalculatorPage';
 import { Clients } from './pages/Clients';
 import { GroupsPage } from './pages/GroupsPage';
 import { Mapping } from './pages/Mapping';
+import { TemplatesPage } from './pages/Templates';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { ImportsNew } from './pages/ImportsNew';
 import { ImportsHistory } from './pages/ImportsHistory';
@@ -82,6 +83,7 @@ function AppContent() {
           <Route path="/clients" element={<Clients />} />
           <Route path="/groups" element={<GroupsPage />} />
           <Route path="/mapping" element={<Mapping />} />
+          <Route path="/templates" element={<TemplatesPage />} />
           <Route path="/imports/new" element={<ImportsNew />} />
           <Route path="/imports/history" element={<ImportsHistory />} />
           <Route path="/imports/history/:id" element={<ImportBatchDetails />} />

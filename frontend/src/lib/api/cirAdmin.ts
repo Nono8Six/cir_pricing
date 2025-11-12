@@ -61,7 +61,30 @@ export interface PreparedSegmentImport {
   templateId?: string | null;
 }
 
-type DatasetType = 'cir_classification' | 'cir_segment';
+export type DatasetType = 'cir_classification' | 'cir_segment';
+
+export interface MappingTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  dataset_type: DatasetType;
+  mapping: Record<string, string>;
+  transforms: Record<string, unknown> | null;
+  is_default: boolean;
+  is_system: boolean;
+  is_archived: boolean;
+  template_version: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  archived_at: string | null;
+  last_used_batch: {
+    id: string;
+    filename: string;
+    created_at: string;
+    diff_summary: DiffSummary | null;
+  } | null;
+}
 
 function base64ToBlob(data: string, type: string): Blob {
   const byteCharacters = atob(data);
@@ -348,16 +371,33 @@ export const cirAdminApi = {
     return (data as CirActivityLog[]) ?? [];
   },
 
-  async listTemplates(datasetType: DatasetType) {
-    const { data, error } = await supabase
+  async listTemplates(datasetType: DatasetType, options: { includeArchived?: boolean } = {}): Promise<MappingTemplate[]> {
+    const query = supabase
       .from('mapping_templates')
-      .select('*')
+      .select(
+        `
+        *,
+        last_used_batch:import_batches!mapping_templates_last_used_batch_fkey (
+          id,
+          filename,
+          created_at,
+          diff_summary
+        )
+      `
+      )
       .eq('dataset_type', datasetType)
+      .order('is_system', { ascending: false })
       .order('is_default', { ascending: false })
       .order('name', { ascending: true });
 
+    if (!options.includeArchived) {
+      query.eq('is_archived', false);
+    }
+
+    const { data, error } = await query;
+
     if (error) throw error;
-    return data ?? [];
+    return (data ?? []) as MappingTemplate[];
   },
 
   async createTemplate(payload: {
@@ -367,7 +407,7 @@ export const cirAdminApi = {
     mapping: Record<string, string>;
     transforms?: Record<string, unknown> | null;
     isDefault?: boolean;
-  }) {
+  }): Promise<MappingTemplate> {
     const { data, error } = await supabase
       .from('mapping_templates')
       .insert({
@@ -382,10 +422,10 @@ export const cirAdminApi = {
       .single();
 
     if (error) throw error;
-    return data;
+    return data as MappingTemplate;
   },
 
-  async updateTemplate(id: string, updates: Record<string, unknown>) {
+  async updateTemplate(id: string, updates: Record<string, unknown>): Promise<MappingTemplate> {
     const { data, error } = await supabase
       .from('mapping_templates')
       .update(updates)
@@ -394,7 +434,7 @@ export const cirAdminApi = {
       .single();
 
     if (error) throw error;
-    return data;
+    return data as MappingTemplate;
   },
 
   async deleteTemplate(id: string): Promise<void> {
@@ -404,6 +444,38 @@ export const cirAdminApi = {
       .eq('id', id);
 
     if (error) throw error;
+  },
+
+  async archiveTemplate(id: string): Promise<MappingTemplate> {
+    const now = new Date().toISOString();
+    const { data, error } = await supabase
+      .from('mapping_templates')
+      .update({
+        is_archived: true,
+        archived_at: now,
+        is_default: false
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as MappingTemplate;
+  },
+
+  async restoreTemplate(id: string): Promise<MappingTemplate> {
+    const { data, error } = await supabase
+      .from('mapping_templates')
+      .update({
+        is_archived: false,
+        archived_at: null
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as MappingTemplate;
   },
 
   async uploadClassificationExcel(file: File, options: { templateId?: string | null } = {}): Promise<ImportResult> {

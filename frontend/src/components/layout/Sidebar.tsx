@@ -11,7 +11,8 @@ import {
   Settings,
   BarChart3,
   FileText,
-  Upload
+  Upload,
+  Layers
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -26,6 +27,7 @@ const menuItems = [
   { icon: Users, label: 'Clients', path: '/clients', requiresAdmin: false },
   { icon: Building, label: 'Groupements', path: '/groups', requiresAdmin: false },
   { icon: FileSpreadsheet, label: 'Mapping', path: '/mapping', requiresAdmin: false },
+  { icon: Layers, label: 'Templates', path: '/templates', requiresAdmin: true },
   { icon: Upload, label: 'Imports', path: '/imports/new', requiresAdmin: true },
   { icon: DollarSign, label: 'Prix', path: '/prices', requiresAdmin: false },
   { icon: BarChart3, label: 'Analyses', path: '/analytics', requiresAdmin: false },

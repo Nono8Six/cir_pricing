@@ -12,7 +12,8 @@ import {
   applySegmentImport,
   type DiffSummary,
   type PreparedClassificationImport,
-  type PreparedSegmentImport
+  type PreparedSegmentImport,
+  type MappingTemplate
 } from '../../lib/api/cirAdmin';
 import {
   CIR_CLASSIFICATION_COLUMN_MAPPINGS,
@@ -287,7 +288,7 @@ function buildSegmentRows(
 export const FileImportWizard: React.FC = () => {
   const [step, setStep] = useState<Step>(0);
   const [datasetType, setDatasetType] = useState<DatasetType | null>(null);
-  const [templates, setTemplates] = useState<Record<string, unknown>[]>([]);
+  const [templates, setTemplates] = useState<MappingTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({});
   const [headers, setHeaders] = useState<string[]>([]);
@@ -340,8 +341,8 @@ export const FileImportWizard: React.FC = () => {
   const handleTemplateChange = (templateId: string | null) => {
     setSelectedTemplateId(templateId);
     const template = templates.find((tpl) => tpl.id === templateId);
-    if (template && typeof template.mapping === 'object') {
-      setFieldMapping(template.mapping as Record<string, string>);
+    if (template) {
+      setFieldMapping({ ...template.mapping });
     }
   };
 
