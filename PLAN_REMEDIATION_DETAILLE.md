@@ -850,14 +850,20 @@ Résultat : RPC stats + exports CSV UTF-8 BOM opérationnels
 Notes : colonnes exportées ordonnées par codes, segments exportent aussi les liaisons
 ```
 
-### 0.6.1.4 RPC Purge
-Migration `supabase/migrations/<ts>_cir_admin_purges.sql` :
-- `admin_purge_cir_history()` → DELETE `cir_classification_history`, `cir_segment_history`, `brand_mapping_history` (WHERE conditions pour pg_safeupdate).
-- `admin_purge_cir_classifications()` → DELETE `cir_segment_links` → `cir_segments` → `cir_classifications`.
-- `admin_purge_cir_segments()` → DELETE `cir_segment_links` → `cir_segments` (sans toucher aux classifications).
-- Toutes retournent les compteurs supprimés.
+#### Étape 0.6.1.4 : RPC Purge
+- [x] `admin_purge_cir_history` (history CIR + segments + brand)
+- [x] `admin_purge_cir_classifications` (links → segments → classifications)
+- [x] `admin_purge_cir_segments` (links → segments uniquement)
+- [x] Chaque RPC retourne les compteurs supprimés + sécurisée (SECURITY DEFINER, `private.is_admin`, `search_path`, GRANT)
 
----
+**Compte rendu** :
+```
+Date : 2025-11-12
+Durée : 30 min
+Résultat : 3 RPC de purge opérationnelles (pg_safeupdate compliant)
+Notes : clauses WHERE explicites (id/history_id IS NOT NULL) pour passer pg_safeupdate
+```
+
 
 ## 0.6.2 API & Services (P0.6.B)
 
@@ -876,11 +882,27 @@ Migration `supabase/migrations/<ts>_cir_admin_purges.sql` :
 ### 0.6.2.2 Edge Functions / API routes
 - `/functions/import-cir-classifications` :
   - Vérifie admin, consomme payload, purge `cir_classifications`, insère, crée batch + history.
-  - Renvoie diff (counts) utilisé dans l’UI.
+  - Renvoie diff (counts) utilisé dans l'UI.
 - `/functions/import-cir-segments` :
   - Purge `cir_segment_links` + `cir_segments`, insère segments + links.
   - Alimente `cir_segment_history`.
 - Modules partagés : validation Zod (colonnes obligatoires), helpers diff (Ajout/Modif/Suppression via `natural_key`).
+
+---
+
+#### Étape 0.6.2 : API & Services
+- [x] Client `frontend/src/lib/api/cirAdmin.ts` (stats, exports, purges, templates, upload Excel + diff)
+- [x] Edge functions `import-cir-classifications` & `import-cir-segments` (payload validé, purge + insert, mise à jour batch)
+- [x] Helpers RPC `set_cir_batch_context` / `clear_cir_batch_context` pour alimenter les triggers
+- [x] Tests `npm run type-check`
+
+**Compte rendu** :
+```
+Date : 2025-11-12
+Durée : 3 h 20
+Résultat : API client + Edge Functions prêts (upload complet, diff résumé, batches mis à jour)
+Notes : exports retournent Blob UTF-8 BOM, edge functions chunk 500 lignes et fixent les contextes batch/audit
+```
 
 ---
 
@@ -2564,16 +2586,3 @@ Violations restantes :
 
 **Signature équipe** : _____________
 ---
-#### Étape 0.6.1.4 : RPC Purge
-- [x] `admin_purge_cir_history` (history CIR + segments + brand)
-- [x] `admin_purge_cir_classifications` (links → segments → classifications)
-- [x] `admin_purge_cir_segments` (links → segments uniquement)
-- [x] Chaque RPC retourne les compteurs supprimés + sécurisée (SECURITY DEFINER, `private.is_admin`, `search_path`, GRANT)
-
-**Compte rendu** :
-```
-Date : 2025-11-12
-Durée : 30 min
-Résultat : 3 RPC de purge opérationnelles (pg_safeupdate compliant)
-Notes : clauses WHERE explicites (id/history_id IS NOT NULL) pour passer pg_safeupdate
-```
