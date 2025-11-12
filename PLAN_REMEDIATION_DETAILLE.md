@@ -835,6 +835,144 @@ Résultat : Tables/history/segments créés + triggers + RLS + metadata import_b
 Notes : audit functions utilisent current_setting('cir.current_batch', true)::uuid (sera positionné par edge import)
 ```
 
+---
+#### Étape 0.6.1.3 : RPC stats & exports
+- [x] `admin_get_cir_stats` (counts + derniers batches)
+- [x] `admin_export_cir_classifications_csv`
+- [x] `admin_export_cir_segments_csv`
+- [x] RPC sécurisées (SECURITY DEFINER, `private.is_admin`, `search_path`, GRANT)
+
+**Compte rendu** :
+```
+Date : 2025-11-12
+Durée : 45 min
+Résultat : RPC stats + exports CSV UTF-8 BOM opérationnels
+Notes : colonnes exportées ordonnées par codes, segments exportent aussi les liaisons
+```
+
+### 0.6.1.4 RPC Purge
+Migration `supabase/migrations/<ts>_cir_admin_purges.sql` :
+- `admin_purge_cir_history()` → DELETE `cir_classification_history`, `cir_segment_history`, `brand_mapping_history` (WHERE conditions pour pg_safeupdate).
+- `admin_purge_cir_classifications()` → DELETE `cir_segment_links` → `cir_segments` → `cir_classifications`.
+- `admin_purge_cir_segments()` → DELETE `cir_segment_links` → `cir_segments` (sans toucher aux classifications).
+- Toutes retournent les compteurs supprimés.
+
+---
+
+## 0.6.2 API & Services (P0.6.B)
+
+### 0.6.2.1 Client TypeScript (`frontend/src/lib/api/cirAdmin.ts`)
+- `fetchCirStats()` → RPC stats.
+- `exportClassifications()` / `exportSegments()` → RPC exports, gèrent BOM.
+- `purgeHistory()` / `purgeClassifications()` / `purgeSegments()` → RPC purge.
+- `listTemplates(datasetType)` / `createTemplate` / `updateTemplate` / `deleteTemplate`.
+- `uploadClassificationExcel(file, templateId)` :
+  - Parse Excel (XLSX) → JSON.
+  - Appliquer mapping (via template).
+  - Calculer diff avec précédent import (basé sur `segment` ou `combined_code`).
+  - POST vers API interne (`/api/import/cir-classifications`) avec payload { batchMeta, rows }.
+- Idem pour segments (`/api/import/cir-segments`).
+
+### 0.6.2.2 Edge Functions / API routes
+- `/functions/import-cir-classifications` :
+  - Vérifie admin, consomme payload, purge `cir_classifications`, insère, crée batch + history.
+  - Renvoie diff (counts) utilisé dans l’UI.
+- `/functions/import-cir-segments` :
+  - Purge `cir_segment_links` + `cir_segments`, insère segments + links.
+  - Alimente `cir_segment_history`.
+- Modules partagés : validation Zod (colonnes obligatoires), helpers diff (Ajout/Modif/Suppression via `natural_key`).
+
+---
+
+## 0.6.3 UI – Wizard & Paramètres (P0.6.C)
+
+### 0.6.3.1 Wizard Import (commun)
+1. **Upload & Détection** : lire headers, auto-match sur template existant, afficher mapping manuel, possibilité de “Sauvegarder comme template”.
+2. **Analyse** : afficher colonnes non mappées, lignes incomplètes; calculer diff vs dataset actuel (Ajout/Modif/Suppression).
+3. **Confirmation** : toast + récap diff, lancer RPC import.
+4. **Résultat** : afficher `diff_summary` + lien vers export.
+
+Deux variations :
+- Classification : mapping sur colonnes `fsmega_code`, `fsmega_designation`, `fsfam_code`, etc.
+- Segments : mapping sur `segment`, `marque`, `cat_fab`, `cat_fab_l`, `strategiq`, `fs*`, `classif_cir`.
+
+### 0.6.3.2 Page Paramètres CIR
+- Onglet “Classifications” :
+  - Cartes `stats.total_classifications`, `stats.history_rows`, `stats.last_import_classification`.
+  - Boutons : Exporter → RPC, Importer (ouvre wizard), Purger historique, Purger classifications.
+  - Journal (table) : 20 derniers événements `cir_classification_history`.
+- Onglet “Segments” :
+  - Cartes `stats.total_segments`, `total_segment_links`, `last_import_segment`.
+  - Boutons : Exporter segments, Importer segments, Purger historique segments, Purger segments.
+  - Journal : 20 derniers événements `brand_mapping_history` + `cir_segment_history`.
+
+### 0.6.3.3 Gestion Templates
+- Page admin listant tous les templates (par dataset).
+- CRUD : créer, dupliquer, archiver, voir dernier batch utilisé.
+- Tag “système” en lecture seule.
+
+---
+
+## 0.6.4 Historique & Diff (P0.6.D)
+
+### 0.6.4.1 Détection diff
+- Stocker dans `import_batches.diff_summary` :
+  ```json
+  {
+    "added": 42,
+    "updated": 120,
+    "removed": 5,
+    "unchanged": 7381
+  }
+  ```
+- Sauvegarder un snapshot minimal (ex. `hash_by_key`) pour comparer plus tard sans relire toute la table.
+- UI “Historique des imports” : tableau par dataset (batch_id, filename, diff, template utilisé, utilisateur).
+
+### 0.6.4.2 Logs centralisés
+- RPC `admin_get_recent_activity(limit)` agrégeant les événements des deux historiques + batches.
+- Page Paramètres → section “Logs” lisant ce RPC.
+
+---
+
+## 0.6.5 Qualité & Tests (P0.6.E)
+
+### 0.6.5.1 Scénarios obligatoires
+1. Import classifications 2024 → Export CSV → Purge hist → Purge data → Re-import (checks diff = 0).
+2. Import segments (fichier complet) → Diff attendu : Ajout = 7548, Modif/Supp = 0.
+3. Modifier un fichier (ex. renommer `cat_fab_l` pour un segment) → Diff = 1 updated.
+4. Supprimer 10 segments dans l’Excel → Diff = 10 removed.
+5. API refuses actions si non admin (tests RLS / RPC).
+
+### 0.6.5.2 Automatisation minimale
+- Scripts Node (ou Vitest) pour :
+  - Parser un échantillon Excel → mapping → validation.
+  - Vérifier que l’export contient le BOM (`file[0] === '\ufeff'`).
+  - Vérifier que les RPC renvoient des JSON conformes (Zod).
+
+---
+
+## 0.6.6 Documentation & Ops (P0.6.F)
+
+### 0.6.6.1 Docs Produits
+- `docs/mapping-admin-test-plan.md` → enrichir avec scénarios d’import/export/diff.
+- `docs/templates.md` → comment créer/dupliquer un template, champ obligatoire par dataset.
+- `README.md` → section “Imports CIR” (commandes `supabase db push`, RPC à tester avant release).
+
+### 0.6.6.2 Checklist livraison
+- `supabase db push` exécuté + `supabase db diff` propre.
+- `npm run type-check`, `npm run lint` = OK.
+- Captures UI (wizard diff, page stats, logs).
+- PR incluant : migrations SQL, Edge Functions, composants UI, docs, tests.
+
+---
+
+## 0.6.7 Critères de réussite
+- ✅ Import classification & segments → diff visible, audit complet, stats exactes.
+- ✅ Export CSV (UTF‑8 BOM) ouvrable dans Excel sans corruption.
+- ✅ Templates clonables, versionnés, liés à chaque batch.
+- ✅ RPC admin (stats/export/purge) utilisables via PostgREST sans 404.
+- ✅ Documentation test/usage à jour.
+
 ## 🔶 PHASE 1 - ARCHITECTURE FRONTEND (P1)
 ### Durée estimée : 1,5-2 semaines | 80 heures
 
@@ -2425,21 +2563,17 @@ Violations restantes :
 ---
 
 **Signature équipe** : _____________
-
-
-
-
 ---
-#### Étape 0.6.1.3 : RPC stats & exports
-- [x] `admin_get_cir_stats` (counts + derniers batches)
-- [x] `admin_export_cir_classifications_csv`
-- [x] `admin_export_cir_segments_csv`
-- [x] RPC sécurisées (SECURITY DEFINER, `private.is_admin`, `search_path`, GRANT)
+#### Étape 0.6.1.4 : RPC Purge
+- [x] `admin_purge_cir_history` (history CIR + segments + brand)
+- [x] `admin_purge_cir_classifications` (links → segments → classifications)
+- [x] `admin_purge_cir_segments` (links → segments uniquement)
+- [x] Chaque RPC retourne les compteurs supprimés + sécurisée (SECURITY DEFINER, `private.is_admin`, `search_path`, GRANT)
 
 **Compte rendu** :
 ```
 Date : 2025-11-12
-Durée : 45 min
-Résultat : RPC stats + exports CSV UTF-8 BOM opérationnels
-Notes : colonnes exportées ordonnées par codes, segments exportent aussi les liaisons
+Durée : 30 min
+Résultat : 3 RPC de purge opérationnelles (pg_safeupdate compliant)
+Notes : clauses WHERE explicites (id/history_id IS NOT NULL) pour passer pg_safeupdate
 ```
