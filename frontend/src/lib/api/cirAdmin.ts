@@ -32,6 +32,28 @@ export interface ImportResult {
   info: string[];
 }
 
+export interface PreparedClassificationImport {
+  file: File;
+  rows: CirClassificationOutput[];
+  diffSummary: DiffSummary;
+  info: string[];
+  totalLines: number;
+  skippedLines: number;
+  mapping?: Record<string, string>;
+  templateId?: string | null;
+}
+
+export interface PreparedSegmentImport {
+  file: File;
+  rows: BrandMappingOutput[];
+  diffSummary: DiffSummary;
+  info: string[];
+  totalLines: number;
+  skippedLines: number;
+  mapping?: Record<string, string>;
+  templateId?: string | null;
+}
+
 type DatasetType = 'cir_classification' | 'cir_segment';
 
 function base64ToBlob(data: string, type: string): Blob {
@@ -44,7 +66,7 @@ function base64ToBlob(data: string, type: string): Blob {
   return new Blob([byteArray], { type });
 }
 
-function computeDiff<T>(
+export function computeDiff<T>(
   incoming: T[],
   existing: Map<string, T>,
   getKey: (item: T) => string,
@@ -157,6 +179,10 @@ async function fetchExistingClassifications(): Promise<Map<string, CirClassifica
   return map;
 }
 
+export async function getExistingClassificationsMap(): Promise<Map<string, CirClassificationOutput>> {
+  return fetchExistingClassifications();
+}
+
 async function fetchExistingSegments(): Promise<Map<string, BrandMappingOutput>> {
   const { data, error } = await supabase
     .from('brand_category_mappings')
@@ -168,6 +194,10 @@ async function fetchExistingSegments(): Promise<Map<string, BrandMappingOutput>>
     map.set(row.segment, row as BrandMappingOutput);
   });
   return map;
+}
+
+export async function getExistingSegmentsMap(): Promise<Map<string, BrandMappingOutput>> {
+  return fetchExistingSegments();
 }
 
 function isClassificationEqual(a: CirClassificationOutput, b: CirClassificationOutput): boolean {
@@ -210,6 +240,62 @@ async function finalizeBatch(
   if (error) {
     throw new Error(error.message ?? `Erreur fonction ${functionName}`);
   }
+}
+
+export async function applyClassificationImport(
+  prepared: PreparedClassificationImport,
+  options: { templateId?: string | null } = {}
+): Promise<ImportResult> {
+  const templateId = options.templateId ?? prepared.templateId ?? null;
+
+  const batchId = await createImportBatch({
+    filename: prepared.file.name,
+    datasetType: 'cir_classification',
+    totalLines: prepared.totalLines,
+    errorLines: prepared.skippedLines,
+    templateId,
+    diffSummary: prepared.diffSummary,
+    mapping: prepared.mapping ?? null
+  });
+
+  await uploadFileToStorage(batchId, 'cir_classification', prepared.file);
+
+  await finalizeBatch('import-cir-classifications', {
+    batchId,
+    rows: prepared.rows,
+    diffSummary: prepared.diffSummary,
+    templateId
+  });
+
+  return { batchId, diffSummary: prepared.diffSummary, info: prepared.info };
+}
+
+export async function applySegmentImport(
+  prepared: PreparedSegmentImport,
+  options: { templateId?: string | null } = {}
+): Promise<ImportResult> {
+  const templateId = options.templateId ?? prepared.templateId ?? null;
+
+  const batchId = await createImportBatch({
+    filename: prepared.file.name,
+    datasetType: 'cir_segment',
+    totalLines: prepared.totalLines,
+    errorLines: prepared.skippedLines,
+    templateId,
+    diffSummary: prepared.diffSummary,
+    mapping: prepared.mapping ?? null
+  });
+
+  await uploadFileToStorage(batchId, 'cir_segment', prepared.file);
+
+  await finalizeBatch('import-cir-segments', {
+    batchId,
+    rows: prepared.rows,
+    diffSummary: prepared.diffSummary,
+    templateId
+  });
+
+  return { batchId, diffSummary: prepared.diffSummary, info: prepared.info };
 }
 
 export const cirAdminApi = {

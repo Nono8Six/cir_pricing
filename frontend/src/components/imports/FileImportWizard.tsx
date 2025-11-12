@@ -1,690 +1,738 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Upload, CheckCircle2, FileSpreadsheet, GitMerge } from 'lucide-react';
-import { ColumnMapper } from './ColumnMapper';
-import { ValidationReport } from './ValidationReport';
-import { DiffPreview } from './DiffPreview';
 import * as XLSX from 'xlsx';
-import { guessMapping } from './utils';
-import { mappingRowSchema, requiredMappingFields } from '../../schemas/imports/mappingSchema';
-import { classificationRowSchema, requiredClassificationFields } from '../../schemas/imports/classificationSchema';
-import { mappingApi, cirClassificationApi } from '../../lib/supabaseClient';
-import { supabase } from '../../lib/api';
-import type { TablesInsert } from '../../types/database.types';
-import { useAuth } from '../../context/AuthContext';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
+import { Button } from '../ui/Button';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
+import {
+  cirAdminApi,
+  computeDiff,
+  getExistingClassificationsMap,
+  getExistingSegmentsMap,
+  applyClassificationImport,
+  applySegmentImport,
+  type DiffSummary,
+  type PreparedClassificationImport,
+  type PreparedSegmentImport
+} from '../../lib/api/cirAdmin';
+import {
+  CIR_CLASSIFICATION_COLUMN_MAPPINGS,
+  DEFAULT_COLUMN_MAPPINGS,
+  type BrandMappingOutput,
+  type CirClassificationOutput
+} from '../../lib/schemas';
 
-type DatasetType = 'mapping' | 'classification';
+type DatasetType = 'cir_classification' | 'cir_segment';
 
-type WizardStep = 0 | 1 | 2 | 3 | 4 | 5; // Type, File, Columns, Validation, Diff, Apply
+interface WorkbookData {
+  headers: string[];
+  rows: (string | number | null | undefined)[][];
+}
 
-// Type for raw Excel row data (before validation)
-type RawRowData = Record<string, string | number | null | undefined>;
-
-// Type for diff row data (comparison between existing and imported)
-interface DiffRowData {
+interface FieldDefinition {
   key: string;
-  status: 'create' | 'update' | 'conflict' | 'unchanged';
-  before?: Record<string, unknown> | null | undefined;
-  after?: Record<string, unknown> | null | undefined;
-  changedFields?: string[];
-  sensitiveChanged?: boolean | undefined;
+  label: string;
+  required: boolean;
+  type: 'text' | 'number';
 }
 
-interface Draft {
-  datasetType?: DatasetType | undefined;
-  fileName?: string | undefined;
-  fileSize?: number | undefined;
-  // Columns mapping is intentionally loose at this stage (skeleton)
-  columns?: Record<string, string>;
-  // Placeholder summaries to display in steps (populated in later phases)
-  validation?: { errors: number; warnings: number } | undefined;
-  diff?: { unchanged: number; create: number; update: number; conflict: number } | undefined;
-  step?: WizardStep;
+const CLASSIFICATION_FIELDS: FieldDefinition[] = [
+  { key: 'fsmega_code', label: 'Code FSMEGA', required: true, type: 'number' },
+  { key: 'fsmega_designation', label: 'Désignation FSMEGA', required: true, type: 'text' },
+  { key: 'fsfam_code', label: 'Code FSFAM', required: true, type: 'number' },
+  { key: 'fsfam_designation', label: 'Désignation FSFAM', required: true, type: 'text' },
+  { key: 'fssfa_code', label: 'Code FSSFA', required: true, type: 'number' },
+  { key: 'fssfa_designation', label: 'Désignation FSSFA', required: true, type: 'text' },
+  { key: 'combined_code', label: 'Code combiné (1 10 10)', required: true, type: 'text' },
+  { key: 'combined_designation', label: 'Désignation combinée', required: true, type: 'text' }
+];
+
+const SEGMENT_FIELDS: FieldDefinition[] = [
+  { key: 'segment', label: 'Segment', required: true, type: 'text' },
+  { key: 'marque', label: 'Marque', required: true, type: 'text' },
+  { key: 'cat_fab', label: 'Catégorie fabricant', required: true, type: 'text' },
+  { key: 'cat_fab_l', label: 'Description catégorie', required: false, type: 'text' },
+  { key: 'strategiq', label: 'Stratégique (0/1)', required: true, type: 'number' },
+  { key: 'codif_fair', label: 'Code FAIR', required: false, type: 'text' },
+  { key: 'fsmega', label: 'FSMEGA', required: true, type: 'number' },
+  { key: 'fsfam', label: 'FSFAM', required: true, type: 'number' },
+  { key: 'fssfa', label: 'FSSFA', required: true, type: 'number' },
+  { key: 'classif_cir', label: 'Code CIR combiné', required: false, type: 'text' }
+];
+
+const SEGMENT_VARIATIONS: Record<string, string[]> = {
+  ...DEFAULT_COLUMN_MAPPINGS,
+  classif_cir: ['CLASSIFCIR', 'CLASSIF_CIR', 'CLASSIF CIR', 'CODE CIR', 'CIR CODE']
+};
+
+const STEPS = [
+  { key: 0, label: 'Dataset & Template' },
+  { key: 1, label: 'Fichier' },
+  { key: 2, label: 'Colonnes' },
+  { key: 3, label: 'Analyse & Import' }
+] as const;
+
+type Step = typeof STEPS[number]['key'];
+
+const normalize = (value?: string | number | null) =>
+  (value ?? '').toString().trim().toLowerCase();
+
+const parseNumber = (value: string | number | null | undefined): number | null => {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.trunc(parsed) : null;
+};
+
+const isClassificationEqual = (a: CirClassificationOutput, b: CirClassificationOutput): boolean => (
+  a.fsmega_code === b.fsmega_code &&
+  a.fsmega_designation === b.fsmega_designation &&
+  a.fsfam_code === b.fsfam_code &&
+  a.fsfam_designation === b.fsfam_designation &&
+  a.fssfa_code === b.fssfa_code &&
+  a.fssfa_designation === b.fssfa_designation &&
+  (a.combined_designation ?? '') === (b.combined_designation ?? '')
+);
+
+const isSegmentEqual = (a: BrandMappingOutput, b: BrandMappingOutput): boolean => (
+  a.segment === b.segment &&
+  a.marque === b.marque &&
+  a.cat_fab === b.cat_fab &&
+  (a.cat_fab_l ?? '') === (b.cat_fab_l ?? '') &&
+  a.strategiq === b.strategiq &&
+  (a.codif_fair ?? '') === (b.codif_fair ?? '') &&
+  a.fsmega === b.fsmega &&
+  a.fsfam === b.fsfam &&
+  a.fssfa === b.fssfa &&
+  ((a as Record<string, unknown>).classif_cir ?? '') === ((b as Record<string, unknown>).classif_cir ?? '')
+);
+
+const DEFAULT_TEMPLATE_FIELDS: Record<DatasetType, FieldDefinition[]> = {
+  cir_classification: CLASSIFICATION_FIELDS,
+  cir_segment: SEGMENT_FIELDS
+};
+
+const DEFAULT_VARIATIONS: Record<DatasetType, Record<string, string[]>> = {
+  cir_classification: CIR_CLASSIFICATION_COLUMN_MAPPINGS,
+  cir_segment: SEGMENT_VARIATIONS
+};
+
+async function readWorkbook(file: File): Promise<WorkbookData> {
+  const data = await file.arrayBuffer();
+  const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
+  const sheetName = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[sheetName];
+  const json = XLSX.utils.sheet_to_json(worksheet, {
+    header: 1,
+    defval: null,
+    blankrows: false
+  });
+
+  const headers = ((json[0] ?? []) as (string | number | null | undefined)[])
+    .map((cell) => (cell ?? '').toString().trim());
+
+  const rows = json.slice(1) as (string | number | null | undefined)[][];
+  return { headers, rows };
 }
 
-const DRAFT_KEY = 'import-wizard-draft';
-
-function loadDraft(): Draft | undefined {
-  try {
-    const raw = localStorage.getItem(DRAFT_KEY);
-    if (!raw) return undefined;
-    return JSON.parse(raw) as Draft;
-  } catch {
-    return undefined;
+function autoMapFields(
+  datasetType: DatasetType,
+  headers: string[],
+  templateMapping?: Record<string, string> | null
+): Record<string, string> {
+  if (templateMapping && Object.keys(templateMapping).length > 0) {
+    return { ...templateMapping };
   }
+
+  const fieldMap: Record<string, string> = {};
+  const variations = DEFAULT_VARIATIONS[datasetType];
+  const normalizedHeaders = headers.map((header) => ({
+    raw: header,
+    normalized: normalize(header)
+  }));
+
+  Object.entries(variations).forEach(([field, names]) => {
+    const match = normalizedHeaders.find((header) =>
+      names.some((name) => normalize(name) === header.normalized)
+    );
+    if (match) {
+      fieldMap[field] = match.raw;
+    }
+  });
+
+  return fieldMap;
 }
 
-function saveDraft(d: Draft) {
-  try {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
-  } catch {
-    // ignore
-  }
+function mapRowValues(
+  row: (string | number | null | undefined)[],
+  headers: string[],
+  mapping: Record<string, string>,
+  field: string
+): string | number | null | undefined {
+  const headerName = mapping[field];
+  if (!headerName) return undefined;
+  const index = headers.findIndex((header) => normalize(header) === normalize(headerName));
+  if (index === -1) return undefined;
+  return row[index];
 }
 
-function clearDraft() {
-  try {
-    localStorage.removeItem(DRAFT_KEY);
-  } catch {
-    // ignore
-  }
+function buildClassificationRows(
+  workbook: WorkbookData,
+  mapping: Record<string, string>
+): { rows: CirClassificationOutput[]; info: string[]; skipped: number } {
+  const rows: CirClassificationOutput[] = [];
+  const info: string[] = [];
+  let skipped = 0;
+
+  workbook.rows.forEach((row, index) => {
+    if (!row || row.every((cell) => cell === null || cell === undefined || cell === '')) {
+      return;
+    }
+
+    const lineNumber = index + 2;
+    const fsmega_code = parseNumber(mapRowValues(row, workbook.headers, mapping, 'fsmega_code'));
+    const fsfam_code = parseNumber(mapRowValues(row, workbook.headers, mapping, 'fsfam_code'));
+    const fssfa_code = parseNumber(mapRowValues(row, workbook.headers, mapping, 'fssfa_code'));
+    const fsmega_designation = (mapRowValues(row, workbook.headers, mapping, 'fsmega_designation') ?? '').toString().trim();
+    const fsfam_designation = (mapRowValues(row, workbook.headers, mapping, 'fsfam_designation') ?? '').toString().trim();
+    const fssfa_designation = (mapRowValues(row, workbook.headers, mapping, 'fssfa_designation') ?? '').toString().trim();
+    const combined_code = (mapRowValues(row, workbook.headers, mapping, 'combined_code') ?? '').toString().trim();
+    const combined_designation = (mapRowValues(row, workbook.headers, mapping, 'combined_designation') ?? '').toString().trim();
+
+    const missing: string[] = [];
+    if (fsmega_code === null) missing.push('fsmega_code');
+    if (fsfam_code === null) missing.push('fsfam_code');
+    if (fssfa_code === null) missing.push('fssfa_code');
+    if (!fsmega_designation) missing.push('fsmega_designation');
+    if (!fsfam_designation) missing.push('fsfam_designation');
+    if (!fssfa_designation) missing.push('fssfa_designation');
+    if (!combined_code) missing.push('combined_code');
+    if (!combined_designation) missing.push('combined_designation');
+
+    if (missing.length > 0) {
+      info.push(`Ligne ${lineNumber}: champs manquants (${missing.join(', ')})`);
+      skipped++;
+      return;
+    }
+
+    rows.push({
+      fsmega_code: fsmega_code as number,
+      fsmega_designation,
+      fsfam_code: fsfam_code as number,
+      fsfam_designation,
+      fssfa_code: fssfa_code as number,
+      fssfa_designation,
+      combined_code,
+      combined_designation
+    });
+  });
+
+  return { rows, info, skipped };
+}
+
+function buildSegmentRows(
+  workbook: WorkbookData,
+  mapping: Record<string, string>
+): { rows: BrandMappingOutput[]; info: string[]; skipped: number } {
+  const rows: BrandMappingOutput[] = [];
+  const info: string[] = [];
+  let skipped = 0;
+
+  workbook.rows.forEach((row, index) => {
+    if (!row || row.every((cell) => cell === null || cell === undefined || cell === '')) {
+      return;
+    }
+
+    const lineNumber = index + 2;
+    const segment = (mapRowValues(row, workbook.headers, mapping, 'segment') ?? '').toString().trim();
+    const marque = (mapRowValues(row, workbook.headers, mapping, 'marque') ?? '').toString().trim();
+    const cat_fab = (mapRowValues(row, workbook.headers, mapping, 'cat_fab') ?? '').toString().trim();
+    const cat_fab_l = (mapRowValues(row, workbook.headers, mapping, 'cat_fab_l') ?? '').toString().trim() || null;
+    const strategiq = parseNumber(mapRowValues(row, workbook.headers, mapping, 'strategiq')) ?? 0;
+    const codif_fair = (mapRowValues(row, workbook.headers, mapping, 'codif_fair') ?? '').toString().trim() || null;
+    const fsmega = parseNumber(mapRowValues(row, workbook.headers, mapping, 'fsmega'));
+    const fsfam = parseNumber(mapRowValues(row, workbook.headers, mapping, 'fsfam'));
+    const fssfa = parseNumber(mapRowValues(row, workbook.headers, mapping, 'fssfa'));
+    const classif_cir = (mapRowValues(row, workbook.headers, mapping, 'classif_cir') ?? '').toString().trim() || null;
+
+    const missing: string[] = [];
+    if (!segment) missing.push('segment');
+    if (!marque) missing.push('marque');
+    if (!cat_fab) missing.push('cat_fab');
+    if (fsmega === null) missing.push('fsmega');
+    if (fsfam === null) missing.push('fsfam');
+    if (fssfa === null) missing.push('fssfa');
+
+    if (missing.length > 0) {
+      info.push(`Ligne ${lineNumber}: champs manquants (${missing.join(', ')})`);
+      skipped++;
+      return;
+    }
+
+    rows.push({
+      segment,
+      marque,
+      cat_fab,
+      cat_fab_l,
+      strategiq,
+      codif_fair,
+      fsmega: fsmega as number,
+      fsfam: fsfam as number,
+      fssfa: fssfa as number,
+      classif_cir: classif_cir ?? `${fsmega} ${fsfam} ${fssfa}`
+    } as BrandMappingOutput);
+  });
+
+  return { rows, info, skipped };
 }
 
 export const FileImportWizard: React.FC = () => {
-  const draft = loadDraft();
-  const navigate = useNavigate();
-  const [datasetType, setDatasetType] = useState<DatasetType | undefined>(draft?.datasetType);
-  const [fileName, setFileName] = useState<string | undefined>(draft?.fileName);
-  const [fileSize, setFileSize] = useState<number | undefined>(draft?.fileSize);
-  const [columns, setColumns] = useState<Record<string, string>>(draft?.columns || {});
+  const [step, setStep] = useState<Step>(0);
+  const [datasetType, setDatasetType] = useState<DatasetType | null>(null);
+  const [templates, setTemplates] = useState<Record<string, unknown>[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({});
   const [headers, setHeaders] = useState<string[]>([]);
-  const [rawRows, setRawRows] = useState<RawRowData[]>([]);
-  const [errorsCsv, setErrorsCsv] = useState<string | null>(null);
-  const [examples, setExamples] = useState<{ total: number; sample: unknown[] } | undefined>(undefined);
-  const [applyLoading, setApplyLoading] = useState(false);
-  const [resolutions, setResolutions] = useState<Record<string, { action: 'keep' | 'replace' | 'merge'; fieldChoices?: Record<string, 'existing' | 'import'> }>>({});
-  const { user } = useAuth();
-  const [fileObj, setFileObj] = useState<File | null>(null); // not persisted
-  const [diffRows, setDiffRows] = useState<DiffRowData[]>([]);
-  const [validation, setValidation] = useState<Draft['validation']>(draft?.validation);
-  const [diff, setDiff] = useState<Draft['diff']>(draft?.diff);
-  const [step, setStep] = useState<WizardStep>(draft?.step ?? 0);
+  const [workbookData, setWorkbookData] = useState<WorkbookData | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [prepared, setPrepared] = useState<PreparedClassificationImport | PreparedSegmentImport | null>(null);
+  const [diffSummary, setDiffSummary] = useState<DiffSummary | null>(null);
+  const [infoMessages, setInfoMessages] = useState<string[]>([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [templateDescription, setTemplateDescription] = useState('');
+  const [savingTemplate, setSavingTemplate] = useState(false);
 
-  // Persist draft on any relevant change
   useEffect(() => {
-    saveDraft({ datasetType, fileName, fileSize, columns, validation, diff, step });
-  }, [datasetType, fileName, fileSize, columns, validation, diff, step]);
-
-  // Re-guess mapping when dataset type changes and headers already loaded
-  useEffect(() => {
-    if (datasetType && headers.length) {
-      const guessed = guessMapping(headers, datasetType);
-      setColumns((prev) => ({ ...guessed, ...prev }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [datasetType]);
-
-  const steps = useMemo(
-    () => [
-      { key: 0 as WizardStep, label: 'Type' },
-      { key: 1 as WizardStep, label: 'Fichier' },
-      { key: 2 as WizardStep, label: 'Colonnes' },
-      { key: 3 as WizardStep, label: 'Validation' },
-      { key: 4 as WizardStep, label: 'Diff & Conflits' },
-      { key: 5 as WizardStep, label: 'Appliquer' },
-    ],
-    []
-  );
-
-  const canNext = useMemo(() => {
-    if (step === 0) return !!datasetType;
-    if (step === 1) return !!fileName;
-    if (step === 2) {
-      // required fields must be mapped
-      const required = datasetType === 'classification' ? requiredClassificationFields : requiredMappingFields;
-      return required.every((f) => columns[f.key as string]);
-    }
-    if (step === 3) {
-      return (validation?.errors ?? 0) === 0;
-    }
-    if (step === 4) return !!diff; // Step 4: Diff & Conflicts
-    if (step === 5) return true; // Step 5: Apply - always allow finish
-    // Steps 2..5 are placeholders; allow navigation for now
-    return true;
-  }, [datasetType, fileName, step, columns, validation, diff]);
-
-  const goNext = () => {
-    if (step === 5) {
-      // Finish wizard - clean up and redirect to imports history
-      try {
-        localStorage.removeItem(DRAFT_KEY);
-      } catch (e) {
-        console.warn('Could not clear draft:', e);
-      }
-      navigate('/imports/history');
+    if (!datasetType) {
+      setTemplates([]);
+      setSelectedTemplateId(null);
+      setFieldMapping({});
       return;
     }
-    setStep((s) => (s < 5 ? ((s + 1) as WizardStep) : s));
-  };
-  const goPrev = () => setStep((s) => (s > 0 ? ((s - 1) as WizardStep) : s));
 
-  const resetWizard = () => {
-    setDatasetType(undefined);
-    setFileName(undefined);
-    setFileSize(undefined);
-    setColumns({});
-    setValidation(undefined);
-    setDiff(undefined);
+    setLoadingTemplates(true);
+    cirAdminApi
+      .listTemplates(datasetType)
+      .then((data) => setTemplates(data))
+      .catch((error) => toast.error('Impossible de charger les templates', { description: String(error) }))
+      .finally(() => setLoadingTemplates(false));
+  }, [datasetType]);
+
+  const currentFields = useMemo(() => {
+    if (!datasetType) return [];
+    return DEFAULT_TEMPLATE_FIELDS[datasetType];
+  }, [datasetType]);
+
+  const handleDatasetSelect = (type: DatasetType) => {
+    setDatasetType(type);
+    setSelectedTemplateId(null);
+    setFieldMapping({});
+    setHeaders([]);
+    setWorkbookData(null);
+    setFile(null);
+    setPrepared(null);
+    setDiffSummary(null);
+    setInfoMessages([]);
     setStep(0);
-    clearDraft();
   };
+
+  const handleTemplateChange = (templateId: string | null) => {
+    setSelectedTemplateId(templateId);
+    const template = templates.find((tpl) => tpl.id === templateId);
+    if (template && typeof template.mapping === 'object') {
+      setFieldMapping(template.mapping as Record<string, string>);
+    }
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) return;
+    const selectedFile = event.target.files[0];
+    setFile(selectedFile);
+    setPrepared(null);
+    setDiffSummary(null);
+    setInfoMessages([]);
+
+    try {
+      const workbook = await readWorkbook(selectedFile);
+      setWorkbookData(workbook);
+      setHeaders(workbook.headers);
+
+      if (datasetType) {
+        const autoMapping = autoMapFields(datasetType, workbook.headers, fieldMapping);
+        setFieldMapping(autoMapping);
+      }
+
+      toast.success('Fichier chargé', { description: `${selectedFile.name} (${selectedFile.size} octets)` });
+    } catch (error) {
+      toast.error('Lecture du fichier impossible', { description: String(error) });
+    }
+  };
+
+  const validateMapping = (): string[] => {
+    if (!datasetType) return [];
+    const missing: string[] = [];
+    DEFAULT_TEMPLATE_FIELDS[datasetType].forEach((field) => {
+      if (field.required && !fieldMapping[field.key]) {
+        missing.push(field.label);
+      }
+    });
+    return missing;
+  };
+
+  const runAnalysis = async () => {
+    if (!datasetType || !file || !workbookData) return;
+    const mappingIssues = validateMapping();
+    if (mappingIssues.length > 0) {
+      toast.error('Champs obligatoires non mappés', { description: mappingIssues.join(', ') });
+      return;
+    }
+
+    setIsAnalyzing(true);
+    try {
+      let rows: CirClassificationOutput[] | BrandMappingOutput[] = [];
+      let info: string[] = [];
+      let skipped = 0;
+
+      if (datasetType === 'cir_classification') {
+        const result = buildClassificationRows(workbookData, fieldMapping);
+        rows = result.rows;
+        info = result.info;
+        skipped = result.skipped;
+
+        const existing = await getExistingClassificationsMap();
+        const diff = computeDiff(rows, existing, (row) => row.combined_code, isClassificationEqual);
+
+        const preparedData: PreparedClassificationImport = {
+          file,
+          rows,
+          diffSummary: diff,
+          info,
+          totalLines: workbookData.rows.length,
+          skippedLines: skipped,
+          mapping: fieldMapping,
+          templateId: selectedTemplateId
+        };
+
+        setPrepared(preparedData);
+        setDiffSummary(diff);
+        setInfoMessages(info);
+      } else {
+        const result = buildSegmentRows(workbookData, fieldMapping);
+        rows = result.rows;
+        info = result.info;
+        skipped = result.skipped;
+
+        const existing = await getExistingSegmentsMap();
+        const diff = computeDiff(rows, existing, (row) => row.segment, isSegmentEqual);
+
+        const preparedData: PreparedSegmentImport = {
+          file,
+          rows,
+          diffSummary: diff,
+          info,
+          totalLines: workbookData.rows.length,
+          skippedLines: skipped,
+          mapping: fieldMapping,
+          templateId: selectedTemplateId
+        };
+
+        setPrepared(preparedData);
+        setDiffSummary(diff);
+        setInfoMessages(info);
+      }
+
+      setStep(3);
+      toast.success('Analyse terminée', { description: 'Diff calculé, prêt à importer.' });
+    } catch (error) {
+      toast.error('Analyse impossible', { description: String(error) });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const applyImport = async () => {
+    if (!prepared || !datasetType) return;
+    setIsApplying(true);
+    try {
+      const result = datasetType === 'cir_classification'
+        ? await applyClassificationImport(prepared as PreparedClassificationImport, { templateId: selectedTemplateId })
+        : await applySegmentImport(prepared as PreparedSegmentImport, { templateId: selectedTemplateId });
+
+      toast.success('Import appliqué', { description: `Batch ${result.batchId}` });
+      setPrepared(null);
+      setDiffSummary(null);
+      setInfoMessages([]);
+      setFile(null);
+      setWorkbookData(null);
+      setHeaders([]);
+      setStep(0);
+    } catch (error) {
+      toast.error('Import impossible', { description: String(error) });
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
+  const saveTemplate = async () => {
+    if (!datasetType) {
+      toast.error('Sélectionnez un dataset avant de créer un template');
+      return;
+    }
+    if (!templateName.trim()) {
+      toast.error('Nom du template requis');
+      return;
+    }
+
+    setSavingTemplate(true);
+    try {
+      const payload: {
+        name: string;
+        datasetType: DatasetType;
+        mapping: Record<string, string>;
+        description?: string;
+        isDefault: boolean;
+      } = {
+        name: templateName.trim(),
+        datasetType,
+        mapping: fieldMapping,
+        isDefault: false
+      };
+
+      if (templateDescription.trim()) {
+        payload.description = templateDescription.trim();
+      }
+
+      await cirAdminApi.createTemplate(payload);
+
+      toast.success('Template enregistré');
+      setTemplateName('');
+      setTemplateDescription('');
+      const updated = await cirAdminApi.listTemplates(datasetType);
+      setTemplates(updated);
+    } catch (error) {
+      toast.error('Impossible de sauvegarder le template', { description: String(error) });
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const mappingComplete = useMemo(() => validateMapping().length === 0, [fieldMapping, datasetType]);
 
   return (
     <div className="space-y-6">
-      {/* Stepper */}
       <Card>
-        <CardContent className="p-0">
-          <div className="flex items-center overflow-x-auto">
-            {steps.map((s, idx) => {
-              const isActive = s.key === step;
-              const isDone = s.key < step;
-              return (
-                <div key={s.key} className={`flex items-center flex-1 min-w-[160px] px-4 py-3 border-b ${isActive ? 'border-cir-red' : 'border-gray-200'}`}>
-                  <div className={`flex items-center ${isActive ? 'text-cir-red' : 'text-gray-600'}`}>
-                    {isDone ? (
-                      <CheckCircle2 className="w-4 h-4 mr-2 text-green-600" />
-                    ) : s.key === 1 ? (
-                      <Upload className="w-4 h-4 mr-2" />
-                    ) : s.key === 2 ? (
-                      <FileSpreadsheet className="w-4 h-4 mr-2" />
-                    ) : s.key === 4 ? (
-                      <GitMerge className="w-4 h-4 mr-2" />
-                    ) : (
-                      <div className="w-4 h-4 mr-2 rounded-full border border-current" />
-                    )}
-                    <span className="text-sm font-medium">{idx + 1}. {s.label}</span>
-                  </div>
-                </div>
-              );
-            })}
+        <CardHeader>
+          <CardTitle>Assistant d'import CIR</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex gap-2">
+            {STEPS.map((s) => (
+              <div key={s.key} className={`flex-1 border-b-2 pb-1 text-center text-sm ${step === s.key ? 'border-cir-red text-cir-red font-semibold' : 'border-gray-200 text-gray-500'}`}>
+                {s.label}
+              </div>
+            ))}
           </div>
+
+          {step === 0 && (
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-medium mb-2">Sélection du dataset</p>
+                <div className="flex gap-3">
+                  <Button
+                    variant={datasetType === 'cir_classification' ? 'primary' : 'outline'}
+                    onClick={() => handleDatasetSelect('cir_classification')}
+                  >
+                    Classifications CIR
+                  </Button>
+                  <Button
+                    variant={datasetType === 'cir_segment' ? 'primary' : 'outline'}
+                    onClick={() => handleDatasetSelect('cir_segment')}
+                  >
+                    Segments tarifaires
+                  </Button>
+                </div>
+              </div>
+
+              {datasetType && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Template existant</label>
+                  <select
+                    className="w-full border rounded-md px-3 py-2"
+                    value={selectedTemplateId ?? ''}
+                    onChange={(e) => handleTemplateChange(e.target.value || null)}
+                    disabled={loadingTemplates}
+                  >
+                    <option value="">Aucun template</option>
+                    {templates.map((tpl) => (
+                      <option key={tpl.id as string} value={tpl.id as string}>
+                        {tpl.name as string}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <Button
+                  onClick={() => setStep(1)}
+                  disabled={!datasetType}
+                >
+                  Continuer
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {step === 1 && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fichier Excel</label>
+                <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFileChange} />
+                {file && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    {file.name} — {(file.size / 1024).toFixed(1)} Ko
+                  </p>
+                )}
+              </div>
+
+              {headers.length > 0 && (
+                <div className="text-sm text-gray-600">
+                  Colonnes détectées : {headers.join(', ')}
+                </div>
+              )}
+
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={() => setStep(0)}>Retour</Button>
+                <Button onClick={() => setStep(2)} disabled={!file || headers.length === 0}>
+                  Continuer
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {step === 2 && datasetType && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Associer les colonnes</p>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (workbookData) {
+                      const auto = autoMapFields(datasetType, workbookData.headers, selectedTemplateId ? fieldMapping : undefined);
+                      setFieldMapping(auto);
+                    }
+                  }}
+                  disabled={!workbookData}
+                >
+                  Re-détecter automatiquement
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {currentFields.map((field) => (
+                  <div key={field.key} className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-center">
+                    <span className="text-sm font-medium text-gray-700">
+                      {field.label} {field.required && <span className="text-cir-red">*</span>}
+                    </span>
+                    <select
+                      className="border rounded-md px-3 py-2"
+                      value={fieldMapping[field.key] ?? ''}
+                      onChange={(e) => setFieldMapping((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                    >
+                      <option value="">— Sélectionner —</option>
+                      {headers.map((header) => (
+                        <option key={header} value={header}>
+                          {header || '(colonne vide)'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+
+              <div className="border rounded-md p-4 space-y-2">
+                <p className="text-sm font-semibold">Enregistrer comme template</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <input
+                    className="border rounded-md px-3 py-2"
+                    placeholder="Nom du template"
+                    value={templateName}
+                    onChange={(e) => setTemplateName(e.target.value)}
+                  />
+                  <input
+                    className="border rounded-md px-3 py-2"
+                    placeholder="Description (optionnelle)"
+                    value={templateDescription}
+                    onChange={(e) => setTemplateDescription(e.target.value)}
+                  />
+                </div>
+                <Button onClick={saveTemplate} disabled={!templateName.trim() || !mappingComplete || savingTemplate}>
+                  Sauvegarder ce mapping
+                </Button>
+              </div>
+
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={() => setStep(1)}>Retour</Button>
+                <Button onClick={runAnalysis} disabled={!mappingComplete || isAnalyzing}>
+                  {isAnalyzing ? 'Analyse en cours...' : 'Analyser et comparer'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {step === 3 && prepared && diffSummary && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="bg-blue-50 border-blue-200">
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-sm text-blue-700">Ajouts</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-2xl font-bold text-blue-900">{diffSummary.added}</CardContent>
+                </Card>
+                <Card className="bg-yellow-50 border-yellow-200">
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-sm text-yellow-700">Mises à jour</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-2xl font-bold text-yellow-900">{diffSummary.updated}</CardContent>
+                </Card>
+                <Card className="bg-red-50 border-red-200">
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-sm text-red-700">Supprimés</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-2xl font-bold text-red-900">{diffSummary.removed}</CardContent>
+                </Card>
+                <Card className="bg-gray-50 border-gray-200">
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-sm text-gray-700">Identiques</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-2xl font-bold text-gray-900">{diffSummary.unchanged}</CardContent>
+                </Card>
+              </div>
+
+              {infoMessages.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm text-gray-700">Infos / avertissements</CardTitle>
+                  </CardHeader>
+                  <CardContent className="max-h-48 overflow-auto text-sm text-gray-600 space-y-1">
+                    {infoMessages.map((msg, index) => (
+                      <div key={index}>• {msg}</div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={() => setStep(2)}>Retour</Button>
+                <Button onClick={applyImport} disabled={isApplying}>
+                  {isApplying ? 'Import en cours...' : 'Appliquer l’import'}
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
-
-      {/* Step content */}
-      {step === 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Choisir le type de données</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Button
-                variant={datasetType === 'mapping' ? 'primary' : 'outline'}
-                onClick={() => setDatasetType('mapping')}
-              >
-                Mappings segments
-              </Button>
-              <Button
-                variant={datasetType === 'classification' ? 'primary' : 'outline'}
-                onClick={() => setDatasetType('classification')}
-              >
-                Classifications CIR
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {step === 1 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Importer un fichier</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <input
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (!f) return;
-                  setFileObj(f);
-                  setFileName(f.name);
-                  setFileSize(f.size);
-                  const reader = new FileReader();
-                  reader.onload = (ev) => {
-                    const data = new Uint8Array(ev.target?.result as ArrayBuffer);
-                    const wb = XLSX.read(data, { type: 'array' });
-                    const sheetName = wb.SheetNames[0];
-                    const ws = wb.Sheets[sheetName];
-                    // Extract headers from first row for robustness
-                    const rowsArray = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as unknown[][];
-                    const hdrRow = (rowsArray[0] || []).map((x: unknown) => String(x ?? '').trim()).filter(Boolean);
-                    const json = XLSX.utils.sheet_to_json(ws, { defval: '' }) as RawRowData[];
-                    setRawRows(json);
-                    setHeaders(hdrRow);
-                    if (datasetType) {
-                      const guessed = guessMapping(hdrRow, datasetType);
-                      setColumns((prev) => ({ ...guessed, ...prev }));
-                    }
-                    setExamples({ total: json.length, sample: json.slice(0, 5) });
-                  };
-                  reader.readAsArrayBuffer(f);
-                }}
-                className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
-              />
-              {fileName && (
-                <div className="text-sm text-gray-600">Sélectionné: {fileName} {fileSize ? `(${Math.round(fileSize/1024)} Ko)` : ''}</div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {step === 2 && (
-        <ColumnMapper
-          datasetType={datasetType}
-          columns={columns}
-          headers={headers}
-          onChange={setColumns}
-        />
-      )}
-
-      {step === 3 && (
-        <ValidationReport
-          validation={validation}
-          onSetValidation={setValidation}
-          errorsCsv={errorsCsv}
-          examples={examples}
-        />
-      )}
-
-      {step === 4 && (
-        <DiffPreview
-          diff={diff}
-          onSetDiff={setDiff}
-          items={diffRows}
-          datasetType={datasetType}
-          resolutions={resolutions}
-          onResolveChange={(key, res) => setResolutions((prev) => ({ ...prev, [key]: res }))}
-          onBulkResolve={(status, action) => {
-            const next = { ...resolutions };
-            diffRows.filter(r => r.status === status).forEach(r => {
-              next[r.key] = { action };
-            });
-            setResolutions(next);
-          }}
-        />
-      )}
-
-      {step === 5 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Appliquer les changements</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 text-sm text-gray-700">
-              <div>Type: <span className="font-medium">{datasetType || '—'}</span></div>
-              <div>Fichier: <span className="font-medium">{fileName || '—'}</span></div>
-              <div>Validation: <span className="font-medium">{validation ? `${validation.errors} erreurs, ${validation.warnings} avertissements` : '—'}</span></div>
-              <div>Diff: <span className="font-medium">{diff ? `new ${diff.create}, update ${diff.update}, conflicts ${diff.conflict}, unchanged ${diff.unchanged}` : '—'}</span></div>
-              <div className="text-gray-500">Choisissez le mode d'import :</div>
-            </div>
-            
-            <div className="mt-4 space-y-4">
-              {/* Import mode selection */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg bg-gray-50">
-                <div className="space-y-2">
-                  <h4 className="font-medium flex items-center gap-2">
-                    <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                    Import direct (recommandé pour &lt;1000 lignes)
-                  </h4>
-                  <ul className="text-sm text-gray-600 space-y-1">
-                    <li>• Traitement immédiat dans le navigateur</li>
-                    <li>• Résout automatiquement les conflits selon vos choix</li>
-                    <li>• Audit détaillé de chaque modification</li>
-                    <li>• ⚠️ Peut ralentir sur gros fichiers</li>
-                  </ul>
-                </div>
-                <div className="space-y-2">
-                  <h4 className="font-medium flex items-center gap-2">
-                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                    Import en arrière-plan (pour gros volumes)
-                  </h4>
-                  <ul className="text-sm text-gray-600 space-y-1">
-                    <li>• Traitement asynchrone sur le serveur</li>
-                    <li>• Progression visible en temps réel</li>
-                    <li>• Idéal pour fichiers volumineux (&gt;1000 lignes)</li>
-                    <li>• ⚠️ Les conflits seront remplacés automatiquement</li>
-                  </ul>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-3 flex-wrap">
-              <Button onClick={async () => {
-                if (!datasetType || !fileName) {
-                  console.error('❌ Missing datasetType or fileName');
-                  toast.error('Données manquantes pour l\'import');
-                  return;
-                }
-                if (!diff) {
-                  console.error('❌ Missing diff data');
-                  toast.error('Pas de données de différence calculées');
-                  return;
-                }
-                try {
-                  setApplyLoading(true);
-                  const batchStats = {
-                    total_lines: rawRows.length,
-                    processed_lines: 0,
-                    error_lines: validation?.errors || 0,
-                    comment: 'Import Center Wizard'
-                  };
-                  const batch = await mappingApi.createImportBatch(fileName, user?.id || '', batchStats);
-
-                  await supabase.rpc('set_current_batch_id', { batch_uuid: batch.id });
-                  await supabase.rpc('set_change_reason', { reason: batch.id });
-
-                  const getRes = (key: string) => resolutions[key] || { action: 'replace' as const };
-                  let created = 0, updated = 0, skipped = 0;
-
-                  if (datasetType === 'mapping') {
-                    const creates: TablesInsert<'brand_category_mappings'>[] = [];
-                    const updates: Partial<TablesInsert<'brand_category_mappings'> & { id?: string }>[] = [];
-                    for (const it of diffRows) {
-                      const res = getRes(it.key);
-                      if (it.status === 'unchanged') { skipped++; continue; }
-                      if (it.status === 'create') {
-                        if (res.action === 'keep') { skipped++; continue; }
-                        if (it.after) {
-                          creates.push({ ...(it.after as unknown as TablesInsert<'brand_category_mappings'>), created_by: user?.id || '', source_type: 'excel_upload', batch_id: batch.id });
-                          created++;
-                        }
-                        continue;
-                      }
-                      if (res.action === 'keep') { skipped++; continue; }
-                      let finalRow = { ...it.before, ...it.after };
-                      if (res.action === 'merge' && res.fieldChoices) {
-                        finalRow = { ...it.before };
-                        for (const f of it.changedFields || []) {
-                          finalRow[f] = res.fieldChoices[f] === 'existing' ? it.before?.[f] : it.after?.[f];
-                        }
-                      }
-                      updates.push({ ...finalRow, batch_id: batch.id, source_type: 'excel_upload' });
-                      updated++;
-                    }
-                    if (creates.length) {
-                      const chunk = 500;
-                      for (let i = 0; i < creates.length; i += chunk) {
-                        const slice = creates.slice(i, i + chunk);
-                        const { error } = await supabase.from('brand_category_mappings').insert(slice);
-                        if (error) throw error;
-                      }
-                    }
-                    if (updates.length) {
-                      for (const u of updates) {
-                        const updateFields: Partial<TablesInsert<'brand_category_mappings'>> = { ...u };
-                        delete updateFields.id;
-                        delete (updateFields as Record<string, unknown>).classif_cir; // Generated column
-                        delete (updateFields as Record<string, unknown>).natural_key; // Generated column
-                        await supabase
-                          .from('brand_category_mappings')
-                          .update(updateFields)
-                          .eq('marque', u.marque)
-                          .eq('cat_fab', u.cat_fab);
-                      }
-                    }
-                  } else if (datasetType === 'classification') {
-                    const creates: TablesInsert<'cir_classifications'>[] = [];
-                    const updates: Partial<TablesInsert<'cir_classifications'> & { id?: string; combined_code?: string }>[] = [];
-                    for (const it of diffRows) {
-                      const res = getRes(it.key);
-                      if (it.status === 'unchanged') { skipped++; continue; }
-                      if (it.status === 'create') {
-                        if (res.action === 'keep') { skipped++; continue; }
-                        if (it.after) {
-                          creates.push(it.after as unknown as TablesInsert<'cir_classifications'>);
-                          created++;
-                        }
-                      } else {
-                        if (res.action === 'keep') { skipped++; continue; }
-                        let finalRow = { ...it.before, ...it.after };
-                        if (res.action === 'merge' && res.fieldChoices) {
-                          finalRow = { ...it.before };
-                          for (const f of it.changedFields || []) {
-                            finalRow[f] = res.fieldChoices[f] === 'existing' ? it.before?.[f] : it.after?.[f];
-                          }
-                        }
-                        updates.push(finalRow);
-                        updated++;
-                      }
-                    }
-                    if (creates.length) {
-                      const chunk = 500;
-                      for (let i = 0; i < creates.length; i += chunk) {
-                        const slice = creates.slice(i, i + chunk);
-                        const { error } = await supabase.from('cir_classifications').insert(slice);
-                        if (error) throw error;
-                      }
-                    }
-                    if (updates.length) {
-                      for (const u of updates) {
-                        const upd: Partial<TablesInsert<'cir_classifications'>> = { ...u };
-                        delete upd.id;
-                        await supabase
-                          .from('cir_classifications')
-                          .update(upd)
-                          .eq('combined_code', u.combined_code);
-                      }
-                    }
-                  }
-
-                  await supabase.rpc('clear_audit_context');
-                  await supabase
-                    .from('import_batches')
-                    .update({
-                      dataset_type: datasetType,
-                      created_count: created,
-                      updated_count: updated,
-                      skipped_count: skipped,
-                      processed_lines: created + updated + skipped,
-                      status: 'completed'
-                    })
-                    .eq('id', batch.id);
-
-                  toast.success(`Import appliqué: ${created} créés, ${updated} mis à jour, ${skipped} ignorés`);
-                } catch (e: unknown) {
-                  console.error(e);
-                  const message = e instanceof Error ? e.message : 'Erreur application import';
-                  toast.error(message);
-                } finally {
-                  setApplyLoading(false);
-                }
-              }} loading={applyLoading} disabled={!datasetType || !fileName || !diff}>
-                🚀 Import direct ({rawRows.length} lignes)
-              </Button>
-
-              <Button variant="outline" onClick={async () => {
-                if (!datasetType || !fileObj || !fileName) {
-                  toast.error('Sélectionne un type et un fichier');
-                  return;
-                }
-                try {
-                  setApplyLoading(true);
-                  // 1) Upload dans Storage
-                  const key = `uploads/${Date.now()}_${fileName}`;
-                  const { error: upErr } = await supabase.storage.from('imports').upload(key, fileObj, { upsert: true });
-                  if (upErr) throw upErr;
-
-                  // 2) Créer le lot
-                  const batchStats = {
-                    total_lines: rawRows.length,
-                    processed_lines: 0,
-                    error_lines: validation?.errors || 0,
-                    comment: 'Async import via wizard',
-                    dataset_type: datasetType,
-                    file_url: key,
-                    mapping: columns
-                  };
-                  const batch = await mappingApi.createImportBatch(fileName, user?.id || '', batchStats);
-
-                  // 3) Appeler la function Edge
-                  const { error: fnErr } = await supabase.functions.invoke('process-import', {
-                    body: {
-                      batch_id: batch.id,
-                      dataset_type: datasetType,
-                      file_path: key,
-                      mapping: columns
-                    }
-                  });
-                  if (fnErr) throw fnErr;
-
-                  toast.success('Import asynchrone lancé');
-                  navigate(`/imports/history/${batch.id}`);
-                } catch (e: unknown) {
-                  console.error(e);
-                  const message = e instanceof Error ? e.message : 'Erreur lancement import asynchrone';
-                  toast.error(message);
-                } finally {
-                  setApplyLoading(false);
-                }
-              }} disabled={!datasetType || !fileObj}>⏱️ Import en arrière-plan</Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Navigation */}
-      <div className="flex items-center justify-between">
-        <Button variant="outline" onClick={resetWizard}>Réinitialiser l'assistant</Button>
-        <div className="space-x-2">
-          <Button variant="outline" onClick={goPrev} disabled={step === 0}>Précédent</Button>
-          <Button onClick={() => {
-            if (step === 2) {
-              // Run validation when leaving mapping step
-              const schema = datasetType === 'classification' ? classificationRowSchema : mappingRowSchema;
-              const mapped = rawRows.map((r) => {
-                const o: Record<string, unknown> = {};
-                Object.entries(columns).forEach(([field, header]) => {
-                  if (!header) return;
-                  o[field] = r[header];
-                });
-                return o;
-              });
-              const failures: { row: number; field: string; message: string; value: unknown }[] = [];
-              mapped.forEach((row, idx) => {
-                const res = schema.safeParse(row);
-                if (!res.success) {
-                  res.error.issues.forEach((iss) => {
-                    const fieldName = String(iss.path[0] || '');
-                    failures.push({ row: idx + 2, field: fieldName, message: iss.message, value: row[fieldName] });
-                  });
-                }
-              });
-              const warnCount = 0;
-              setValidation({ errors: failures.length, warnings: warnCount });
-              if (failures.length) {
-                // create CSV data URL
-                const header = 'row,field,message,value\n';
-                const csv = header + failures.map(f => `${f.row},${f.field},"${String(f.message).replace(/"/g,'')}","${String(f.value ?? '').toString().replace(/"/g,'')}"`).join('\n');
-                const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-                setErrorsCsv(url);
-              } else {
-                setErrorsCsv(null);
-              }
-            }
-            if (step === 3) {
-              // Compute diff before entering step 4
-              (async () => {
-                const schema = datasetType === 'classification' ? classificationRowSchema : mappingRowSchema;
-                const mapped = rawRows.map((r) => {
-                  const obj: Record<string, unknown> = {};
-                  Object.entries(columns).forEach(([field, header]) => {
-                    if (!header) return;
-                    obj[field] = r[header];
-                  });
-                  return obj;
-                });
-
-                // Validate rows and transform
-                const valid: RawRowData[] = [];
-                mapped.forEach((row) => {
-                  const res = schema.safeParse(row);
-                  if (res.success) valid.push(res.data);
-                });
-
-                if (datasetType === 'mapping') {
-                  // Create natural keys
-                  const keys = Array.from(new Set(valid.map(v => `${String(v.marque).toLowerCase()}|${String(v.cat_fab).toUpperCase()}`)));
-                  const batchSize = 1000;
-                  const existing: Record<string, unknown>[] = [];
-                  for (let i = 0; i < keys.length; i += batchSize) {
-                    const slice = keys.slice(i, i + batchSize);
-                    const part = await mappingApi.getMappingsByKeys(slice);
-                    existing.push(...(part || []).map(p => p as unknown as Record<string, unknown>));
-                  }
-                  const mapExisting = new Map(existing.map((e) => [e.natural_key ?? `${String(e.marque).toLowerCase()}|${String(e.cat_fab).toUpperCase()}`, e]));
-                  const sensitive = ['segment','marque','cat_fab','strategiq','fsmega','fsfam','fssfa'];
-                  const nonSensitive = ['cat_fab_l','codif_fair'];
-                  const counts = { unchanged: 0, create: 0, update: 0, conflict: 0 };
-                  const rows: DiffRowData[] = [];
-                  for (const v of valid) {
-                    const key = `${String(v.marque).toLowerCase()}|${String(v.cat_fab).toUpperCase()}`;
-                    const before = mapExisting.get(key);
-                    if (!before) {
-                      counts.create++;
-                      rows.push({ key, status: 'create', before: null, after: v });
-                      continue;
-                    }
-                    // compare fields
-                    const changedFields: string[] = [];
-                    for (const f of [...sensitive, ...nonSensitive]) {
-                      if (String(before[f] ?? '') !== String(v[f] ?? '')) changedFields.push(f);
-                    }
-                    const sensChanged = changedFields.some((f) => sensitive.includes(f));
-                    const nonSensChanged = changedFields.some((f) => nonSensitive.includes(f));
-                    if (!sensChanged && !nonSensChanged) {
-                      counts.unchanged++;
-                      rows.push({ key, status: 'unchanged', before, after: v, changedFields });
-                    } else if (sensChanged) {
-                      counts.conflict++;
-                      rows.push({ key, status: 'conflict', before, after: v, changedFields, sensitiveChanged: true });
-                    } else {
-                      counts.update++;
-                      rows.push({ key, status: 'update', before, after: v, changedFields });
-                    }
-                  }
-                  setDiff(counts);
-                  setDiffRows(rows);
-                } else if (datasetType === 'classification') {
-                  const codes = Array.from(new Set(valid.map(v => String(v.combined_code))));
-                  const batchSize = 1000;
-                  const existing: Record<string, unknown>[] = [];
-                  for (let i = 0; i < codes.length; i += batchSize) {
-                    const slice = codes.slice(i, i + batchSize);
-                    const part = await cirClassificationApi.getByCodes(slice);
-                    existing.push(...(part || []).map(p => p as unknown as Record<string, unknown>));
-                  }
-                  const mapExisting = new Map(existing.map((e) => [String(e.combined_code), e]));
-                  const counts = { unchanged: 0, create: 0, update: 0, conflict: 0 };
-                  const rows: DiffRowData[] = [];
-                  for (const v of valid) {
-                    const key = String(v.combined_code);
-                    const before = mapExisting.get(key);
-                    if (!before) {
-                      counts.create++;
-                      rows.push({ key, status: 'create', before: null, after: v });
-                      continue;
-                    }
-                    const fields = ['fsmega_code','fsmega_designation','fsfam_code','fsfam_designation','fssfa_code','fssfa_designation','combined_code'];
-                    const changedFields: string[] = fields.filter((f) => String(before[f] ?? '') !== String(v[f] ?? ''));
-                    if (changedFields.length === 0) {
-                      counts.unchanged++;
-                      rows.push({ key, status: 'unchanged', before, after: v, changedFields });
-                    } else {
-                      // No conflict concept here yet → mark as update
-                      counts.update++;
-                      rows.push({ key, status: 'update', before, after: v, changedFields });
-                    }
-                  }
-                  setDiff(counts);
-                  setDiffRows(rows);
-                }
-              })().finally(() => {
-                // nothing
-              });
-            }
-            goNext();
-          }} disabled={!canNext}>{step === 5 ? 'Terminer' : 'Suivant'}</Button>
-        </div>
-      </div>
     </div>
   );
 };
-
-export default FileImportWizard;

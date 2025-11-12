@@ -918,6 +918,20 @@ Deux variations :
 - Classification : mapping sur colonnes `fsmega_code`, `fsmega_designation`, `fsfam_code`, etc.
 - Segments : mapping sur `segment`, `marque`, `cat_fab`, `cat_fab_l`, `strategiq`, `fs*`, `classif_cir`.
 
+#### Suivi
+- [x] Nouvelle UI `FileImportWizard` (sélection dataset/template → fichier → colonnes → analyse/import)
+- [x] Mapping manuel, auto-détection, sauvegarde template
+- [x] Analyse locale (diff Ajout/Modif/Suppression, infos lignes)
+- [x] Appel Edge Functions `import-cir-classifications` / `import-cir-segments` via API
+
+**Compte rendu** :
+```
+Date : 2025-11-12
+Durée : 4 h
+Résultat : Wizard unifié avec mapping manuel, diff avant import, sauvegarde template
+Notes : Parsing via XLSX, diff client (computeDiff), appels applyClassificationImport/applySegmentImport
+```
+
 ### 0.6.3.2 Page Paramètres CIR
 - Onglet “Classifications” :
   - Cartes `stats.total_classifications`, `stats.history_rows`, `stats.last_import_classification`.
