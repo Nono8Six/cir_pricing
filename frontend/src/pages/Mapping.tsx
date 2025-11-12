@@ -8,7 +8,7 @@ import { MappingModal } from '../components/mapping/MappingModal';
 import { MappingTable } from '../components/mapping/MappingTable';
 import { MappingHistoryTab } from '../components/mapping/MappingHistoryTab';
 import { MappingAnalyticsTab } from '../components/mapping/MappingAnalyticsTab';
-import { MappingSettingsTab } from '../components/mapping/MappingSettingsTab';
+import { CirSettingsPage } from '../components/settings/CirSettingsPage';
 import { CirClassificationBrowser } from '../components/cir/CirClassificationBrowser';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -298,7 +298,14 @@ export const Mapping: React.FC = () => {
       case 'analytics':
         return <MappingAnalyticsTab />;
       case 'settings':
-        return <MappingSettingsTab />;
+        return (
+          <CirSettingsPage
+            onOpenWizard={() => {
+              setActiveTab('mappings');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
+        );
       default:
         return renderMappingsTab();
     }

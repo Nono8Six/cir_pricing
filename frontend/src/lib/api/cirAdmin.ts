@@ -19,6 +19,13 @@ export interface CirStats {
   last_segment_import: Record<string, unknown> | null;
 }
 
+export interface CirActivityLog {
+  type: string;
+  description: string;
+  date: string;
+  user?: string | null;
+}
+
 export interface DiffSummary {
   added: number;
   updated: number;
@@ -333,6 +340,12 @@ export const cirAdminApi = {
     const { data, error } = await supabase.rpc('admin_purge_cir_segments');
     if (error || !data) throw error ?? new Error('Purge segments échouée');
     return data as Record<string, number>;
+  },
+
+  async fetchRecentActivity(limit = 20): Promise<CirActivityLog[]> {
+    const { data, error } = await supabase.rpc('admin_get_recent_activity', { entry_limit: limit });
+    if (error) throw error;
+    return (data as CirActivityLog[]) ?? [];
   },
 
   async listTemplates(datasetType: DatasetType) {
