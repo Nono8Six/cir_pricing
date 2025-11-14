@@ -370,7 +370,7 @@ export const MappingModal: React.FC<MappingModalProps> = ({
                     </label>
                     <input
                       type="text"
-                      value={formData.classif_cir}
+                      value={formData.classif_cir || ''}
                       readOnly
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 font-mono"
                     />

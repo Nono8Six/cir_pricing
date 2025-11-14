@@ -1,12 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'npm:@supabase/supabase-js';
 import { ImportClassificationPayloadSchema, type ImportClassificationPayload } from './schemas.ts';
-
-const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') || '*';
-const corsHeaders = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
-};
+import { AdminGuardError, ensureAdmin } from '../shared/adminGuard.ts';
+import { buildCorsHeaders, createPreflightResponse } from '../shared/cors.ts';
+import { WebhookAuthError, ensureWebhookSecret } from '../shared/webhookAuth.ts';
+import { initStructuredLog } from '../shared/logging.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -36,12 +34,26 @@ function chunkArray<T>(rows: T[]): T[][] {
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return createPreflightResponse();
   }
+
+  const { requestId, log } = initStructuredLog('import-cir-classifications', req);
+  const corsHeaders = buildCorsHeaders();
+  const jsonHeaders = {
+    ...corsHeaders,
+    'Content-Type': 'application/json',
+    'X-Request-Id': requestId
+  };
+  const respond = (status: number, body: unknown) =>
+    new Response(JSON.stringify(body), { status, headers: jsonHeaders });
+  const authorization = req.headers.get('authorization');
 
   let batchId: string | null = null;
 
   try {
+    ensureWebhookSecret(authorization);
+    await ensureAdmin(supabase, authorization);
+
     const json = await req.json();
     const parsed: ImportClassificationPayload = ImportClassificationPayloadSchema.parse(json);
     batchId = parsed.batchId;
@@ -82,24 +94,32 @@ Deno.serve(async (req: Request) => {
       template_id: parsed.templateId ?? null
     });
 
-    return new Response(JSON.stringify({
+    return respond(200, {
       ok: true,
       processed: parsed.rows.length,
       diff_summary: parsed.diffSummary ?? null
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   } catch (error) {
+    if (error instanceof WebhookAuthError) {
+      log('warn', 'Webhook secret validation failed', { error_message: error.message });
+      return respond(401, { error: 'Unauthorized', details: error.message });
+    }
+
+    if (error instanceof AdminGuardError) {
+      log('warn', 'import-cir-classifications unauthorized call', { error_message: error.message });
+      return respond(403, { error: 'Forbidden', details: error.message });
+    }
+
+    log('error', 'import-cir-classifications failed', {
+      error_type: error instanceof Error ? error.constructor.name : 'Unknown',
+      error_message: error instanceof Error ? error.message : String(error)
+    });
     if (batchId) {
       await updateBatch(batchId, { status: 'failed' }).catch(() => {});
       await clearBatchContext().catch(() => {});
     }
 
     const message = error instanceof Error ? error.message : 'Unexpected error';
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    return respond(500, { error: message });
   }
 });
-

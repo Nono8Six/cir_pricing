@@ -31,6 +31,7 @@ interface MappingFilters {
   fssfa?: number;
   strategiq?: number;
   source_type?: string;
+  classif_cir?: 'with' | 'without' | 'all';
 }
 
 interface ImportBatch {
@@ -121,6 +122,11 @@ export const mappingApi = {
     if (filters.source_type) {
       query = query.eq('source_type', filters.source_type);
     }
+    if (filters.classif_cir === 'with') {
+      query = query.not('classif_cir', 'is', null);
+    } else if (filters.classif_cir === 'without') {
+      query = query.is('classif_cir', null);
+    }
 
     // Get total count for pagination
     let countQuery = supabase
@@ -150,6 +156,11 @@ export const mappingApi = {
     }
     if (filters.source_type) {
       countQuery = countQuery.eq('source_type', filters.source_type);
+    }
+    if (filters.classif_cir === 'with') {
+      countQuery = countQuery.not('classif_cir', 'is', null);
+    } else if (filters.classif_cir === 'without') {
+      countQuery = countQuery.is('classif_cir', null);
     }
 
     const [{ data, error }, { count, error: countError }] = await Promise.all([
@@ -354,6 +365,20 @@ export const mappingApi = {
     if (error) {
       throw error;
     }
+    return data as number;
+  },
+
+  // Get total count of mappings with classification CIR
+  async getTotalWithClassifCirCount(): Promise<number> {
+    const { data, error } = await supabase.rpc('get_total_with_classif_cir_count');
+    if (error) throw error;
+    return data as number;
+  },
+
+  // Get total count of mappings without classification CIR
+  async getTotalWithoutClassifCirCount(): Promise<number> {
+    const { data, error } = await supabase.rpc('get_total_without_classif_cir_count');
+    if (error) throw error;
     return data as number;
   },
 

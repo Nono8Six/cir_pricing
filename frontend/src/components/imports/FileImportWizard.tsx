@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { toast } from 'sonner';
@@ -21,8 +22,14 @@ import {
   type BrandMappingOutput,
   type CirClassificationOutput
 } from '../../lib/schemas';
+import { ImportResultModal } from './ImportResultModal';
 
 type DatasetType = 'cir_classification' | 'cir_segment';
+
+const DATASET_LABELS: Record<DatasetType, string> = {
+  cir_classification: 'Classifications CIR',
+  cir_segment: 'Segments tarifaires'
+};
 
 interface WorkbookData {
   headers: string[];
@@ -34,6 +41,13 @@ interface FieldDefinition {
   label: string;
   required: boolean;
   type: 'text' | 'number';
+}
+
+interface MissingSegmentRow {
+  id: string;
+  lineNumber: number;
+  missingFields: string[];
+  row: BrandMappingOutput;
 }
 
 const CLASSIFICATION_FIELDS: FieldDefinition[] = [
@@ -209,7 +223,7 @@ function buildClassificationRows(
     if (!combined_designation) missing.push('combined_designation');
 
     if (missing.length > 0) {
-      info.push(`Ligne ${lineNumber}: champs manquants (${missing.join(', ')})`);
+      info.push(`Ligne ${lineNumber}: champs manquants (${missing.join(', ')}) - ignorée sauf si ajout forcé`);
       skipped++;
       return;
     }
@@ -232,9 +246,10 @@ function buildClassificationRows(
 function buildSegmentRows(
   workbook: WorkbookData,
   mapping: Record<string, string>
-): { rows: BrandMappingOutput[]; info: string[]; skipped: number } {
+): { rows: BrandMappingOutput[]; info: string[]; skipped: number; missingRows: MissingSegmentRow[] } {
   const rows: BrandMappingOutput[] = [];
   const info: string[] = [];
+  const missingRows: MissingSegmentRow[] = [];
   let skipped = 0;
 
   workbook.rows.forEach((row, index) => {
@@ -264,7 +279,23 @@ function buildSegmentRows(
 
     if (missing.length > 0) {
       info.push(`Ligne ${lineNumber}: champs manquants (${missing.join(', ')})`);
-      skipped++;
+      missingRows.push({
+        id: `line-${lineNumber}`,
+        lineNumber,
+        missingFields: missing,
+        row: {
+          segment,
+          marque,
+          cat_fab,
+          cat_fab_l,
+          strategiq,
+          codif_fair,
+          fsmega: fsmega ?? null,
+          fsfam: fsfam ?? null,
+          fssfa: fssfa ?? null,
+          classif_cir: classif_cir ?? (fsmega !== null && fsfam !== null && fssfa !== null ? `${fsmega} ${fsfam} ${fssfa}` : null)
+        } as BrandMappingOutput
+      });
       return;
     }
 
@@ -282,7 +313,7 @@ function buildSegmentRows(
     } as BrandMappingOutput);
   });
 
-  return { rows, info, skipped };
+  return { rows, info, skipped, missingRows };
 }
 
 export const FileImportWizard: React.FC = () => {
@@ -303,6 +334,26 @@ export const FileImportWizard: React.FC = () => {
   const [templateName, setTemplateName] = useState('');
   const [templateDescription, setTemplateDescription] = useState('');
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [resultModal, setResultModal] = useState<{
+    batchId: string;
+    datasetType: DatasetType;
+    diffSummary: DiffSummary;
+    filename: string;
+    totalLines: number;
+    skippedLines: number;
+    templateName?: string;
+    info?: string[];
+  } | null>(null);
+  const [segmentAnalysis, setSegmentAnalysis] = useState<{
+    baseRows: BrandMappingOutput[];
+    missingRows: MissingSegmentRow[];
+    blankSkipped: number;
+    info: string[];
+    totalLines: number;
+  } | null>(null);
+  const [forcedSegmentRowIds, setForcedSegmentRowIds] = useState<Set<string>>(new Set());
+  const [existingSegmentsCache, setExistingSegmentsCache] = useState<Map<string, BrandMappingOutput> | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!datasetType) {
@@ -320,6 +371,54 @@ export const FileImportWizard: React.FC = () => {
       .finally(() => setLoadingTemplates(false));
   }, [datasetType]);
 
+  useEffect(() => {
+    if (
+      datasetType !== 'cir_segment' ||
+      !segmentAnalysis ||
+      !existingSegmentsCache ||
+      !file
+    ) {
+      return;
+    }
+
+    const forcedRows = segmentAnalysis.missingRows
+      .filter((row) => forcedSegmentRowIds.has(row.id))
+      .map((row) => row.row);
+
+    const combinedRows = [...segmentAnalysis.baseRows, ...forcedRows];
+    const diff = computeDiff(
+      combinedRows,
+      existingSegmentsCache,
+      (row) => row.segment,
+      isSegmentEqual
+    );
+
+    const skippedLines =
+      segmentAnalysis.blankSkipped + (segmentAnalysis.missingRows.length - forcedRows.length);
+
+    const preparedData: PreparedSegmentImport = {
+      file,
+      rows: combinedRows,
+      diffSummary: diff,
+      info: segmentAnalysis.info,
+      totalLines: segmentAnalysis.totalLines,
+      skippedLines,
+      mapping: fieldMapping,
+      templateId: selectedTemplateId
+    };
+
+    setPrepared(preparedData);
+    setDiffSummary(diff);
+  }, [
+    datasetType,
+    segmentAnalysis,
+    existingSegmentsCache,
+    forcedSegmentRowIds,
+    file,
+    fieldMapping,
+    selectedTemplateId
+  ]);
+
   const currentFields = useMemo(() => {
     if (!datasetType) return [];
     return DEFAULT_TEMPLATE_FIELDS[datasetType];
@@ -335,6 +434,9 @@ export const FileImportWizard: React.FC = () => {
     setPrepared(null);
     setDiffSummary(null);
     setInfoMessages([]);
+    setSegmentAnalysis(null);
+    setForcedSegmentRowIds(new Set());
+    setExistingSegmentsCache(null);
     setStep(0);
   };
 
@@ -344,6 +446,27 @@ export const FileImportWizard: React.FC = () => {
     if (template) {
       setFieldMapping({ ...template.mapping });
     }
+  };
+
+  const toggleMissingRow = (rowId: string) => {
+    setForcedSegmentRowIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(rowId)) {
+        next.delete(rowId);
+      } else {
+        next.add(rowId);
+      }
+      return next;
+    });
+  };
+
+  const forceAllMissingRows = () => {
+    if (!segmentAnalysis) return;
+    setForcedSegmentRowIds(new Set(segmentAnalysis.missingRows.map((row) => row.id)));
+  };
+
+  const clearForcedMissingRows = () => {
+    setForcedSegmentRowIds(new Set());
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -420,27 +543,20 @@ export const FileImportWizard: React.FC = () => {
         setInfoMessages(info);
       } else {
         const result = buildSegmentRows(workbookData, fieldMapping);
-        rows = result.rows;
         info = result.info;
-        skipped = result.skipped;
 
         const existing = await getExistingSegmentsMap();
-        const diff = computeDiff(rows, existing, (row) => row.segment, isSegmentEqual);
 
-        const preparedData: PreparedSegmentImport = {
-          file,
-          rows,
-          diffSummary: diff,
-          info,
-          totalLines: workbookData.rows.length,
-          skippedLines: skipped,
-          mapping: fieldMapping,
-          templateId: selectedTemplateId
-        };
-
-        setPrepared(preparedData);
-        setDiffSummary(diff);
-        setInfoMessages(info);
+        setSegmentAnalysis({
+          baseRows: result.rows,
+          missingRows: result.missingRows,
+          blankSkipped: result.skipped,
+          info: result.info,
+          totalLines: workbookData.rows.length
+        });
+        setExistingSegmentsCache(existing);
+        setForcedSegmentRowIds(new Set());
+        setInfoMessages(result.info);
       }
 
       setStep(3);
@@ -456,17 +572,36 @@ export const FileImportWizard: React.FC = () => {
     if (!prepared || !datasetType) return;
     setIsApplying(true);
     try {
+      const selectedTemplateName = selectedTemplateId
+        ? templates.find((tpl) => tpl.id === selectedTemplateId)?.name
+        : undefined;
+
       const result = datasetType === 'cir_classification'
         ? await applyClassificationImport(prepared as PreparedClassificationImport, { templateId: selectedTemplateId })
         : await applySegmentImport(prepared as PreparedSegmentImport, { templateId: selectedTemplateId });
 
       toast.success('Import appliqué', { description: `Batch ${result.batchId}` });
+
+      setResultModal({
+        batchId: result.batchId,
+        datasetType,
+        diffSummary: result.diffSummary,
+        filename: prepared.file.name,
+        totalLines: prepared.totalLines,
+        skippedLines: prepared.skippedLines,
+        ...(selectedTemplateName ? { templateName: selectedTemplateName } : {}),
+        ...(result.info && result.info.length > 0 ? { info: result.info } : {})
+      });
+
       setPrepared(null);
       setDiffSummary(null);
       setInfoMessages([]);
       setFile(null);
       setWorkbookData(null);
       setHeaders([]);
+      setSegmentAnalysis(null);
+      setForcedSegmentRowIds(new Set());
+      setExistingSegmentsCache(null);
       setStep(0);
     } catch (error) {
       toast.error('Import impossible', { description: String(error) });
@@ -521,7 +656,7 @@ export const FileImportWizard: React.FC = () => {
   const mappingComplete = useMemo(() => validateMapping().length === 0, [fieldMapping, datasetType]);
 
   return (
-    <div className="space-y-6">
+    <>
       <Card>
         <CardHeader>
           <CardTitle>Assistant d'import CIR</CardTitle>
@@ -716,13 +851,64 @@ export const FileImportWizard: React.FC = () => {
                   <CardHeader>
                     <CardTitle className="text-sm text-gray-700">Infos / avertissements</CardTitle>
                   </CardHeader>
-                  <CardContent className="max-h-48 overflow-auto text-sm text-gray-600 space-y-1">
+                  <CardContent className="max-h-64 overflow-y-auto text-sm text-gray-600 space-y-2 pr-2">
                     {infoMessages.map((msg, index) => (
-                      <div key={index}>• {msg}</div>
+                      <div key={index} className="flex items-start gap-2">
+                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-gray-400" />
+                        <span>{msg}</span>
+                      </div>
                     ))}
                   </CardContent>
                 </Card>
               )}
+
+              {datasetType === 'cir_segment' && segmentAnalysis?.missingRows.length ? (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-sm text-gray-700">
+                          Lignes incomplètes ({segmentAnalysis.missingRows.length})
+                        </CardTitle>
+                        <p className="text-xs text-gray-500">
+                          Cochez les lignes à importer malgré les champs manquants. Les valeurs seront enregistrées vides.
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={forceAllMissingRows}>
+                          Tout forcer
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={clearForcedMissingRows}>
+                          Tout ignorer
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="max-h-64 overflow-y-auto space-y-2 pr-2">
+                    {segmentAnalysis.missingRows.map((row) => (
+                      <label
+                        key={row.id}
+                        className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-3 hover:border-cir-red/50"
+                      >
+                        <input
+                          type="checkbox"
+                          className="mt-1 h-4 w-4 rounded border-gray-300 text-cir-red focus:ring-cir-red/30"
+                          checked={forcedSegmentRowIds.has(row.id)}
+                          onChange={() => toggleMissingRow(row.id)}
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            Ligne {row.lineNumber} — {row.row.segment || 'Segment inconnu'} / {row.row.marque || 'Marque inconnue'}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Champs manquants : {row.missingFields.join(', ')}
+                          </p>
+                        </div>
+                      </label>
+                    ))}
+                  </CardContent>
+                </Card>
+              ) : null}
 
               <div className="flex justify-between">
                 <Button variant="outline" onClick={() => setStep(2)}>Retour</Button>
@@ -734,6 +920,24 @@ export const FileImportWizard: React.FC = () => {
           )}
         </CardContent>
       </Card>
-    </div>
+
+      {resultModal && (
+        <ImportResultModal
+          isOpen
+          datasetLabel={DATASET_LABELS[resultModal.datasetType]}
+          filename={resultModal.filename}
+          totalLines={resultModal.totalLines}
+          skippedLines={resultModal.skippedLines}
+          diffSummary={resultModal.diffSummary}
+          {...(resultModal.templateName ? { templateName: resultModal.templateName } : {})}
+          {...(resultModal.info ? { info: resultModal.info } : {})}
+          onClose={() => setResultModal(null)}
+          onViewBatch={() => {
+            navigate(`/imports/history/${resultModal.batchId}`);
+            setResultModal(null);
+          }}
+        />
+      )}
+    </>
   );
 };

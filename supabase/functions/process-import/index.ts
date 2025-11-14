@@ -7,14 +7,10 @@ import {
   MappingRowSchema,
   ClassificationRowSchema
 } from './schemas.ts';
-
-// CORS configuration - restrict to allowed origins only (security best practice)
-const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') || 'http://localhost:5173';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { AdminGuardError, ensureAdmin } from '../shared/adminGuard.ts';
+import { buildCorsHeaders, createPreflightResponse } from '../shared/cors.ts';
+import { WebhookAuthError, ensureWebhookSecret } from '../shared/webhookAuth.ts';
+import { initStructuredLog } from '../shared/logging.ts';
 
 // Initialize Supabase client outside request handler for better error handling
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -22,17 +18,6 @@ const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
 // Structured logging helper
-function log(level: 'info' | 'error' | 'warn', message: string, context?: Record<string, any>) {
-  const logEntry = {
-    timestamp: new Date().toISOString(),
-    level,
-    message,
-    function: 'process-import',
-    ...context
-  };
-  console.log(JSON.stringify(logEntry));
-}
-
 /**
  * Compare deux enregistrements pour détecter des changements réels
  * @param newRow - Nouvel enregistrement validé par Zod
@@ -76,15 +61,28 @@ function hasChanges(newRow: any, existingRow: any, datasetType: 'mapping' | 'cla
 }
 
 Deno.serve(async (req: Request) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return createPreflightResponse();
   }
+
+  const { requestId, log } = initStructuredLog('process-import', req);
+  const corsHeaders = buildCorsHeaders();
+  const jsonHeaders = {
+    ...corsHeaders,
+    'Content-Type': 'application/json',
+    'X-Request-Id': requestId
+  };
+  const respond = (status: number, body: unknown) =>
+    new Response(JSON.stringify(body), { status, headers: jsonHeaders });
+  const authorization = req.headers.get('authorization');
 
   // Track batch_id for error handling in catch block
   let batchId: string | null = null;
 
   try {
+    ensureWebhookSecret(authorization);
+    await ensureAdmin(supabase, authorization);
+
     // Parse and validate request body
     const jsonData = await req.json();
 
@@ -92,13 +90,10 @@ Deno.serve(async (req: Request) => {
     try {
       validated = ProcessImportRequestSchema.parse(jsonData);
     } catch (validationError: any) {
-      return new Response(JSON.stringify({
+      return respond(400, {
         error: 'Validation failed',
         details: validationError.errors || validationError.message,
         validationErrors: validationError.issues || []
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
@@ -109,10 +104,7 @@ Deno.serve(async (req: Request) => {
 
     // 1) Récupérer le lot, quick guard
     const { data: batch } = await supabase.from('import_batches').select('*').eq('id', batch_id).single();
-    if (!batch) return new Response(JSON.stringify({ error: 'batch not found' }), { 
-      status: 404,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    if (!batch) return respond(404, { error: 'batch not found' });
 
     // 2) Télécharger le fichier Storage
     const { data: blob, error: dlErr } = await supabase.storage.from('imports').download(file_path);
@@ -185,14 +177,11 @@ Deno.serve(async (req: Request) => {
         batch_id,
         error_count: validationErrors.length
       });
-      return new Response(JSON.stringify({
+      return respond(400, {
         error: 'Row validation failed',
         message: `${validationErrors.length} row(s) failed validation`,
-        validationErrors: validationErrors.slice(0, 10), // Limit to first 10 errors for readability
+        validationErrors: validationErrors.slice(0, 10),
         totalErrors: validationErrors.length
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
@@ -327,11 +316,32 @@ Deno.serve(async (req: Request) => {
       skipped_count: skipped,
       efficiency: skipped > 0 ? `${((skipped / processed) * 100).toFixed(1)}% skipped (no changes)` : 'N/A'
     });
-    return new Response(JSON.stringify({ ok: true, processed }), { 
-      status: 200, 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    return respond(200, { ok: true, processed });
   } catch (e) {
+    if (e instanceof WebhookAuthError) {
+      log('warn', 'Webhook secret validation failed', {
+        batch_id: batchId,
+        error_message: e.message
+      });
+
+      return respond(401, {
+        error: 'Unauthorized',
+        details: e.message
+      });
+    }
+
+    if (e instanceof AdminGuardError) {
+      log('warn', 'Admin guard forbidden request', {
+        batch_id: batchId,
+        error_message: e.message
+      });
+
+      return respond(403, {
+        error: 'Forbidden',
+        details: e.message
+      });
+    }
+
     log('error', 'Import processing failed', {
       batch_id: batchId,
       error_type: e instanceof Error ? e.constructor.name : 'Unknown',
@@ -351,13 +361,10 @@ Deno.serve(async (req: Request) => {
         });
       }
     }
-    return new Response(JSON.stringify({ 
-      error: String(e), 
+    return respond(500, {
+      error: String(e),
       details: e instanceof Error ? e.message : 'Unknown error',
       stack: e instanceof Error ? e.stack : undefined
-    }), { 
-      status: 500, 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 });

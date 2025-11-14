@@ -143,6 +143,7 @@ async function createImportBatch(params: {
   templateId?: string | null;
   diffSummary: DiffSummary;
   mapping?: Record<string, unknown> | null;
+  comment?: string;
 }): Promise<string> {
   const {
     filename,
@@ -151,7 +152,8 @@ async function createImportBatch(params: {
     errorLines,
     templateId,
     diffSummary,
-    mapping
+    mapping,
+    comment
   } = params;
 
   const {
@@ -163,7 +165,7 @@ async function createImportBatch(params: {
     .insert({
       filename,
       user_id: user?.id ?? null,
-      status: 'processing',
+      status: 'pending',
       total_lines: totalLines,
       processed_lines: 0,
       error_lines: errorLines,
@@ -173,7 +175,10 @@ async function createImportBatch(params: {
       mapping: mapping ?? null,
       created_count: 0,
       updated_count: 0,
-      skipped_count: diffSummary.unchanged
+      skipped_count: diffSummary.unchanged,
+      comment:
+        comment ??
+        `${datasetType === 'cir_classification' ? 'Classifications' : 'Segments'} import via wizard`
     })
     .select('id')
     .single();
@@ -365,8 +370,8 @@ export const cirAdminApi = {
     return data as Record<string, number>;
   },
 
-  async fetchRecentActivity(limit = 20): Promise<CirActivityLog[]> {
-    const { data, error } = await supabase.rpc('admin_get_recent_activity', { entry_limit: limit });
+  async fetchRecentActivity(_limit = 20): Promise<CirActivityLog[]> {
+    const { data, error } = await supabase.rpc('admin_get_recent_activity', { entry_limit: _limit });
     if (error) throw error;
     return (data as CirActivityLog[]) ?? [];
   },

@@ -62,6 +62,13 @@ export const CirSettingsPage: React.FC<CirSettingsPageProps> = ({ onOpenWizard }
       toast.success(`${label} effectué`);
       await loadStats();
       await loadLogs();
+
+      // Si c'est une purge, rafraîchir la page pour mettre à jour les stats du mapping
+      if (label.toLowerCase().includes('purger')) {
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      }
     } catch (error) {
       toast.error(`Action "${label}" échouée`, { description: String(error) });
     } finally {

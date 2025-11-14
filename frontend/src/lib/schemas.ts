@@ -35,23 +35,26 @@ export const BrandMappingSchema = z.object({
     .optional()
     .nullable(),
   
-  fsmega: z.number()
+  fsmega: z
+    .number()
     .int("FSMEGA doit être un entier")
     .min(1, "FSMEGA doit être supérieur à 0")
     .max(999, "FSMEGA ne peut pas dépasser 999")
-    .default(1),
+    .or(z.null()),
   
-  fsfam: z.number()
+  fsfam: z
+    .number()
     .int("FSFAM doit être un entier")
     .min(1, "FSFAM doit être supérieur à 0")
     .max(999, "FSFAM ne peut pas dépasser 999")
-    .default(99),
+    .or(z.null()),
   
-  fssfa: z.number()
+  fssfa: z
+    .number()
     .int("FSSFA doit être un entier")
     .min(1, "FSSFA doit être supérieur à 0")
     .max(999, "FSSFA ne peut pas dépasser 999")
-    .default(99)
+    .or(z.null())
 });
 
 export type BrandMappingInput = z.input<typeof BrandMappingSchema>;

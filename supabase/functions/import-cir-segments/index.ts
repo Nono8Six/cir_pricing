@@ -1,12 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'npm:@supabase/supabase-js';
 import { ImportSegmentPayloadSchema, type ImportSegmentPayload } from './schemas.ts';
-
-const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') || '*';
-const corsHeaders = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
-};
+import { AdminGuardError, ensureAdmin } from '../shared/adminGuard.ts';
+import { buildCorsHeaders, createPreflightResponse } from '../shared/cors.ts';
+import { WebhookAuthError, ensureWebhookSecret } from '../shared/webhookAuth.ts';
+import { initStructuredLog } from '../shared/logging.ts';
+import { WebhookAuthError, ensureWebhookSecret } from '../shared/webhookAuth.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -37,18 +36,49 @@ function chunkArray<T>(rows: T[]): T[][] {
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return createPreflightResponse();
   }
 
+  const { requestId, log } = initStructuredLog('import-cir-segments', req);
+  const corsHeaders = buildCorsHeaders();
+  const jsonHeaders = {
+    ...corsHeaders,
+    'Content-Type': 'application/json',
+    'X-Request-Id': requestId
+  };
+  const respond = (status: number, body: unknown) =>
+    new Response(JSON.stringify(body), { status, headers: jsonHeaders });
+  const authorization = req.headers.get('authorization');
+
   let batchId: string | null = null;
+  let createdBy: string | null = null;
 
   try {
+    ensureWebhookSecret(authorization);
+    await ensureAdmin(supabase, authorization);
+
     const json = await req.json();
     const parsed: ImportSegmentPayload = ImportSegmentPayloadSchema.parse(json);
     batchId = parsed.batchId;
 
     if (parsed.rows.length === 0) {
       throw new Error('Payload rows is empty');
+    }
+
+    const { data: batchMeta, error: batchMetaError } = await supabase
+      .from('import_batches')
+      .select('user_id')
+      .eq('id', batchId)
+      .single();
+
+    if (batchMetaError) {
+      throw batchMetaError;
+    }
+
+    createdBy = batchMeta?.user_id ?? null;
+
+    if (!createdBy) {
+      throw new Error('Impossible de déterminer l’auteur de l’import (created_by).');
     }
 
     await updateBatch(batchId, { status: 'processing' });
@@ -64,9 +94,11 @@ Deno.serve(async (req: Request) => {
     }
 
     for (const chunk of chunkArray(parsed.rows)) {
-      const payloadChunk = chunk.map((row) => ({
-        ...row,
-        source_type: 'excel_upload'
+      const payloadChunk = chunk.map(({ classif_cir: _classifCir, ...rest }) => ({
+        ...rest,
+        source_type: 'excel_upload',
+        batch_id: batchId,
+        created_by: createdBy
       }));
 
       const { error: insertError } = await supabase
@@ -98,16 +130,31 @@ Deno.serve(async (req: Request) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   } catch (error) {
+    if (error instanceof WebhookAuthError) {
+      log('warn', 'Webhook secret validation failed', { error_message: error.message });
+      return respond(401, { error: 'Unauthorized', details: error.message });
+    }
+
+    if (error instanceof AdminGuardError) {
+      log('warn', 'import-cir-segments unauthorized call', { error_message: error.message });
+      return respond(403, { error: 'Forbidden', details: error.message });
+    }
+
+    log('error', 'import-cir-segments failed', {
+      error_type: error instanceof Error ? error.constructor.name : 'Unknown',
+      error_message: error instanceof Error ? error.message : String(error)
+    });
     if (batchId) {
       await updateBatch(batchId, { status: 'failed' }).catch(() => {});
       await clearAuditContext().catch(() => {});
     }
 
-    const message = error instanceof Error ? error.message : 'Unexpected error';
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error !== null && 'message' in error
+          ? String((error as { message?: unknown }).message)
+          : JSON.stringify(error);
+    return respond(500, { error: message });
   }
 });
-

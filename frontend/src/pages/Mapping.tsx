@@ -44,21 +44,24 @@ export const Mapping: React.FC = () => {
   const [selectedFsfam, setSelectedFsfam] = useState<string>('all');
   const [selectedFssfa, setSelectedFssfa] = useState<string>('all');
   const [selectedStrategiq, setSelectedStrategiq] = useState<string>('all');
+  const [selectedClassifCir, setSelectedClassifCir] = useState<string>('all');
   const [fsmegas, setFsmegas] = useState<number[]>([]);
   const [fsfams, setFsfams] = useState<number[]>([]);
   const [fssfas, setFssfas] = useState<number[]>([]);
-  
+
   // États de loading pour les filtres
   const [filtersLoading, setFiltersLoading] = useState(true);
-  
+
   // États pour la pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
-  
+
   // États pour les statistiques globales
   const [totalSegments, setTotalSegments] = useState(0);
   const [totalMarques, setTotalMarques] = useState(0);
   const [totalStrategiques, setTotalStrategiques] = useState(0);
+  const [totalWithClassifCir, setTotalWithClassifCir] = useState(0);
+  const [totalWithoutClassifCir, setTotalWithoutClassifCir] = useState(0);
 
   // États pour le workflow d'upload (removed - dead code from deleted renderUploadTab)
 
@@ -98,14 +101,16 @@ export const Mapping: React.FC = () => {
     try {
       setFiltersLoading(true);
       const [
-        allSegmentsData, 
-        allMarquesData, 
-        allFsmegasData, 
-        allFsfamsData, 
+        allSegmentsData,
+        allMarquesData,
+        allFsmegasData,
+        allFsfamsData,
         allFssfasData,
-        totalSegmentsCount, 
-        totalMarquesCount, 
-        totalStrategiquesCount
+        totalSegmentsCount,
+        totalMarquesCount,
+        totalStrategiquesCount,
+        withClassifCirCount,
+        withoutClassifCirCount
       ] = await Promise.all([
         mappingApi.getAllUniqueSegments(),
         mappingApi.getAllUniqueMarques(),
@@ -114,7 +119,9 @@ export const Mapping: React.FC = () => {
         mappingApi.getAllUniqueFssfas(),
         mappingApi.getTotalSegmentsCount(),
         mappingApi.getTotalMarquesCount(),
-        mappingApi.getTotalStrategiquesCount()
+        mappingApi.getTotalStrategiquesCount(),
+        mappingApi.getTotalWithClassifCirCount(),
+        mappingApi.getTotalWithoutClassifCirCount()
       ]);
 
       setSegments(allSegmentsData);
@@ -125,6 +132,8 @@ export const Mapping: React.FC = () => {
       setTotalSegments(totalSegmentsCount);
       setTotalMarques(totalMarquesCount);
       setTotalStrategiques(totalStrategiquesCount);
+      setTotalWithClassifCir(withClassifCirCount);
+      setTotalWithoutClassifCir(withoutClassifCirCount);
       
     } catch (error) {
       console.error('Erreur chargement options de filtre:', error);
@@ -145,7 +154,8 @@ export const Mapping: React.FC = () => {
         ...(selectedFsmega !== 'all' && { fsmega: parseInt(selectedFsmega) }),
         ...(selectedFsfam !== 'all' && { fsfam: parseInt(selectedFsfam) }),
         ...(selectedFssfa !== 'all' && { fssfa: parseInt(selectedFssfa) }),
-        ...(selectedStrategiq !== 'all' && { strategiq: parseInt(selectedStrategiq) })
+        ...(selectedStrategiq !== 'all' && { strategiq: parseInt(selectedStrategiq) }),
+        ...(selectedClassifCir !== 'all' && { classif_cir: selectedClassifCir as 'with' | 'without' })
       };
       
       const mappingsResult = await mappingApi.getMappings(filters, currentPage, itemsPerPage);
@@ -164,7 +174,7 @@ export const Mapping: React.FC = () => {
   // Effects
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedSegment, selectedMarque, debouncedSearchTerm, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq]);
+  }, [selectedSegment, selectedMarque, debouncedSearchTerm, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq, selectedClassifCir]);
 
   // Charger les options de filtre une seule fois quand on ouvre l'onglet mappings
   useEffect(() => {
@@ -179,7 +189,7 @@ export const Mapping: React.FC = () => {
       fetchMappings();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, selectedSegment, selectedMarque, debouncedSearchTerm, currentPage, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq, filtersLoading]);
+  }, [activeTab, selectedSegment, selectedMarque, debouncedSearchTerm, currentPage, itemsPerPage, selectedFsmega, selectedFsfam, selectedFssfa, selectedStrategiq, selectedClassifCir, filtersLoading]);
 
   // Gestionnaires pour le workflow d'upload (removed - dead code from deleted renderUploadTab)
 
@@ -284,7 +294,12 @@ export const Mapping: React.FC = () => {
     { value: '0', label: 'Non stratégique uniquement' }
   ], []);
 
-  
+  const classifCirOptions = useMemo(() => [
+    { value: 'with', label: 'Avec Classification CIR' },
+    { value: 'without', label: 'Sans Classification CIR' }
+  ], []);
+
+
 
   // Rendu du contenu selon l'onglet actif
   const renderTabContent = () => {
@@ -314,7 +329,7 @@ export const Mapping: React.FC = () => {
   const renderMappingsTab = () => (
     <div className="space-y-6">
       {/* Statistiques */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-3">
@@ -370,6 +385,27 @@ export const Mapping: React.FC = () => {
             </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col space-y-1">
+              <div className="flex items-center space-x-2">
+                <div className="p-1 bg-emerald-50 rounded">
+                  <Database className="w-4 h-4 text-emerald-600" />
+                </div>
+                <p className="text-xs text-gray-600">Classif. CIR</p>
+              </div>
+              <div className="flex items-baseline space-x-2">
+                <p className="text-lg font-bold text-emerald-700">{totalWithClassifCir}</p>
+                <p className="text-xs text-gray-500">avec</p>
+              </div>
+              <div className="flex items-baseline space-x-2">
+                <p className="text-lg font-bold text-red-600">{totalWithoutClassifCir}</p>
+                <p className="text-xs text-gray-500">sans</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filtres */}
@@ -402,7 +438,7 @@ export const Mapping: React.FC = () => {
             </div>
 
             {/* Deuxième ligne : Filtres de base */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <SearchableSelect
                 value={selectedSegment}
                 onValueChange={setSelectedSegment}
@@ -430,7 +466,14 @@ export const Mapping: React.FC = () => {
                 loading={filtersLoading}
               />
 
-              {/* Source filter removed per request */}
+              <SearchableSelect
+                value={selectedClassifCir}
+                onValueChange={setSelectedClassifCir}
+                options={classifCirOptions}
+                placeholder="Tous (Classification CIR)"
+                allOptionLabel="Tous (Classification CIR)"
+                loading={filtersLoading}
+              />
             </div>
 
             {/* Troisième ligne : Filtres CIR avancés */}
@@ -496,6 +539,7 @@ export const Mapping: React.FC = () => {
                       setSelectedFsfam('all');
                       setSelectedFssfa('all');
                       setSelectedStrategiq('all');
+                      setSelectedClassifCir('all');
                     }}
                     className="w-full flex items-center justify-center space-x-2"
                   >
