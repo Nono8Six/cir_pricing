@@ -1,0 +1,23 @@
+project_id = "env(SUPABASE_PROJECT_ID)"
+
+[functions]
+# Explicit list so local `supabase functions serve` keeps secrets in sync.
+verify_jwt = true
+
+[functions.env]
+SUPABASE_URL = "env(SUPABASE_URL)"
+SUPABASE_SERVICE_ROLE_KEY = "env(SUPABASE_SERVICE_ROLE_KEY)"
+EDGE_WEBHOOK_SECRET = "env(EDGE_WEBHOOK_SECRET)"
+ALLOWED_ORIGIN = "env(ALLOWED_ORIGIN)"
+IMPORTS_BUCKET = "env(IMPORTS_BUCKET)"
+CIR_DATASET_CLASSIFICATION = "env(CIR_DATASET_CLASSIFICATION)"
+CIR_DATASET_SEGMENT = "env(CIR_DATASET_SEGMENT)"
+
+[storage.buckets.imports]
+public = false
+file_size_limit = "200MiB"
+allowed_mime_types = [
+  "text/csv",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+]

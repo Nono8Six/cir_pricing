@@ -1,4 +1,6 @@
-const EDGE_WEBHOOK_SECRET = Deno.env.get('EDGE_WEBHOOK_SECRET');
+import { env } from './env.server.ts';
+
+const EDGE_WEBHOOK_SECRET = env.EDGE_WEBHOOK_SECRET;
 
 export class WebhookAuthError extends Error {
   constructor(message: string) {

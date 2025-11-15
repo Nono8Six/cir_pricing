@@ -11,11 +11,10 @@ import { AdminGuardError, ensureAdmin } from '../shared/adminGuard.ts';
 import { buildCorsHeaders, createPreflightResponse } from '../shared/cors.ts';
 import { WebhookAuthError, ensureWebhookSecret } from '../shared/webhookAuth.ts';
 import { initStructuredLog } from '../shared/logging.ts';
+import { env } from '../shared/env.server.ts';
 
 // Initialize Supabase client outside request handler for better error handling
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
+const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
 // Structured logging helper
 /**
@@ -107,7 +106,7 @@ Deno.serve(async (req: Request) => {
     if (!batch) return respond(404, { error: 'batch not found' });
 
     // 2) Télécharger le fichier Storage
-    const { data: blob, error: dlErr } = await supabase.storage.from('imports').download(file_path);
+    const { data: blob, error: dlErr } = await supabase.storage.from(env.IMPORTS_BUCKET).download(file_path);
     if (dlErr || !blob) throw dlErr || new Error('download failed');
 
     // 3) Parse

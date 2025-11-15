@@ -1,6 +1,6 @@
-# CLAUDE.md
+# agents.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository. All Supabase interactions must go through the MCP Supabase tools because the environment is Supabase Cloud–first with no local Docker available. When documentation is needed, use Context7.
+This file provides guidance to Codex Code when working with code in this repository. All Supabase interactions must go through the MCP Supabase tools because the environment is Supabase Cloud–first with no local Docker available. When documentation is needed, use Context7.
 
 ---
 
@@ -374,7 +374,7 @@ supabase functions serve # Serve Edge Functions locally
 
 ## 🎓 Key Principles Summary
 
-When Claude Code works on this repository:
+When working on this repository:
 
 1. **NO HARDCODE** - All data from database or config
 2. **NO MOCKS** - Real data or proper seed scripts

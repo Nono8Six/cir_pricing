@@ -101,7 +101,7 @@ Format checklist : `ID – Description | Validation | Ops Git/DB/Functions`. C
 - [x] **P0.4.3** - Normaliser les policies RLS `prices` + `brand_mapping_history` (split `ALL`, WITH CHECK explicites).
   - Validation : `mcp.supabase.execute_sql` listant `cmd`/`roles` (SELECT/INSERT/UPDATE/DELETE) + rapport `AUDIT/...`.
   - Ops : migration `supabase/migrations/20251112_prices_history_rls.sql`.
-- [ ] **P0.5.1** – Centraliser secrets (buckets, dataset) dans `supabase/config.toml` + `env.server.ts`.
+- [x] **P0.5.1** – Centraliser secrets (buckets, dataset) dans `supabase/config.toml` + `env.server.ts`. - 2025-11-14, 1h, OK
   - Validation : linter OK, pas de `Deno.env.get` sauvage.
   - Ops : commit `chore(config): centralize env`.
 - [ ] **P0.5.2** – Documenter env dans `docs/env.md`, valider via `npm run type-check`.

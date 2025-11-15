@@ -1,9 +1,10 @@
-const DEFAULT_ALLOWED_ORIGIN = 'http://localhost:5173';
+import { env } from './env.server.ts';
+
 const ALLOWED_HEADERS = 'authorization, x-client-info, apikey, content-type';
 const ALLOWED_METHODS = 'GET, POST, OPTIONS';
 
 export function getAllowedOrigin(): string {
-  return Deno.env.get('ALLOWED_ORIGIN') ?? DEFAULT_ALLOWED_ORIGIN;
+  return env.ALLOWED_ORIGIN;
 }
 
 export function buildCorsHeaders(): Record<string, string> {

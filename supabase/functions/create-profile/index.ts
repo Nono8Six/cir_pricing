@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { CreateProfileRequestSchema } from './schemas.ts'
+import { env } from '../shared/env.server.ts'
 
 /**
  * IMPORTANT: Cette fonction doit être appelée uniquement par Auth Hooks de Supabase,
@@ -51,10 +52,7 @@ serve(async (req) => {
 
     const { id, email, first_name, last_name } = validated
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    )
+    const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
 
     const { error } = await supabase.from('profiles').insert({
       id,

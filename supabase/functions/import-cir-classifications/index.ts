@@ -5,10 +5,10 @@ import { AdminGuardError, ensureAdmin } from '../shared/adminGuard.ts';
 import { buildCorsHeaders, createPreflightResponse } from '../shared/cors.ts';
 import { WebhookAuthError, ensureWebhookSecret } from '../shared/webhookAuth.ts';
 import { initStructuredLog } from '../shared/logging.ts';
+import { CIR_DATASETS, env } from '../shared/env.server.ts';
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const supabase = createClient(supabaseUrl, serviceRoleKey);
+const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+const CLASSIFICATION_DATASET = CIR_DATASETS.classification;
 
 const CHUNK_SIZE = 500;
 
@@ -62,7 +62,7 @@ Deno.serve(async (req: Request) => {
       throw new Error('Payload rows is empty');
     }
 
-    await updateBatch(batchId, { status: 'processing' });
+    await updateBatch(batchId, { status: 'processing', dataset_type: CLASSIFICATION_DATASET });
     await setBatchContext(batchId);
 
     // Purge table avant réinsertion
@@ -86,6 +86,7 @@ Deno.serve(async (req: Request) => {
 
     await updateBatch(batchId, {
       status: 'completed',
+      dataset_type: CLASSIFICATION_DATASET,
       processed_lines: parsed.rows.length,
       created_count: parsed.rows.length,
       updated_count: 0,
@@ -115,7 +116,7 @@ Deno.serve(async (req: Request) => {
       error_message: error instanceof Error ? error.message : String(error)
     });
     if (batchId) {
-      await updateBatch(batchId, { status: 'failed' }).catch(() => {});
+      await updateBatch(batchId, { status: 'failed', dataset_type: CLASSIFICATION_DATASET }).catch(() => {});
       await clearBatchContext().catch(() => {});
     }
 

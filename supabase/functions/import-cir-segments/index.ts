@@ -5,17 +5,17 @@ import { AdminGuardError, ensureAdmin } from '../shared/adminGuard.ts';
 import { buildCorsHeaders, createPreflightResponse } from '../shared/cors.ts';
 import { WebhookAuthError, ensureWebhookSecret } from '../shared/webhookAuth.ts';
 import { initStructuredLog } from '../shared/logging.ts';
-import { WebhookAuthError, ensureWebhookSecret } from '../shared/webhookAuth.ts';
+import { CIR_DATASETS, env } from '../shared/env.server.ts';
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const supabase = createClient(supabaseUrl, serviceRoleKey);
+const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+const SEGMENT_DATASET = CIR_DATASETS.segment;
+const SEGMENT_CHANGE_REASON = `${SEGMENT_DATASET}_import`;
 
 const CHUNK_SIZE = 500;
 
 async function setAuditContext(batchId: string): Promise<void> {
   await supabase.rpc('set_current_batch_id', { batch_uuid: batchId });
-  await supabase.rpc('set_change_reason', { reason: 'cir_segment_import' });
+  await supabase.rpc('set_change_reason', { reason: SEGMENT_CHANGE_REASON });
 }
 
 async function clearAuditContext(): Promise<void> {
@@ -81,7 +81,7 @@ Deno.serve(async (req: Request) => {
       throw new Error('Impossible de déterminer l’auteur de l’import (created_by).');
     }
 
-    await updateBatch(batchId, { status: 'processing' });
+    await updateBatch(batchId, { status: 'processing', dataset_type: SEGMENT_DATASET });
     await setAuditContext(batchId);
 
     const { error: deleteError } = await supabase
@@ -114,6 +114,7 @@ Deno.serve(async (req: Request) => {
 
     await updateBatch(batchId, {
       status: 'completed',
+      dataset_type: SEGMENT_DATASET,
       processed_lines: parsed.rows.length,
       created_count: parsed.rows.length,
       updated_count: 0,
@@ -145,7 +146,7 @@ Deno.serve(async (req: Request) => {
       error_message: error instanceof Error ? error.message : String(error)
     });
     if (batchId) {
-      await updateBatch(batchId, { status: 'failed' }).catch(() => {});
+      await updateBatch(batchId, { status: 'failed', dataset_type: SEGMENT_DATASET }).catch(() => {});
       await clearAuditContext().catch(() => {});
     }
 
